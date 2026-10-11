@@ -200,6 +200,7 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   Header uses lab settings (name, logo, phone, address).
 - Reuse from pharmacy_APP (copy & adapt, do not import across repos): activation flow, auth storage,
   update service (Inno Setup installer download), connectivity service.
+- Target Flutter 3.44.8 (Dart 3.12.2), the owner's local version. In cloud sessions install exactly this version, not the latest, and never raise package constraints beyond what it supports.
 
 ---
 
