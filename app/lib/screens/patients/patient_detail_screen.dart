@@ -13,6 +13,10 @@ import '../../models/patients.dart';
 import '../../services/printing/patient_pdfs.dart';
 import '../../services/printing/print_service.dart';
 import '../../widgets/common.dart';
+import '../../models/jobs.dart';
+import '../jobs/job_form_dialog.dart';
+import '../jobs/jobs_board_screen.dart' show JobCard;
+import '../jobs/jobs_providers.dart';
 import '../pos/pos_controller.dart';
 import 'exam_dialogs.dart';
 import 'patient_form_dialog.dart';
@@ -31,6 +35,17 @@ final patientExtraActionsProvider = Provider<List<PatientAction>>(
         context.go(AppRoutes.pos);
       },
     ),
+    (
+      label: AppStrings.newJob,
+      icon: Icons.work_outline,
+      onTap: (context, patient) async {
+        final job = await showDialog<Job>(
+          context: context,
+          builder: (_) => JobFormDialog(patient: patient),
+        );
+        if (job != null && context.mounted) context.go(AppRoutes.jobDetail(job.id));
+      },
+    ),
   ],
 );
 
@@ -46,7 +61,7 @@ class PatientDetailScreen extends ConsumerWidget {
       value: ref.watch(patientProvider(patientId)),
       onRetry: () => invalidatePatient(ref, patientId),
       builder: (patient) => DefaultTabController(
-        length: 2,
+        length: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -137,6 +152,7 @@ class PatientDetailScreen extends ConsumerWidget {
               tabs: [
                 Tab(text: AppStrings.exams),
                 Tab(text: AppStrings.prescriptions),
+                Tab(text: AppStrings.jobsOfPatient),
               ],
             ),
             Expanded(
@@ -144,6 +160,7 @@ class PatientDetailScreen extends ConsumerWidget {
                 children: [
                   _ExamsTab(patient: patient),
                   _PrescriptionsTab(patient: patient),
+                  _JobsTab(patient: patient),
                 ],
               ),
             ),
@@ -373,6 +390,26 @@ class _PrescriptionsTab extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _JobsTab extends ConsumerWidget {
+  const _JobsTab({required this.patient});
+
+  final Patient patient;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AsyncView(
+      value: ref.watch(patientJobsProvider(patient.id)),
+      onRetry: () => ref.invalidate(patientJobsProvider(patient.id)),
+      builder: (jobs) => jobs.isEmpty
+          ? const Center(child: Text(AppStrings.noJobs))
+          : ListView(
+              padding: const EdgeInsets.all(24),
+              children: [for (final job in jobs) JobCard(job: job)],
+            ),
     );
   }
 }

@@ -48,6 +48,8 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v5 (P5): customer jobs.
+    (db) => db.execute(CacheDao.createTableSql('jobs')),
   ];
 
   static int get schemaVersion => migrations.length;

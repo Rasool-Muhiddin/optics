@@ -6,6 +6,8 @@ import '../../screens/activation/activation_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/inventory/inventory_screen.dart';
 import '../../screens/inventory/product_detail_screen.dart';
+import '../../screens/jobs/job_detail_screen.dart';
+import '../../screens/jobs/jobs_board_screen.dart';
 import '../../screens/login/login_screen.dart';
 import '../../screens/patients/patient_detail_screen.dart';
 import '../../screens/patients/patients_screen.dart';
@@ -48,6 +50,7 @@ const _builtSections = {
   AppRoutes.pos,
   AppRoutes.invoices,
   AppRoutes.credit,
+  AppRoutes.jobs,
 };
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -94,6 +97,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.credit,
             builder: (context, state) => const CreditCustomersScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.jobs,
+            builder: (context, state) => const JobsBoardScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    JobDetailScreen(jobId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.inventory,

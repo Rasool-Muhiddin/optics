@@ -429,4 +429,57 @@ class AppStrings {
   static const String errInvalidAmount = 'المبلغ غير صحيح.';
   static const String errInvoiceCancelled = 'الفاتورة ملغاة.';
   static const String errProductInactive = 'المادة غير فعّالة.';
+
+  // Customer jobs (P5)
+  static const String jobsTitle = 'طلبات الزبائن';
+  static const String newJob = 'طلب نظارة جديد';
+  static const String editJob = 'تعديل الطلب';
+  static const String job = 'طلب';
+  static const String jobNumber = 'رقم الطلب';
+  static const String promisedDate = 'موعد التسليم';
+  static const String overdue = 'متأخر';
+  static const String overdueOnly = 'المتأخرة فقط';
+  static const String frameSource = 'الإطار';
+  static const String frame = 'الإطار';
+  static const String lens = 'العدسة';
+  static const String lensOd = 'عدسة اليمنى OD';
+  static const String lensOs = 'عدسة اليسرى OS';
+  static const String lensNotes = 'ملاحظات العدسة';
+  static const String linkedInvoice = 'الفاتورة المرتبطة';
+  static const String linkedPrescription = 'الوصفة';
+  static const String statusHistory = 'سجل الحالات';
+  static const String moveTo = 'نقل إلى';
+  static const String changeStatus = 'تغيير الحالة';
+  static const String statusNote = 'ملاحظة';
+  static const String printJobTicket = 'طباعة بطاقة الطلب';
+  static const String jobTicket = 'بطاقة طلب نظارة';
+  static const String deliveredAt = 'تاريخ التسليم';
+  static const String noJobs = 'لا توجد طلبات';
+  static const String jobsOfPatient = 'الطلبات';
+  static const String chooseFrame = 'اختر إطاراً من المخزون';
+  static const String chooseLens = 'اختر العدسة';
+  static const String customerSignature = 'توقيع الزبون عند الاستلام';
+
+  static const Map<String, String> jobStatuses = {
+    'pending': 'قيد الانتظار',
+    'lens_ordered': 'تم طلب العدسة',
+    'in_workshop': 'في الورشة',
+    'ready': 'جاهز للتسليم',
+    'delivered': 'تم التسليم',
+    'cancelled': 'ملغى',
+  };
+
+  static const Map<String, String> frameSources = {
+    'lab': 'من المختبر',
+    'customer': 'إطار الزبون',
+    'none': 'بدون إطار (عدسات فقط)',
+  };
+
+  // Errors (P5)
+  static const String errInvalidTransition = 'لا يمكن نقل الطلب إلى هذه الحالة.';
+  static const String errJobClosed = 'الطلب مُسلَّم أو ملغى ولا يمكن تعديله.';
+  static const String errPrescriptionMismatch = 'الوصفة تعود لمراجع آخر.';
+  static const String errInvoiceMismatch = 'الفاتورة تعود لزبون آخر.';
+  static const String errInvalidFrame = 'اختيار الإطار غير صحيح.';
+  static const String errInvalidLens = 'اختيار العدسة أو القوة غير صحيح.';
 }

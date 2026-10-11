@@ -372,6 +372,32 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   Dialogs that own `TextEditingController`s are StatefulWidgets (disposing after `showDialog` returns
   crashes during the exit animation).
 
+### Decisions recorded in P5
+- **Job**: lab-scoped, server-numbered per lab (`jobs.JobCounter`, like invoices); links: `patient`
+  (required, cannot change), `prescription` (must be that patient's, not void), `invoice` (same patient when
+  the invoice has one, not cancelled); `frame_source` = `lab` (optional frame product, kind `frame`) |
+  `customer` ("customer's own frame", no product, describe it in `frame_notes`) | `none` (lenses only);
+  `lens` product (stock / rx / contact lens) with optional stock powers per eye (`lens_od`, `lens_os`, must
+  belong to that lens) and `lens_notes`; `promised_date`; `notes`.
+- **Jobs do not move stock** — stock leaves at checkout (P4); the job only tracks where the glasses are.
+  Ordering an `rx_lens` from a supplier is P6 (`SupplierOrder.type = rx_for_job`, linked job).
+- **Lifecycle**: `pending → lens_ordered → in_workshop → ready → delivered`, `cancelled` from any open
+  status; also allowed: `lens_ordered → pending`, `in_workshop → lens_ordered` (re-order), `ready →
+  in_workshop` (rework), and skipping forward (`pending → in_workshop/ready`). `delivered`/`cancelled` are
+  final (no moves, no edits: `job_closed`). Status changes only via `POST jobs/{id}/status/ {status, note}`
+  (`invalid_transition`), each one written to `JobStatusLog` (who/when/note; creation logs `'' → pending`).
+  Patient status follows forward only: job created → `in_job`, delivered → `delivered`.
+- **Overdue** = `promised_date < today` while `pending | lens_ordered | in_workshop` (a `ready` job waits on
+  the customer, it is not late). Exposed as `is_overdue`, filter `?overdue=true`, `GET jobs/summary/`
+  (counts per status + overdue). Any lab member manages jobs.
+- Flutter: cache v5 `jobs`; `/jobs` Kanban board (open jobs + delivered in the last 14 days, overdue first
+  with a red border/badge, "move to next" button + full status dialog), `/jobs/:id` detail (history, edit,
+  status, print), job form (patient picker, Rx and invoice of that patient, frame source, product pickers,
+  lens powers picked from the power grid). Patient profile: "طلب نظارة جديد" action + jobs tab. Shared
+  pickers in `widgets/product_pickers.dart` / `widgets/patient_picker.dart`. Job ticket PDF: A5 or 80 mm
+  (patient, promised date, frame, lens powers, Rx table + PD, invoice balance, signature line).
+  `Job.overdueOn(today)` re-evaluates overdue for cached rows offline.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -402,7 +428,7 @@ Keep each session to one roadmap item; commit with clear messages.
       profile, exam history, Rx entry form (OD/OS table), print prescription + exam report.
 - [x] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
       screen, credit customers list, invoice print (A4/A5 + thermal).
-- [ ] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
+- [x] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
 - [ ] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
 - [ ] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.

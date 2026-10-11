@@ -275,6 +275,7 @@ class ProductQuery {
     this.lowStock = false,
     this.includeInactive = false,
     this.page = 1,
+    this.kinds = '',
   });
 
   final String search;
@@ -285,9 +286,12 @@ class ProductQuery {
   final bool includeInactive;
   final int page;
 
+  /// Several kinds at once, comma-separated server values (overrides [kind]).
+  final String kinds;
+
   Map<String, dynamic> toQuery({int pageSize = 100}) => {
     if (search.trim().isNotEmpty) 'search': search.trim(),
-    if (kind != null) 'kind': kind!.value,
+    if (kinds.isNotEmpty) 'kind': kinds else if (kind != null) 'kind': kind!.value,
     if (categoryId != null) 'category': categoryId,
     if (brandId != null) 'brand': brandId,
     if (lowStock) 'low_stock': 'true',
@@ -305,6 +309,7 @@ class ProductQuery {
             p.barcode.toLowerCase().contains(q) ||
             p.brandName.toLowerCase().contains(q)) &&
         (kind == null || p.kind == kind) &&
+        (kinds.isEmpty || kinds.split(',').contains(p.kind.value)) &&
         (categoryId == null || p.categoryId == categoryId) &&
         (brandId == null || p.brandId == brandId) &&
         (!lowStock || p.isLowStock) &&
@@ -319,6 +324,7 @@ class ProductQuery {
     bool? lowStock,
     bool? includeInactive,
     int? page,
+    String? kinds,
   }) => ProductQuery(
     search: search ?? this.search,
     kind: kind != null ? kind() : this.kind,
@@ -327,6 +333,7 @@ class ProductQuery {
     lowStock: lowStock ?? this.lowStock,
     includeInactive: includeInactive ?? this.includeInactive,
     page: page ?? this.page,
+    kinds: kinds ?? this.kinds,
   );
 
   @override
@@ -338,9 +345,10 @@ class ProductQuery {
       other.brandId == brandId &&
       other.lowStock == lowStock &&
       other.includeInactive == includeInactive &&
-      other.page == page;
+      other.page == page &&
+      other.kinds == kinds;
 
   @override
   int get hashCode =>
-      Object.hash(search, kind, categoryId, brandId, lowStock, includeInactive, page);
+      Object.hash(search, kind, categoryId, brandId, lowStock, includeInactive, page, kinds);
 }

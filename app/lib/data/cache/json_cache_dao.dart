@@ -27,4 +27,5 @@ class CacheTables {
   static const String prescriptions = 'prescriptions';
   static const String invoices = 'invoices';
   static const String creditCustomers = 'credit_customers';
+  static const String jobs = 'jobs';
 }

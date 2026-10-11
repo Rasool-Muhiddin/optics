@@ -13,8 +13,8 @@ import '../../models/catalog.dart';
 import '../../models/sales.dart';
 import '../../widgets/common.dart';
 import '../../widgets/patient_picker.dart';
+import '../../widgets/product_pickers.dart';
 import '../inventory/inventory_providers.dart';
-import '../inventory/lens_power_grid.dart';
 import '../sales/invoice_actions.dart';
 import 'pos_controller.dart';
 
@@ -46,10 +46,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   Future<void> _addProduct(Product product, {LensVariant? variant}) async {
     if (product.usesVariants && variant == null) {
-      final picked = await showDialog<LensVariant>(
-        context: context,
-        builder: (_) => _VariantPicker(product: product),
-      );
+      final picked = await pickLensVariant(context, product);
       if (picked == null) return;
       variant = picked;
     }
@@ -488,71 +485,6 @@ class _Totals extends StatelessWidget {
             style: TextStyle(color: theme.colorScheme.error),
           ),
         KeyedSubtree(key: const Key('pos-total'), child: row(AppStrings.total, p.total, big: true)),
-      ],
-    );
-  }
-}
-
-/// Lens power picker for the POS: the power grid (per ADD), tap a power to add it.
-class _VariantPicker extends ConsumerStatefulWidget {
-  const _VariantPicker({required this.product});
-
-  final Product product;
-
-  @override
-  ConsumerState<_VariantPicker> createState() => _VariantPickerState();
-}
-
-class _VariantPickerState extends ConsumerState<_VariantPicker> {
-  double? _add;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('${AppStrings.chooseVariant} — ${widget.product.name}'),
-      content: SizedBox(
-        width: 720,
-        height: 480,
-        child: AsyncView(
-          value: ref.watch(lensGridProvider(widget.product.id)),
-          builder: (grid) {
-            final variants = grid.variants.where((v) => v.isActive).toList();
-            if (variants.isEmpty) return const Center(child: Text(AppStrings.noVariants));
-            final adds = {for (final v in variants) v.add}.toList()..sort();
-            final add = adds.contains(_add) ? _add! : adds.first;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (adds.length > 1)
-                  DropdownButton<double>(
-                    value: add,
-                    items: [
-                      for (final a in adds)
-                        DropdownMenuItem(
-                          value: a,
-                          child: Text(a == 0 ? 'ADD —' : 'ADD +${a.toStringAsFixed(2)}'),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _add = v),
-                  ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: LensPowerGrid(
-                      variants: variants.where((v) => v.add == add).toList(),
-                      onTap: (v) => Navigator.of(context).pop(v),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
-        ),
       ],
     );
   }
