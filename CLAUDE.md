@@ -338,6 +338,40 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   `patientExtraActionsProvider` lets later phases add buttons (new sale/job) to the profile header.
   All `DropdownButtonFormField`s use `isExpanded: true` (avoids overflow with long Arabic labels).
 
+### Decisions recorded in P4
+- **Checkout** `POST sales/checkout/` (atomic: number → invoice → lines → `sale` movements → payment) takes
+  only `lines [{product|variant, qty, discount | discount_percent}]`, `invoice_discount_type/value`,
+  `payment_type`, `patient` or walk-in `customer_name/phone`, `payment {amount, method}`, `notes`. Any
+  client price/total/number is ignored. `POST sales/checkout/preview/` returns the server's pricing for the
+  same body (incl. `available` stock per line and `requires_owner`) and saves nothing — the POS shows totals
+  only from it (no client money arithmetic). Variant `sale_price` overrides the product price.
+- **Numbering**: `sales.InvoiceCounter` (one row per lab, `select_for_update`), sequential integers from 1;
+  a failed checkout does not consume a number.
+- **Discount limit**: `Lab.max_discount_percent` (default 10, owner edits via `PATCH lab/`). Total discount
+  (line + invoice) as % of the subtotal above the limit → staff get 403 `discount_requires_owner`; owner
+  unlimited. Discounts can't exceed the amount (`invalid_discount`).
+- **Payments / credit**: cash sales are always paid in full at checkout. **Credit (آجل) requires a patient
+  file** (`credit_requires_patient`) so balances belong to someone; an optional down payment. Status:
+  `open` (nothing paid) / `partially_paid` / `paid` / `cancelled`, recomputed from non-void payments.
+  `POST sales/invoices/{id}/payments/` (any member, no overpayment), `POST sales/payments/{id}/void/`
+  (owner). `GET sales/credit-customers/` aggregates open balances per patient; `POST
+  sales/credit-customers/{patient}/pay/` spreads one payment over the oldest invoices first.
+- **Cancel** `POST sales/invoices/{id}/cancel/` (owner): stock returns as `return_in` at the sold unit
+  cost (average restored), payments are voided (money refunded), invoice kept with reason. Invoices are
+  read-only otherwise (no edit/delete, admin read-only).
+- **Costs**: lines snapshot `unit_cost` (average at sale; for non-stock kinds the product's reference
+  `purchase_price`); invoice `cost_total`/`profit` and line `unit_cost` are cost fields (hidden from staff
+  without `can_view_costs`). A checkout moves the patient to `lens_selected` (forward only).
+- Lookups for missing barcodes / other-lab patients now answer **404** (`not_found`).
+- Flutter: cache v4 `invoices, credit_customers` (invoice detail cached with lines → printable offline;
+  selling itself needs the server — `OfflineWriteException`). `PosController` (kept alive across navigation)
+  holds items only; `cartPreviewProvider` re-prices on every change. Lens powers are picked from the power
+  grid. Barcode scanners type + Enter → `catalog/lookup/`. New sidebar sections `/invoices` (+ detail with
+  payments, owner cancel/void, prints) and `/credit`. Patient profile gets a "بيع" action (POS with that
+  patient). Invoice PDFs: A4/A5 table layout and 80 mm roll (`PdfPageFormat.roll80`) compact layout.
+  Dialogs that own `TextEditingController`s are StatefulWidgets (disposing after `showDialog` returns
+  crashes during the exit animation).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -366,7 +400,7 @@ Keep each session to one roadmap item; commit with clear messages.
       weighted-average cost. Flutter: inventory screens (list, filters, add/edit per kind, lens power grid).
 - [x] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
       profile, exam history, Rx entry form (OD/OS table), print prescription + exam report.
-- [ ] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
+- [x] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
       screen, credit customers list, invoice print (A4/A5 + thermal).
 - [ ] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
 - [ ] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.

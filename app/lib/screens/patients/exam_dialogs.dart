@@ -272,17 +272,34 @@ class _PrescriptionFormDialogState extends ConsumerState<PrescriptionFormDialog>
 }
 
 /// Asks for a void reason; returns it or null.
-Future<String?> askVoidReason(BuildContext context) async {
-  final controller = TextEditingController();
-  final reason = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
+Future<String?> askVoidReason(BuildContext context) =>
+    showDialog<String>(context: context, builder: (_) => const _ReasonDialog());
+
+class _ReasonDialog extends StatefulWidget {
+  const _ReasonDialog();
+
+  @override
+  State<_ReasonDialog> createState() => _ReasonDialogState();
+}
+
+class _ReasonDialogState extends State<_ReasonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
       title: const Text(AppStrings.voidRecord),
       content: SizedBox(
         width: 380,
         child: TextField(
           key: const Key('void-reason'),
-          controller: controller,
+          controller: _controller,
           autofocus: true,
           decoration: const InputDecoration(labelText: AppStrings.voidReason),
         ),
@@ -295,15 +312,13 @@ Future<String?> askVoidReason(BuildContext context) async {
         FilledButton(
           key: const Key('void-confirm'),
           onPressed: () {
-            if (controller.text.trim().isNotEmpty) {
-              Navigator.of(context).pop(controller.text.trim());
+            if (_controller.text.trim().isNotEmpty) {
+              Navigator.of(context).pop(_controller.text.trim());
             }
           },
           child: const Text(AppStrings.voidRecord),
         ),
       ],
-    ),
-  );
-  controller.dispose();
-  return reason;
+    );
+  }
 }

@@ -62,6 +62,14 @@ const Map<String, String> _messagesByCode = {
   'base_required': AppStrings.errBaseRequired,
   'invalid_pd': AppStrings.errInvalidPd,
   'invalid_prism': AppStrings.errInvalidPower,
+  // Sales (P4)
+  'discount_requires_owner': AppStrings.errDiscountRequiresOwner,
+  'invalid_discount': AppStrings.errInvalidDiscount,
+  'credit_requires_patient': AppStrings.errCreditRequiresPatient,
+  'overpayment': AppStrings.errOverpayment,
+  'invalid_amount': AppStrings.errInvalidAmount,
+  'invoice_cancelled': AppStrings.errInvoiceCancelled,
+  'product_inactive': AppStrings.errProductInactive,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

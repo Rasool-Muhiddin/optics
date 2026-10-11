@@ -347,4 +347,86 @@ class AppStrings {
   static const String errSphRequired = 'SPH مطلوب للعين التي لها وصفة.';
   static const String errBaseRequired = 'المنشور يحتاج اتجاه القاعدة.';
   static const String errInvalidPd = 'قيمة المسافة بين الحدقتين (PD) غير صحيحة.';
+
+  // POS & sales (P4)
+  static const String navInvoices = 'الفواتير';
+  static const String navCredit = 'الزبائن بالآجل';
+  static const String posTitle = 'نافذة البيع';
+  static const String newSale = 'بيع جديد';
+  static const String sell = 'بيع';
+  static const String cart = 'السلة';
+  static const String emptyCart = 'السلة فارغة. ابحث عن مادة أو امسح الباركود.';
+  static const String searchOrScan = 'ابحث بالاسم أو امسح الباركود ثم Enter';
+  static const String customer = 'الزبون';
+  static const String walkIn = 'زبون عابر';
+  static const String choosePatient = 'اختيار مراجع';
+  static const String removePatient = 'إزالة المراجع';
+  static const String customerName = 'اسم الزبون';
+  static const String paymentType = 'طريقة الدفع';
+  static const String paymentMethod = 'وسيلة الدفع';
+  static const String downPayment = 'المبلغ المدفوع الآن';
+  static const String invoiceDiscount = 'خصم الفاتورة';
+  static const String discountAmount = 'مبلغ';
+  static const String discountPercent = 'نسبة %';
+  static const String discount = 'الخصم';
+  static const String lineDiscount = 'خصم السطر';
+  static const String subtotal = 'المجموع';
+  static const String total = 'الإجمالي';
+  static const String paid = 'المدفوع';
+  static const String balance = 'المتبقي';
+  static const String checkout = 'إتمام البيع';
+  static const String checkoutDone = 'تم حفظ الفاتورة';
+  static const String invoice = 'فاتورة';
+  static const String invoices = 'الفواتير';
+  static const String invoiceNumber = 'رقم الفاتورة';
+  static const String item = 'المادة';
+  static const String unitPrice = 'سعر الوحدة';
+  static const String lineTotal = 'المبلغ';
+  static const String amount = 'المبلغ';
+  static const String cashier = 'الكاشير';
+  static const String payments = 'الدفعات';
+  static const String addPayment = 'تسجيل دفعة';
+  static const String receivePayment = 'استلام دفعة';
+  static const String cancelInvoice = 'إلغاء الفاتورة';
+  static const String cancelInvoiceConfirm =
+      'سيتم إرجاع المواد إلى المخزون وإلغاء الدفعات. هل تريد المتابعة؟';
+  static const String cancelled = 'ملغاة';
+  static const String printA4 = 'طباعة A4';
+  static const String printA5 = 'طباعة A5';
+  static const String printThermal = 'طباعة حرارية 80mm';
+  static const String requiresOwnerDiscount = 'الخصم أعلى من الحد المسموح للموظف';
+  static const String outOfStock = 'الكمية غير متوفرة';
+  static const String available = 'المتوفر';
+  static const String onlyWithBalance = 'غير المسددة فقط';
+  static const String oldestInvoice = 'أقدم فاتورة';
+  static const String invoicesCount = 'عدد الفواتير';
+  static const String totalCredit = 'إجمالي الديون';
+  static const String profit = 'الربح';
+  static const String costTotal = 'الكلفة';
+  static const String posOfflineHint = 'البيع يحتاج اتصالاً بالخادم.';
+  static const String paymentsSpread = 'تُوزّع الدفعة على أقدم الفواتير أولاً.';
+
+  static const Map<String, String> paymentTypes = {'cash': 'نقدي', 'credit': 'آجل'};
+  static const Map<String, String> paymentMethods = {
+    'cash': 'نقداً',
+    'card': 'بطاقة',
+    'transfer': 'تحويل',
+    'other': 'أخرى',
+  };
+  static const Map<String, String> invoiceStatuses = {
+    'open': 'غير مسددة',
+    'paid': 'مسددة',
+    'partially_paid': 'مسددة جزئياً',
+    'cancelled': 'ملغاة',
+  };
+
+  // Errors (P4)
+  static const String errDiscountRequiresOwner =
+      'الخصم أعلى من الحد المسموح به للموظف ويحتاج موافقة المالك.';
+  static const String errInvalidDiscount = 'قيمة الخصم غير صحيحة أو أكبر من المبلغ.';
+  static const String errCreditRequiresPatient = 'البيع بالآجل يتطلب اختيار مراجع مسجّل.';
+  static const String errOverpayment = 'المبلغ أكبر من المتبقي.';
+  static const String errInvalidAmount = 'المبلغ غير صحيح.';
+  static const String errInvoiceCancelled = 'الفاتورة ملغاة.';
+  static const String errProductInactive = 'المادة غير فعّالة.';
 }

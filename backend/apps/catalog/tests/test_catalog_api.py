@@ -138,7 +138,7 @@ class ProductTests(CatalogBase):
         body = self.client.get("/api/v1/catalog/lookup/", {"code": "999"}).json()
         self.assertEqual((body["product"]["id"], body["variant"]["id"]), (product.id, variant.id))
         self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "111"}).json()["product"]["id"], frame.id)
-        self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "000"}).status_code, 400)
+        self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "000"}).status_code, 404)
 
     def test_options(self):
         body = self.client.get("/api/v1/catalog/options/").json()
@@ -223,4 +223,4 @@ class CatalogIsolationTests(CatalogBase):
         self.assertEqual(self.client.post(f"{CATEGORIES}", {"name": "x", "parent": other_cat.id}).status_code, 400)
         other_product.barcode = "555"
         other_product.save()
-        self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "555"}).status_code, 400)
+        self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "555"}).status_code, 404)

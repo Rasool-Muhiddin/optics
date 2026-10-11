@@ -9,6 +9,10 @@ import '../../screens/inventory/product_detail_screen.dart';
 import '../../screens/login/login_screen.dart';
 import '../../screens/patients/patient_detail_screen.dart';
 import '../../screens/patients/patients_screen.dart';
+import '../../screens/pos/pos_screen.dart';
+import '../../screens/sales/credit_customers_screen.dart';
+import '../../screens/sales/invoice_detail_screen.dart';
+import '../../screens/sales/invoices_screen.dart';
 import '../../screens/placeholder/coming_soon_screen.dart';
 import '../../screens/shell/main_shell.dart';
 import '../../screens/shell/nav_items.dart';
@@ -37,7 +41,14 @@ String? authRedirect(AuthState? state, String location) {
 }
 
 /// Sections with a real screen (the rest show "coming soon").
-const _builtSections = {AppRoutes.home, AppRoutes.inventory, AppRoutes.patients};
+const _builtSections = {
+  AppRoutes.home,
+  AppRoutes.inventory,
+  AppRoutes.patients,
+  AppRoutes.pos,
+  AppRoutes.invoices,
+  AppRoutes.credit,
+};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -67,6 +78,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                     PatientDetailScreen(patientId: int.parse(state.pathParameters['id']!)),
               ),
             ],
+          ),
+          GoRoute(path: AppRoutes.pos, builder: (context, state) => const PosScreen()),
+          GoRoute(
+            path: AppRoutes.invoices,
+            builder: (context, state) => const InvoicesScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    InvoiceDetailScreen(invoiceId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.credit,
+            builder: (context, state) => const CreditCustomersScreen(),
           ),
           GoRoute(
             path: AppRoutes.inventory,

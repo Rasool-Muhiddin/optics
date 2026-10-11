@@ -42,6 +42,12 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v4 (P4): sales.
+    (db) async {
+      for (final table in const ['invoices', 'credit_customers']) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

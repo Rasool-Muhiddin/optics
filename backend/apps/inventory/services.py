@@ -80,8 +80,10 @@ def record_movement(
     is_purchase = movement_type == StockMovement.Type.PURCHASE
     if is_purchase and line.unit_cost is None:
         raise APIError("Purchase cost is required.", code="unit_cost_required")
-    # A purchase, or a positive adjustment with a known cost (opening stock), moves the average.
-    if qty > 0 and line.unit_cost is not None and (is_purchase or movement_type == StockMovement.Type.ADJUSTMENT):
+    # A purchase, a customer return at its original cost, or a positive adjustment with a known
+    # cost (opening stock) moves the average.
+    costed_in = (StockMovement.Type.PURCHASE, StockMovement.Type.RETURN_IN, StockMovement.Type.ADJUSTMENT)
+    if qty > 0 and line.unit_cost is not None and movement_type in costed_in:
         unit_cost = _money(line.unit_cost)
         if unit_cost < 0:
             raise APIError("Cost cannot be negative.", code="invalid_unit_cost")

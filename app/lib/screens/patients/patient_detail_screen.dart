@@ -13,6 +13,7 @@ import '../../models/patients.dart';
 import '../../services/printing/patient_pdfs.dart';
 import '../../services/printing/print_service.dart';
 import '../../widgets/common.dart';
+import '../pos/pos_controller.dart';
 import 'exam_dialogs.dart';
 import 'patient_form_dialog.dart';
 import 'patients_providers.dart';
@@ -20,7 +21,18 @@ import 'patients_providers.dart';
 /// Extra actions other phases add to the patient profile (e.g. "new sale", "new job").
 typedef PatientAction = ({String label, IconData icon, void Function(BuildContext, Patient) onTap});
 
-final patientExtraActionsProvider = Provider<List<PatientAction>>((ref) => const []);
+final patientExtraActionsProvider = Provider<List<PatientAction>>(
+  (ref) => [
+    (
+      label: AppStrings.sell,
+      icon: Icons.point_of_sale,
+      onTap: (context, patient) {
+        ref.read(posControllerProvider.notifier).setPatient(patient);
+        context.go(AppRoutes.pos);
+      },
+    ),
+  ],
+);
 
 /// Patient profile: details, exam history (with Rx) and prescriptions; printing works offline.
 class PatientDetailScreen extends ConsumerWidget {

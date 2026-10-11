@@ -29,6 +29,16 @@ const List<NavItem> navItems = [
   NavItem(path: AppRoutes.home, label: AppStrings.home, icon: Icons.dashboard_outlined),
   NavItem(path: AppRoutes.patients, label: AppStrings.navPatients, icon: Icons.people_outline),
   NavItem(path: AppRoutes.pos, label: AppStrings.navPos, icon: Icons.point_of_sale),
+  NavItem(
+    path: AppRoutes.invoices,
+    label: AppStrings.navInvoices,
+    icon: Icons.receipt_long_outlined,
+  ),
+  NavItem(
+    path: AppRoutes.credit,
+    label: AppStrings.navCredit,
+    icon: Icons.account_balance_wallet_outlined,
+  ),
   NavItem(path: AppRoutes.jobs, label: AppStrings.navJobs, icon: Icons.work_outline),
   NavItem(
     path: AppRoutes.inventory,

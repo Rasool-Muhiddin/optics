@@ -14,7 +14,10 @@ class LabSettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lab
-        fields = ["id", "name", "phone", "address", "logo", "currency", "print_header", "print_footer"]
+        fields = [
+            "id", "name", "phone", "address", "logo", "currency", "print_header", "print_footer",
+            "max_discount_percent",
+        ]
         read_only_fields = ["id"]
 
 

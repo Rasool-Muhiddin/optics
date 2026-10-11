@@ -1,5 +1,5 @@
 from django.db import transaction
-from rest_framework import status
+from rest_framework import exceptions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -109,7 +109,7 @@ class LookupView(APIView):
     def get(self, request):
         product, variant = lookup_code(request.lab, request.query_params.get("code"))
         if product is None:
-            raise APIError("No item with this code.", code="not_found")
+            raise exceptions.NotFound("No item with this code.", code="not_found")
         context = {"request": request}
         return Response({
             "product": ProductSerializer(product, context=context).data,
