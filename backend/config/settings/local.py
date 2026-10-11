@@ -16,6 +16,6 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [  # noqa: F405
     "rest_framework.renderers.BrowsableAPIRenderer",
 ]
 REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [  # noqa: F405
-    "rest_framework.authentication.TokenAuthentication",
+    "apps.accounts.authentication.DeviceTokenAuthentication",
     "rest_framework.authentication.SessionAuthentication",
 ]

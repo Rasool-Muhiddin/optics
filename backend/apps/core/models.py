@@ -11,5 +11,27 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-# `LabScopedModel` (abstract, `lab` FK + lab-filtered manager) is added in P1 together
-# with the `labs.Lab` tenant model it points to.
+class LabScopedQuerySet(models.QuerySet):
+    def for_lab(self, lab):
+        """Rows owned by `lab` (a `labs.Lab` instance or id)."""
+        return self.filter(lab=lab)
+
+
+class LabScopedModel(TimeStampedModel):
+    """
+    Base for every lab-owned (tenant) row.
+
+    API access goes through `apps.core.viewsets.LabScopedViewSet`, which filters by the
+    lab of the request's token and sets `lab` on create — never filter by hand per view.
+    """
+
+    lab = models.ForeignKey(
+        "labs.Lab",
+        on_delete=models.PROTECT,
+        related_name="%(app_label)s_%(class)s_set",
+    )
+
+    objects = LabScopedQuerySet.as_manager()
+
+    class Meta:
+        abstract = True

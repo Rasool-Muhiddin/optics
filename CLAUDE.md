@@ -217,6 +217,49 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   Arabic error messages by `code` in `lib/core/errors/error_messages.dart`. HTTP via `package:http`
   (`ApiClient`, explicit `Content-Length`). Requires Flutter with Dart ≥ 3.12 (current deps).
 
+### Decisions recorded in P1
+- **One lab per user**: `LabUser.user` is a `OneToOneField` (`user.lab_membership`). The request's lab is
+  always resolved from the token's user — never from client input. Doctors (P7) are users without a membership.
+- **Tenancy plumbing** (all in `apps.core`): `LabScopedModel` (abstract, `lab` FK, `.for_lab()`);
+  `LabAccess` permission sets `request.lab` / `request.lab_user` and blocks with codes `no_lab_membership`,
+  `membership_inactive`, `lab_inactive`, `no_license`, `license_expired`; `IsLabOwner`,
+  `IsLabOwnerOrReadOnly` (`owner_required`); `requires_feature("<flag>")` (`feature_not_in_plan`).
+  Viewsets over lab-owned models use `LabScopedViewSet` / `LabScopedNoDeleteViewSet` /
+  `LabScopedReadOnlyViewSet` (filter by lab, set `lab` + `created_by` on create); FKs to lab-owned rows use
+  `LabScopedPrimaryKeyRelatedField`. `core/tests/test_tenancy.py` walks the URLconf and fails if a view over a
+  `LabScopedModel` skips `LabScopedMixin`. Test helpers live in `apps.core.testing`.
+- **Billing**: `Plan` has explicit boolean flag fields listed in `billing/features.py::FEATURE_FLAGS`
+  (`doctor_linking`, `report_export`) + limits `max_users`, `max_devices` (0 = unlimited). One `License`
+  per lab (`starts_on`, `expires_on` null = never, `is_active`). Limits are enforced in the API and in model
+  `clean()` (so Django Admin respects them too).
+- **Devices & tokens**: DRF `authtoken` was replaced by `accounts.AuthToken` (one token per login/device,
+  stored as SHA-256 digest, header still `Authorization: Token <key>`) via
+  `accounts.authentication.DeviceTokenAuthentication`. `accounts.Device` = an activated installation
+  (`device_id` from the app, server-generated `device_key` stored as digest). Activation:
+  `POST desktop/activate/ {activation_code, device_id, device_name, app_version}` → `device_key`
+  (re-activating the same `device_id` reuses its slot, rotates the key and revokes its tokens). Login:
+  `POST desktop/login/ {username, password, device_key}` → `token` + session payload (user, membership, lab,
+  plan features/limits, device); the user's lab must equal the device's lab (`device_lab_mismatch`).
+  `GET auth/me/` returns the same payload; `POST auth/logout/` revokes only this token; deactivating a device
+  revokes its tokens immediately (`device_deactivated`). Activation/login are throttled (`AUTH_THROTTLE_RATE`).
+  Lab `activation_code` (12 hex chars, case/dash-insensitive) is created with the lab and is not exposed by
+  the API — Tera hands it out.
+- Other P1 endpoints: `GET/PATCH lab/` (lab settings; owner edits), `lab/users/` (owner manages users,
+  creates their login; no delete), `lab/devices/` (owner renames/deactivates). `LabUser.can_view_costs`
+  lets staff see costs/profit (owners always can; exposed as `membership.can_view_costs`).
+- Business-rule errors raised from serializers use `APIError` (not `ValidationError`) so `code` survives.
+- Tests use `config.settings.test` (local + MD5 hasher) via `pytest.ini`; `manage.py test` still works.
+  Dev helper: `python manage.py create_lab "<name>" <owner_username> <password> [--plan code]`.
+- Flutter: `AuthStorage` persists device id/key, lab, token and the last session JSON in
+  `optics_auth.json` (app-support dir, plain JSON — no new plugin). `AuthController`
+  (`AsyncNotifier<AuthState>`: `NeedsActivation | LoggedOut | LoggedIn`) drives go_router redirects
+  (`authRedirect`). At startup a stored token is checked with `auth/me/`; if the server is unreachable (or
+  5xx) the stored session is used read-only; 401/403 → login with the Arabic reason. Any 401 on an
+  authenticated request ends the session (`ApiClient.onUnauthorized`). Activating for a different lab wipes
+  the read cache. Sidebar sections live in `screens/shell/nav_items.dart` (`ownerOnly` / `feature` only hide
+  items; the router also blocks direct navigation); unbuilt sections show a "coming soon" page.
+  `httpClientProvider` is the seam for tests (`MockClient`).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -239,7 +282,7 @@ Keep each session to one roadmap item; commit with clear messages.
 - [x] **P0 Scaffold**: Django project + apps skeleton, settings split, DRF, token auth, health endpoint,
       pytest setup; Flutter desktop project with RTL theme, router, ApiService base, ConnectivityService,
       cache DB base, repository base class.
-- [ ] **P1 Accounts & tenancy**: Lab, LabUser roles, lab-scoped base viewset, activation/login, billing plans
+- [x] **P1 Accounts & tenancy**: Lab, LabUser roles, lab-scoped base viewset, activation/login, billing plans
       + feature flags, Django Admin for all of it. Flutter: activation + login + main layout with sidebar.
 - [ ] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
       weighted-average cost. Flutter: inventory screens (list, filters, add/edit per kind, lens power grid).

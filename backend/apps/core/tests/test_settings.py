@@ -12,7 +12,7 @@ class SettingsTests(SimpleTestCase):
 
     def test_api_defaults(self):
         rf = settings.REST_FRAMEWORK
-        self.assertIn("rest_framework.authentication.TokenAuthentication", rf["DEFAULT_AUTHENTICATION_CLASSES"])
+        self.assertIn("apps.accounts.authentication.DeviceTokenAuthentication", rf["DEFAULT_AUTHENTICATION_CLASSES"])
         self.assertEqual(rf["DEFAULT_PERMISSION_CLASSES"], ["rest_framework.permissions.IsAuthenticated"])
         self.assertEqual(rf["DEFAULT_PAGINATION_CLASS"], "apps.core.pagination.StandardPagination")
         self.assertIn("django_filters.rest_framework.DjangoFilterBackend", rf["DEFAULT_FILTER_BACKENDS"])

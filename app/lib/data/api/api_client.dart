@@ -7,8 +7,10 @@ import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
 import '../../core/errors/app_exception.dart';
+import '../../services/auth_controller.dart';
+import '../../services/auth_storage.dart';
 
-/// Returns the current auth token, or null when logged out (auth storage arrives in P1).
+/// Returns the current auth token, or null when logged out.
 typedef TokenReader = FutureOr<String?> Function();
 
 /// Low-level HTTP client shared by every domain `*ApiService`.
@@ -22,6 +24,7 @@ class ApiClient {
     String baseUrl = AppConfig.apiBaseUrl,
     http.Client? httpClient,
     this.tokenReader,
+    this.onUnauthorized,
     this.timeout = AppConfig.apiTimeout,
   }) : baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
        _http = httpClient ?? http.Client();
@@ -30,6 +33,9 @@ class ApiClient {
   final Duration timeout;
   final http.Client _http;
   final TokenReader? tokenReader;
+
+  /// Called when an authenticated request gets 401 (token revoked, device deactivated…).
+  final void Function(UnauthorizedException error)? onUnauthorized;
 
   Future<dynamic> get(String path, {Map<String, dynamic>? query, Duration? timeout}) =>
       send('GET', path, query: query, timeout: timeout);
@@ -66,7 +72,8 @@ class ApiClient {
       ..headers[HttpHeaders.acceptHeader] = 'application/json';
 
     final token = await tokenReader?.call();
-    if (token != null && token.isNotEmpty) {
+    final authenticated = token != null && token.isNotEmpty;
+    if (authenticated) {
       request.headers[HttpHeaders.authorizationHeader] = 'Token $token';
     }
 
@@ -90,7 +97,12 @@ class ApiClient {
       throw NetworkException(detail: e.message);
     }
 
-    return _handle(response);
+    try {
+      return _handle(response);
+    } on UnauthorizedException catch (e) {
+      if (authenticated) onUnauthorized?.call(e);
+      rethrow;
+    }
   }
 
   dynamic _handle(http.Response response) {
@@ -136,8 +148,17 @@ class ApiClient {
   void close() => _http.close();
 }
 
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final client = ApiClient();
+/// Underlying HTTP client (overridden with a `MockClient` in tests).
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
   ref.onDispose(client.close);
   return client;
 });
+
+final apiClientProvider = Provider<ApiClient>(
+  (ref) => ApiClient(
+    httpClient: ref.watch(httpClientProvider),
+    tokenReader: () => ref.read(authStorageProvider).token,
+    onUnauthorized: (_) => ref.read(authControllerProvider.notifier).sessionExpired(),
+  ),
+);
