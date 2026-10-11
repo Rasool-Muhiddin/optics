@@ -108,3 +108,36 @@ class FeatureFlagTests(LabAPITestCase):
 
         with self.assertRaises(ValueError):
             requires_feature("teleportation")
+
+
+class AnonymousIsRejectedEverywhereTests(LabAPITestCase):
+    """Guard: every non-public API route answers 401 to anonymous requests (any method)."""
+
+    PUBLIC = {"/api/v1/health/", "/api/v1/desktop/activate/", "/api/v1/desktop/login/"}
+
+    def _routes(self, resolver=None, prefix=""):
+        import re
+
+        from django.urls import URLPattern, URLResolver, get_resolver
+
+        for entry in (resolver or get_resolver()).url_patterns:
+            pattern = prefix + str(entry.pattern)
+            if isinstance(entry, URLResolver):
+                yield from self._routes(entry, pattern)
+            elif isinstance(entry, URLPattern) and pattern.startswith("api/v1/"):
+                path = re.sub(r"\(\?P<[^>]+>[^)]+\)", "1", pattern)
+                path = re.sub(r"<[^>]+>", "1", path).replace("^", "").replace("$", "").replace("\\.", ".")
+                if "(?P" in path or "format" in path:
+                    continue
+                yield "/" + path
+
+    def test_all_api_routes_require_authentication(self):
+        checked = 0
+        for path in set(self._routes()):
+            if path in self.PUBLIC:
+                continue
+            for method in ("get", "post", "patch"):
+                response = getattr(self.client, method)(path, {})
+                self.assertIn(response.status_code, (401, 405), f"{method.upper()} {path} → {response.status_code}")
+            checked += 1
+        self.assertGreater(checked, 5)

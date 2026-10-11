@@ -45,3 +45,8 @@ class ApiException extends AppException {
 class UnauthorizedException extends ApiException {
   const UnauthorizedException({required super.code, super.detail}) : super(statusCode: 401);
 }
+
+/// Offline and the requested record was never cached on this device.
+class NotCachedException extends AppException {
+  const NotCachedException() : super('not_cached');
+}

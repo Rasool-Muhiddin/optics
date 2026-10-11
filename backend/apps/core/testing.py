@@ -61,3 +61,39 @@ class LabAPITestCase(APITestCase):
         _, key = AuthToken.issue(member.user, device)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {key}")
         return key
+
+
+# --- Catalog & inventory (P2) ---------------------------------------------------------
+
+
+def make_product(lab, kind="frame", **fields):
+    from apps.catalog.models import Product
+
+    defaults = {"name": f"Item {next(_seq)}", "sale_price": "10000.00"}
+    return Product.objects.create(lab=lab, kind=kind, **{**defaults, **fields})
+
+
+def make_variant(product, sph="-1.00", cyl="0", add="0", **fields):
+    from apps.catalog.models import LensVariant
+
+    return LensVariant.objects.create(lab=product.lab, product=product, sph=sph, cyl=cyl, add=add, **fields)
+
+
+def stock_in(item, qty, unit_cost="1000.00", movement_type="purchase", user=None):
+    """Posts an incoming movement for a product or a lens variant through the real service."""
+    from django.db import transaction
+
+    from apps.catalog.models import LensVariant
+    from apps.inventory.services import StockLine, record_movement
+
+    variant = item if isinstance(item, LensVariant) else None
+    product = item.product if variant else item
+    with transaction.atomic():
+        movement = record_movement(
+            lab=product.lab,
+            line=StockLine(product=product, variant=variant, qty=qty, unit_cost=unit_cost),
+            movement_type=movement_type,
+            user=user,
+        )
+    item.refresh_from_db()
+    return movement

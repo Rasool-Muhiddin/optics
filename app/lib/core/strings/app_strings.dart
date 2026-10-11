@@ -91,4 +91,159 @@ class AppStrings {
 
   // Currency
   static const String currencyIqd = 'د.ع';
+
+  // Common
+  static const String save = 'حفظ';
+  static const String add = 'إضافة';
+  static const String edit = 'تعديل';
+  static const String close = 'إغلاق';
+  static const String back = 'رجوع';
+  static const String search = 'بحث';
+  static const String all = 'الكل';
+  static const String active = 'فعّال';
+  static const String inactive = 'غير فعّال';
+  static const String showInactive = 'عرض غير الفعّال';
+  static const String loadMore = 'تحميل المزيد';
+  static const String noData = 'لا توجد بيانات';
+  static const String required = 'مطلوب';
+  static const String invalidNumber = 'رقم غير صحيح';
+  static const String notes = 'ملاحظات';
+  static const String name = 'الاسم';
+  static const String date = 'التاريخ';
+  static const String status = 'الحالة';
+  static const String saved = 'تم الحفظ';
+  static const String confirm = 'تأكيد';
+  static const String print = 'طباعة';
+  static const String none = '—';
+  static const String yes = 'نعم';
+  static const String no = 'لا';
+  static const String fromCache = 'معروض من البيانات المحفوظة';
+  static const String errNotCached =
+      'هذه البيانات غير محفوظة على هذا الجهاز ولا يوجد اتصال بالخادم.';
+
+  // Inventory (P2)
+  static const String inventoryTitle = 'المخزون';
+  static const String addProduct = 'إضافة مادة';
+  static const String editProduct = 'تعديل مادة';
+  static const String productKind = 'النوع';
+  static const String productName = 'اسم المادة';
+  static const String brand = 'الماركة';
+  static const String brands = 'الماركات';
+  static const String category = 'الصنف';
+  static const String categories = 'الأصناف';
+  static const String parentCategory = 'الصنف الأب';
+  static const String categoriesAndBrands = 'الأصناف والماركات';
+  static const String sku = 'الرمز (SKU)';
+  static const String barcode = 'الباركود';
+  static const String salePrice = 'سعر البيع';
+  static const String purchasePrice = 'سعر الشراء';
+  static const String averageCost = 'متوسط الكلفة';
+  static const String quantity = 'الكمية';
+  static const String reorderLevel = 'حد إعادة الطلب';
+  static const String trackStock = 'تتبع المخزون';
+  static const String lowStock = 'مخزون منخفض';
+  static const String lowStockOnly = 'المنخفض فقط';
+  static const String noStockTracking = 'بدون مخزون';
+  static const String productDetails = 'تفاصيل المادة';
+  static const String stockMovements = 'حركات المخزون';
+  static const String stockEntry = 'حركة مخزون';
+  static const String movementType = 'نوع الحركة';
+  static const String unitCost = 'كلفة الوحدة';
+  static const String qtyAfter = 'الرصيد بعد';
+  static const String byUser = 'بواسطة';
+  static const String lensGrid = 'شبكة القوى (SPH × CYL)';
+  static const String generateVariants = 'توليد القوى';
+  static const String sphFrom = 'SPH من';
+  static const String sphTo = 'SPH إلى';
+  static const String cylFrom = 'CYL من';
+  static const String cylTo = 'CYL إلى';
+  static const String addPower = 'ADD';
+  static const String step = 'الخطوة';
+  static const String variantsCreated = 'تم إنشاء القوى';
+  static const String gridEntryMode = 'إدخال كميات للشبكة';
+  static const String gridEntryHint =
+      'أدخل الكمية الواردة في كل خانة ثم احفظ. تُسجَّل جميع الخانات كحركة واحدة.';
+  static const String noVariants = 'لا توجد قوى لهذه العدسة بعد. استخدم «توليد القوى».';
+  static const String variantPrice = 'سعر خاص لهذه القوة (اختياري)';
+  static const String invalidPower = 'قيمة غير صحيحة (خطوات 0.25)';
+  static const String minusCylOnly = 'الأسطوانة بالسالب فقط (CYL ≤ 0)';
+  static const String attributes = 'المواصفات';
+  static const String chooseVariant = 'اختر القوة';
+
+  static const Map<String, String> productKinds = {
+    'frame': 'إطار',
+    'stock_lens': 'عدسة جاهزة',
+    'rx_lens': 'عدسة طبية (تفصيل)',
+    'contact_lens': 'عدسة لاصقة',
+    'accessory': 'إكسسوار',
+    'solution': 'محلول',
+    'service': 'خدمة',
+  };
+
+  static const Map<String, String> movementTypes = {
+    'purchase': 'شراء / إدخال',
+    'sale': 'بيع',
+    'return_in': 'إرجاع من زبون',
+    'return_out': 'إرجاع إلى مورد',
+    'adjustment': 'تسوية جرد',
+    'damage': 'تالف',
+  };
+
+  static const Map<String, String> attributeLabels = {
+    'model': 'الموديل',
+    'color': 'اللون',
+    'size': 'المقاس (عين-جسر-ذراع)',
+    'material': 'المادة',
+    'gender': 'الفئة',
+    'shape': 'الشكل',
+    'frame_type': 'نوع الإطار',
+    'index': 'معامل الانكسار',
+    'design': 'التصميم',
+    'coatings': 'الطلاءات',
+    'diameter': 'القطر',
+    'replacement': 'مدة الاستبدال',
+    'base_curve': 'الانحناء (BC)',
+    'pack_size': 'عدد العدسات في العلبة',
+    'volume_ml': 'الحجم (مل)',
+  };
+
+  static const Map<String, String> choiceLabels = {
+    // gender
+    'men': 'رجالي', 'women': 'نسائي', 'unisex': 'للجنسين', 'kids': 'أطفال',
+    // frame type
+    'full_rim': 'إطار كامل', 'semi_rimless': 'نصف إطار', 'rimless': 'بدون إطار',
+    // lens design
+    'single_vision': 'أحادي البؤرة',
+    'bifocal': 'ثنائي البؤرة',
+    'progressive': 'متعدد البؤر (تدريجي)',
+    'office': 'مكتبي',
+    // coatings
+    'ar': 'مضاد للانعكاس', 'blue_cut': 'حماية الضوء الأزرق', 'photochromic': 'فوتوكروميك',
+    'hard_coat': 'طلاء صلب', 'uv': 'حماية UV', 'polarized': 'مستقطب', 'hydrophobic': 'طارد للماء',
+    'mirror': 'مرآة', 'tint': 'ملوّن',
+    // contact lens replacement
+    'daily': 'يومي',
+    'biweekly': 'أسبوعين',
+    'monthly': 'شهري',
+    'quarterly': 'ثلاثة أشهر',
+    'yearly': 'سنوي',
+  };
+
+  static String label(Map<String, String> labels, String key) => labels[key] ?? key;
+
+  // Errors (P2)
+  static const String errInsufficientStock = 'الكمية المتوفرة في المخزون غير كافية.';
+  static const String errVariantRequired = 'مخزون العدسات يُتابع لكل قوة: اختر القوة.';
+  static const String errNotStockTracked = 'هذه المادة لا تتابع المخزون.';
+  static const String errUnitCostRequired = 'يجب إدخال كلفة الشراء.';
+  static const String errDuplicateName = 'الاسم موجود مسبقاً.';
+  static const String errDuplicateVariant = 'هذه القوة موجودة مسبقاً لهذه العدسة.';
+  static const String errVariantLocked = 'لا يمكن تغيير قوة لها حركات مخزون.';
+  static const String errKindLocked = 'لا يمكن تغيير نوع مادة لها مخزون أو قوى.';
+  static const String errTooManyVariants =
+      'المدى كبير جداً. الحد الأقصى 2000 قوة في المرة الواحدة.';
+  static const String errInvalidPower = 'قيمة القوة غير صحيحة.';
+  static const String errCategoryCycle = 'لا يمكن وضع الصنف داخل نفسه.';
+  static const String errStockNotEmpty = 'أفرغ المخزون قبل إيقاف تتبعه.';
+  static const String errDuplicateCode = 'الرمز أو الباركود مستخدم مسبقاً.';
 }

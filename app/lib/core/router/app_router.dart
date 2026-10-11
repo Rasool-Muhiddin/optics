@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../screens/activation/activation_screen.dart';
 import '../../screens/home/home_screen.dart';
+import '../../screens/inventory/inventory_screen.dart';
+import '../../screens/inventory/product_detail_screen.dart';
 import '../../screens/login/login_screen.dart';
 import '../../screens/placeholder/coming_soon_screen.dart';
 import '../../screens/shell/main_shell.dart';
@@ -26,11 +28,14 @@ String? authRedirect(AuthState? state, String location) {
       return location == AppRoutes.login ? null : AppRoutes.login;
     case LoggedIn(:final session):
       if (AppRoutes.isPublic(location)) return AppRoutes.home;
-      final item = navItemFor(location);
+      final item = navItemFor(location) ?? navSectionFor(location);
       if (item != null && !item.visibleTo(session)) return AppRoutes.home;
       return null;
   }
 }
+
+/// Sections with a real screen (the rest show "coming soon").
+const _builtSections = {AppRoutes.home, AppRoutes.inventory};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -50,7 +55,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             MainShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
-          for (final item in navItems.where((i) => i.path != AppRoutes.home))
+          GoRoute(
+            path: AppRoutes.inventory,
+            builder: (context, state) => const InventoryScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          for (final item in navItems.where((i) => !_builtSections.contains(i.path)))
             GoRoute(
               path: item.path,
               builder: (context, state) => ComingSoonScreen(title: item.label),

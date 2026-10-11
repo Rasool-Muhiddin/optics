@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../core/config/app_config.dart';
+import 'cache_dao.dart';
 
 /// One schema step. Each domain adds its cache tables as a new migration
 /// (append only — never edit a shipped one).
@@ -23,6 +24,18 @@ class CacheDatabase {
       'key TEXT PRIMARY KEY, '
       'value TEXT)',
     ),
+    // v2 (P2): catalog & inventory.
+    (db) async {
+      for (final table in const [
+        'products',
+        'categories',
+        'brands',
+        'lens_variants',
+        'stock_movements',
+      ]) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

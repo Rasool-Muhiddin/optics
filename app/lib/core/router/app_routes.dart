@@ -18,6 +18,8 @@ class AppRoutes {
   static const String users = '/users';
   static const String settings = '/settings';
 
+  static String productDetail(int id) => '$inventory/$id';
+
   static const Set<String> _public = {splash, activate, login};
 
   static bool isPublic(String location) => _public.contains(location);

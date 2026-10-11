@@ -31,10 +31,36 @@ const Map<String, String> _messagesByCode = {
   'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
   'cannot_modify_self': AppStrings.errCannotModifySelf,
   'username_taken': AppStrings.errUsernameTaken,
+  'not_cached': AppStrings.errNotCached,
+  // Catalog & inventory (P2)
+  'insufficient_stock': AppStrings.errInsufficientStock,
+  'variant_required': AppStrings.errVariantRequired,
+  'variant_not_allowed': AppStrings.errValidation,
+  'variant_mismatch': AppStrings.errValidation,
+  'not_stock_tracked': AppStrings.errNotStockTracked,
+  'unit_cost_required': AppStrings.errUnitCostRequired,
+  'invalid_quantity': AppStrings.errValidation,
+  'duplicate_name': AppStrings.errDuplicateName,
+  'duplicate_variant': AppStrings.errDuplicateVariant,
+  'variant_locked': AppStrings.errVariantLocked,
+  'kind_locked': AppStrings.errKindLocked,
+  'too_many_variants': AppStrings.errTooManyVariants,
+  'invalid_sph': AppStrings.errInvalidPower,
+  'invalid_cyl': AppStrings.errInvalidPower,
+  'invalid_add': AppStrings.errInvalidPower,
+  'invalid_axis': AppStrings.errInvalidPower,
+  'category_cycle': AppStrings.errCategoryCycle,
+  'stock_not_empty': AppStrings.errStockNotEmpty,
+  'duplicate_sku': AppStrings.errDuplicateCode,
+  'duplicate_barcode': AppStrings.errDuplicateCode,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.
 String errorMessageFor(Object error) {
+  if (error is ApiException && error.code == 'validation_error') {
+    final nested = _firstNestedCode(error.fieldErrors);
+    if (nested != null && _messagesByCode.containsKey(nested)) return _messagesByCode[nested]!;
+  }
   if (error is AppException) {
     final message = _messagesByCode[error.code];
     if (message != null) return message;
@@ -42,3 +68,29 @@ String errorMessageFor(Object error) {
   }
   return AppStrings.errUnknown;
 }
+
+/// DRF puts per-field codes nowhere in the body, but our serializers raise power errors
+/// with the code as the message key (`{"sph": ["…"]}`); map well-known field names.
+String? _firstNestedCode(Map<String, dynamic>? errors) {
+  if (errors == null) return null;
+  for (final key in const ['sph', 'cyl', 'add', 'axis']) {
+    if (errors.containsKey(key)) return 'invalid_$key';
+  }
+  for (final key in const ['sku', 'barcode']) {
+    if (errors.containsKey(key)) return 'duplicate_$key';
+  }
+  return null;
+}
+
+/// Server message for one form field, in Arabic when known (used under inputs).
+String? fieldErrorFor(Object? error, String field) {
+  if (error is! ApiException) return null;
+  final errors = error.fieldErrors;
+  if (errors == null || !errors.containsKey(field)) return null;
+  return _messagesByCode[_firstNestedCode({field: errors[field]}) ?? ''] ??
+      AppStrings.errValidation;
+}
+
+/// Raw per-field errors of a validation failure, if any.
+Map<String, dynamic>? errorFields(Object? error) =>
+    error is ApiException ? error.fieldErrors : null;

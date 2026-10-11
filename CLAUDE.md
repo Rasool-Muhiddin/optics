@@ -267,6 +267,44 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   items; the router also blocks direct navigation); unbuilt sections show a "coming soon" page.
   `httpClientProvider` is the seam for tests (`MockClient`).
 
+### Decisions recorded in P2
+- **Permission bug fixed (from P1)**: `IsLabOwner` / `IsLabOwnerOrReadOnly` / `requires_feature` ignored
+  `LabAccess` returning False, so anonymous GETs passed (empty lists / 500). They now return False → 401.
+  `core/tests/test_permissions.py::AnonymousIsRejectedEverywhereTests` walks every `/api/v1/` route.
+- **Catalog**: `Category` (tree, cycle-checked), `Brand` (unique name per lab) and `Product` are lab-scoped;
+  `Product.kind` per §5; kind-specific details in validated JSON `attributes` (`catalog/attributes.py`
+  holds the schema per kind — unknown keys rejected; add a key there + in the Flutter `AttributeSpec`).
+  `rx_lens` / `service` force `track_stock=False`; `stock_lens` / `contact_lens` force `True` and keep stock
+  on `LensVariant` (SPH + CYL ≤ 0 minus-cyl + ADD, **ADD 0 = none**, not null, so the unique constraint
+  works on every DB). `sku`/`barcode` unique per lab across products *and* variants. Variants may override
+  `sale_price` (null = product price). Kind cannot change, and a variant's power cannot change, once
+  stock history exists. Catalog writes are **owner-only** (`IsLabOwnerOrReadOnly`); everyone reads.
+- **Stock**: `inventory.services.record_movement()` is the only writer of `quantity` / `average_cost`
+  (row lock via `select_for_update`, must run in `transaction.atomic()`); `Product.quantity` mirrors the
+  sum of its variants (F() update) for lists/low-stock. **No negative stock** (`insufficient_stock`).
+  `StockMovement` is an immutable ledger (`qty` signed, `unit_cost`, `qty_after`, `average_cost_after`,
+  `reference_type`/`reference_id`; admin read-only). Weighted-average cost changes only on incoming
+  movements with a stated cost (`purchase`, or a positive `adjustment` with `unit_cost` = opening stock);
+  everything else is valued at the current average. `average_cost` is stored with 2 decimals
+  (ROUND_HALF_UP) — fine for IQD. `Product.purchase_price` is a reference price (last/expected), editable.
+- **Manual stock entry** `POST inventory/movements/ {type, note, lines:[{product|variant, qty, unit_cost?}]}`
+  is **owner-only** and atomic across lines (the lens grid posts many powers at once). Types: purchase,
+  adjustment (signed), damage, return_in, return_out. Sales post `sale` movements from checkout (P4).
+- **Cost hiding**: `core.costs.CostFieldsMixin` drops `cost_fields` from serializers (not rendered, not
+  accepted) unless `lab_user.sees_costs`. Ordering by cost fields is not allowed (would be an oracle).
+  `inventory/tests/test_stock.py::CostVisibilityTests` scans every catalog/inventory response for cost keys.
+- Other endpoints: `catalog/products/{id}/grid/` (unpaginated variants for the power grid),
+  `catalog/products/{id}/generate-variants/` (SPH×CYL range, ≤ 2000, existing skipped),
+  `catalog/lookup/?code=` (barcode/SKU → product + variant), `catalog/options/` (kinds + choices).
+  Shared optics rules (ranges, 0.25 steps, axis, transposition) live in `apps/core/optics.py`.
+- Flutter: cache v2 adds tables `products, categories, brands, lens_variants, stock_movements`
+  (`JsonCacheDao`, offline filtering in Dart via `ProductQuery.matches`); `NotCachedException`
+  (`not_cached`) when offline and never cached. Screens: `/inventory` (filters, cost column only when the
+  session `can_view_costs`), `/inventory/:id` (info, lens power grid with ADD selector, grid entry mode,
+  per-power edit/stock, ledger). Shared widgets in `widgets/common.dart`; power helpers in
+  `core/optics/powers.dart`. Test helpers: `FakeAuthServer.routes`, `openTestCache()` (no-isolate ffi),
+  `loggedInStorage()` / `loggedInServer()`.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -291,7 +329,7 @@ Keep each session to one roadmap item; commit with clear messages.
       cache DB base, repository base class.
 - [x] **P1 Accounts & tenancy**: Lab, LabUser roles, lab-scoped base viewset, activation/login, billing plans
       + feature flags, Django Admin for all of it. Flutter: activation + login + main layout with sidebar.
-- [ ] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
+- [x] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
       weighted-average cost. Flutter: inventory screens (list, filters, add/edit per kind, lens power grid).
 - [ ] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
       profile, exam history, Rx entry form (OD/OS table), print prescription + exam report.

@@ -68,3 +68,11 @@ NavItem? navItemFor(String path) {
   }
   return null;
 }
+
+/// The sidebar section a nested path belongs to (`/inventory/5` → inventory).
+NavItem? navSectionFor(String path) {
+  for (final item in navItems) {
+    if (item.path != AppRoutes.home && path.startsWith('${item.path}/')) return item;
+  }
+  return null;
+}
