@@ -14,6 +14,23 @@ const Map<String, String> _messagesByCode = {
   'invalid': AppStrings.errValidation,
   'throttled': AppStrings.errTooManyRequests,
   'server_error': AppStrings.errServer,
+  // Accounts & tenancy (P1)
+  'invalid_activation_code': AppStrings.errInvalidActivationCode,
+  'device_limit_reached': AppStrings.errDeviceLimit,
+  'user_limit_reached': AppStrings.errUserLimit,
+  'lab_inactive': AppStrings.errLabInactive,
+  'no_license': AppStrings.errNoLicense,
+  'license_expired': AppStrings.errLicenseExpired,
+  'invalid_credentials': AppStrings.errInvalidCredentials,
+  'device_not_activated': AppStrings.errDeviceNotActivated,
+  'device_deactivated': AppStrings.errDeviceDeactivated,
+  'device_lab_mismatch': AppStrings.errDeviceLabMismatch,
+  'no_lab_membership': AppStrings.errNoLabMembership,
+  'membership_inactive': AppStrings.errMembershipInactive,
+  'owner_required': AppStrings.errOwnerRequired,
+  'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
+  'cannot_modify_self': AppStrings.errCannotModifySelf,
+  'username_taken': AppStrings.errUsernameTaken,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

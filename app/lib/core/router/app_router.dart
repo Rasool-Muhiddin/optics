@@ -1,20 +1,67 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../screens/activation/activation_screen.dart';
 import '../../screens/home/home_screen.dart';
+import '../../screens/login/login_screen.dart';
+import '../../screens/placeholder/coming_soon_screen.dart';
+import '../../screens/shell/main_shell.dart';
+import '../../screens/shell/nav_items.dart';
+import '../../screens/splash/splash_screen.dart';
+import '../../services/auth_controller.dart';
+import 'app_routes.dart';
 
-/// Route paths. Feature screens register here as they are built.
-class AppRoutes {
-  const AppRoutes._();
+export 'app_routes.dart';
 
-  static const String home = '/';
+/// Where the auth state allows the user to be; null = stay on [location].
+@visibleForTesting
+String? authRedirect(AuthState? state, String location) {
+  switch (state) {
+    case null:
+      return location == AppRoutes.splash ? null : AppRoutes.splash;
+    case NeedsActivation():
+      return location == AppRoutes.activate ? null : AppRoutes.activate;
+    case LoggedOut():
+      return location == AppRoutes.login ? null : AppRoutes.login;
+    case LoggedIn(:final session):
+      if (AppRoutes.isPublic(location)) return AppRoutes.home;
+      final item = navItemFor(location);
+      if (item != null && !item.visibleTo(session)) return AppRoutes.home;
+      return null;
+  }
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authControllerProvider, (_, _) => refresh.value++);
+
   final router = GoRouter(
-    initialLocation: AppRoutes.home,
-    routes: [GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen())],
+    initialLocation: AppRoutes.splash,
+    refreshListenable: refresh,
+    redirect: (context, state) =>
+        authRedirect(ref.read(authControllerProvider).value, state.matchedLocation),
+    routes: [
+      GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
+      GoRoute(path: AppRoutes.activate, builder: (context, state) => const ActivationScreen()),
+      GoRoute(path: AppRoutes.login, builder: (context, state) => const LoginScreen()),
+      ShellRoute(
+        builder: (context, state, child) =>
+            MainShell(location: state.matchedLocation, child: child),
+        routes: [
+          GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
+          for (final item in navItems.where((i) => i.path != AppRoutes.home))
+            GoRoute(
+              path: item.path,
+              builder: (context, state) => ComingSoonScreen(title: item.label),
+            ),
+        ],
+      ),
+    ],
   );
-  ref.onDispose(router.dispose);
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
   return router;
 });
