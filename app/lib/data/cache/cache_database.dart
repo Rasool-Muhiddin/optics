@@ -36,6 +36,12 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v3 (P3): patients, exams, prescriptions.
+    (db) async {
+      for (final table in const ['patients', 'eye_exams', 'prescriptions']) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

@@ -19,6 +19,7 @@ class AppRoutes {
   static const String settings = '/settings';
 
   static String productDetail(int id) => '$inventory/$id';
+  static String patientDetail(int id) => '$patients/$id';
 
   static const Set<String> _public = {splash, activate, login};
 

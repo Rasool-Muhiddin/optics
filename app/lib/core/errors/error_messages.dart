@@ -53,11 +53,24 @@ const Map<String, String> _messagesByCode = {
   'stock_not_empty': AppStrings.errStockNotEmpty,
   'duplicate_sku': AppStrings.errDuplicateCode,
   'duplicate_barcode': AppStrings.errDuplicateCode,
+  // Patients (P3)
+  'record_void': AppStrings.errRecordVoid,
+  'patient_locked': AppStrings.errPatientLocked,
+  'rx_empty': AppStrings.errRxEmpty,
+  'axis_required': AppStrings.errAxisRequired,
+  'sph_required': AppStrings.errSphRequired,
+  'base_required': AppStrings.errBaseRequired,
+  'invalid_pd': AppStrings.errInvalidPd,
+  'invalid_prism': AppStrings.errInvalidPower,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.
 String errorMessageFor(Object error) {
   if (error is ApiException && error.code == 'validation_error') {
+    for (final code in _allCodes(error.errorCodes)) {
+      final message = _messagesByCode[code];
+      if (message != null && code != 'invalid' && code != 'required') return message;
+    }
     final nested = _firstNestedCode(error.fieldErrors);
     if (nested != null && _messagesByCode.containsKey(nested)) return _messagesByCode[nested]!;
   }
@@ -94,3 +107,30 @@ String? fieldErrorFor(Object? error, String field) {
 /// Raw per-field errors of a validation failure, if any.
 Map<String, dynamic>? errorFields(Object? error) =>
     error is ApiException ? error.fieldErrors : null;
+
+Iterable<String> _allCodes(Object? codes) sync* {
+  if (codes is String) {
+    yield codes;
+  } else if (codes is List) {
+    for (final c in codes) {
+      yield* _allCodes(c);
+    }
+  } else if (codes is Map) {
+    for (final c in codes.values) {
+      yield* _allCodes(c);
+    }
+  }
+}
+
+/// Arabic message for the first server error code under [path] (e.g. `['prescription', 'od_sph']`).
+String? fieldCodeMessage(Object? error, List<String> path) {
+  if (error is! ApiException) return null;
+  Object? node = error.errorCodes;
+  for (final key in path) {
+    if (node is! Map) return null;
+    node = node[key];
+  }
+  if (node == null) return null;
+  final code = _allCodes(node).firstOrNull;
+  return code == null ? null : (_messagesByCode[code] ?? AppStrings.errValidation);
+}

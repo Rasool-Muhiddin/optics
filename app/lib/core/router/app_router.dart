@@ -7,6 +7,8 @@ import '../../screens/home/home_screen.dart';
 import '../../screens/inventory/inventory_screen.dart';
 import '../../screens/inventory/product_detail_screen.dart';
 import '../../screens/login/login_screen.dart';
+import '../../screens/patients/patient_detail_screen.dart';
+import '../../screens/patients/patients_screen.dart';
 import '../../screens/placeholder/coming_soon_screen.dart';
 import '../../screens/shell/main_shell.dart';
 import '../../screens/shell/nav_items.dart';
@@ -35,7 +37,7 @@ String? authRedirect(AuthState? state, String location) {
 }
 
 /// Sections with a real screen (the rest show "coming soon").
-const _builtSections = {AppRoutes.home, AppRoutes.inventory};
+const _builtSections = {AppRoutes.home, AppRoutes.inventory, AppRoutes.patients};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -55,6 +57,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             MainShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
+          GoRoute(
+            path: AppRoutes.patients,
+            builder: (context, state) => const PatientsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    PatientDetailScreen(patientId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
           GoRoute(
             path: AppRoutes.inventory,
             builder: (context, state) => const InventoryScreen(),

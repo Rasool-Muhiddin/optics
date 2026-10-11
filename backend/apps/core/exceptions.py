@@ -38,6 +38,8 @@ def api_exception_handler(exc, context):
                 "detail": "Validation failed.",
                 "code": "validation_error",
                 "errors": response.data,
+                # Same shape as `errors`, with stable codes instead of English messages.
+                "error_codes": exc.get_codes(),
             }
             return response
         message = detail[0] if isinstance(detail, list) else detail

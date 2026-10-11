@@ -194,7 +194,7 @@ void main() {
         storage: await _activated(token: 'saved'),
       );
 
-      await tester.tap(find.byKey(const Key('nav-${AppRoutes.patients}')));
+      await tester.tap(find.byKey(const Key('nav-${AppRoutes.orders}')));
       await tester.pumpAndSettle();
       expect(find.text(AppStrings.comingSoon), findsOneWidget);
     });

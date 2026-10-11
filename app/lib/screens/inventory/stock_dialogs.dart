@@ -99,6 +99,7 @@ class _StockEntryDialogState extends ConsumerState<StockEntryDialog> {
             Text(subtitle, textDirection: TextDirection.ltr, textAlign: TextAlign.right),
             const SizedBox(height: 12),
             DropdownButtonFormField<MovementType>(
+              isExpanded: true,
               key: const Key('stock-type'),
               initialValue: _type,
               decoration: const InputDecoration(labelText: AppStrings.movementType),
@@ -237,6 +238,7 @@ class _GenerateVariantsDialogState extends ConsumerState<GenerateVariantsDialog>
             field('cyl_to', AppStrings.cylTo),
             field('add', AppStrings.addPower),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _step,
               decoration: const InputDecoration(labelText: AppStrings.step),
               items: const [

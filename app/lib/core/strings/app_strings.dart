@@ -246,4 +246,105 @@ class AppStrings {
   static const String errCategoryCycle = 'لا يمكن وضع الصنف داخل نفسه.';
   static const String errStockNotEmpty = 'أفرغ المخزون قبل إيقاف تتبعه.';
   static const String errDuplicateCode = 'الرمز أو الباركود مستخدم مسبقاً.';
+
+  // Patients, exams, prescriptions (P3)
+  static const String patientsTitle = 'المراجعين';
+  static const String addPatient = 'مراجع جديد';
+  static const String editPatient = 'تعديل بيانات المراجع';
+  static const String patientName = 'اسم المراجع';
+  static const String age = 'العمر';
+  static const String birthDate = 'تاريخ الميلاد';
+  static const String gender = 'الجنس';
+  static const String phone = 'الهاتف';
+  static const String address = 'العنوان';
+  static const String lastExam = 'آخر فحص';
+  static const String archived = 'مؤرشف';
+  static const String archive = 'أرشفة';
+  static const String exams = 'الفحوصات';
+  static const String prescriptions = 'الوصفات';
+  static const String newExam = 'فحص جديد';
+  static const String editExam = 'تعديل الفحص';
+  static const String newPrescription = 'وصفة جديدة';
+  static const String editPrescription = 'تعديل الوصفة';
+  static const String examDate = 'تاريخ الفحص';
+  static const String rxDate = 'تاريخ الوصفة';
+  static const String examinedBy = 'الفاحص';
+  static const String examinerName = 'اسم الفاحص (طبيب خارجي)';
+  static const String chiefComplaint = 'الشكوى';
+  static const String diagnosis = 'التشخيص';
+  static const String diagnosisDetails = 'تفاصيل التشخيص';
+  static const String vaUncorrected = 'حدة البصر بدون نظارة (VA)';
+  static const String iop = 'ضغط العين (IOP)';
+  static const String examSection = 'الفحص';
+  static const String prescriptionTitle = 'وصفة طبية للنظارة';
+  static const String examReportTitle = 'تقرير فحص النظر';
+  static const String withPrescription = 'تتضمن وصفة';
+  static const String rightEye = 'اليمنى OD';
+  static const String leftEye = 'اليسرى OS';
+  static const String usage = 'الاستخدام';
+  static const String lensDesign = 'تصميم العدسة';
+  static const String lensIndex = 'معامل الانكسار';
+  static const String lensCoatings = 'الطلاءات';
+  static const String frameNotes = 'ملاحظات الإطار';
+  static const String prescribedBy = 'الطبيب / الجهة';
+  static const String signature = 'التوقيع';
+  static const String transpose = 'تحويل الأسطوانة (±)';
+  static const String transposeHint = 'تحويل الوصفة بين صيغة الأسطوانة الموجبة والسالبة';
+  static const String pdDistance = 'PD بعيد';
+  static const String pdNear = 'PD قريب';
+  static const String pdRight = 'PD يمين';
+  static const String pdLeft = 'PD يسار';
+  static const String voidRecord = 'إلغاء';
+  static const String voidReason = 'سبب الإلغاء';
+  static const String voided = 'ملغى';
+  static const String printPrescription = 'طباعة الوصفة';
+  static const String printExamReport = 'طباعة تقرير الفحص';
+  static const String axisRequired = 'المحور مطلوب عند وجود أسطوانة';
+  static const String sphRequired = 'SPH مطلوب';
+  static const String invalidAxis = 'المحور من 1 إلى 180';
+  static const String invalidPd = 'قيمة PD غير صحيحة';
+  static const String baseRequired = 'اختر اتجاه القاعدة';
+  static const String noExams = 'لا توجد فحوصات بعد';
+  static const String noPrescriptions = 'لا توجد وصفات بعد';
+  static const String sphericalEquivalent = 'المكافئ الكروي';
+
+  static const Map<String, String> genders = {'male': 'ذكر', 'female': 'أنثى'};
+
+  static const Map<String, String> patientStatuses = {
+    'new': 'جديد',
+    'exam_done': 'تم الفحص',
+    'lens_selected': 'تم اختيار العدسة',
+    'in_job': 'قيد التجهيز',
+    'delivered': 'تم التسليم',
+  };
+
+  static const Map<String, String> usages = {
+    'distance': 'بعيد',
+    'near': 'قريب',
+    'both': 'بعيد وقريب',
+  };
+
+  static const Map<String, String> prismBases = {
+    'up': 'للأعلى',
+    'down': 'للأسفل',
+    'in': 'للداخل',
+    'out': 'للخارج',
+  };
+
+  /// Printed Rx tables are Latin (BU/BD/BI/BO).
+  static const Map<String, String> prismBasesLatin = {
+    'up': 'BU',
+    'down': 'BD',
+    'in': 'BI',
+    'out': 'BO',
+  };
+
+  // Errors (P3)
+  static const String errRecordVoid = 'هذا السجل ملغى ولا يمكن تعديله.';
+  static const String errPatientLocked = 'لا يمكن تغيير المراجع في فحص مسجل.';
+  static const String errRxEmpty = 'أدخل وصفة لعين واحدة على الأقل.';
+  static const String errAxisRequired = 'المحور مطلوب عند وجود أسطوانة.';
+  static const String errSphRequired = 'SPH مطلوب للعين التي لها وصفة.';
+  static const String errBaseRequired = 'المنشور يحتاج اتجاه القاعدة.';
+  static const String errInvalidPd = 'قيمة المسافة بين الحدقتين (PD) غير صحيحة.';
 }

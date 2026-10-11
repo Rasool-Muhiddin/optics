@@ -235,6 +235,7 @@ class _NameDialogState extends State<_NameDialog> {
             if (widget.showParent) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<int?>(
+                isExpanded: true,
                 initialValue: widget.parents.any((p) => p.id == _parent) ? _parent : null,
                 decoration: const InputDecoration(labelText: AppStrings.parentCategory),
                 items: [

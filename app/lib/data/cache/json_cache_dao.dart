@@ -22,4 +22,7 @@ class CacheTables {
   static const String brands = 'brands';
   static const String lensVariants = 'lens_variants';
   static const String stockMovements = 'stock_movements';
+  static const String patients = 'patients';
+  static const String exams = 'eye_exams';
+  static const String prescriptions = 'prescriptions';
 }

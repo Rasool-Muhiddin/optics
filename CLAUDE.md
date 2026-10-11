@@ -305,6 +305,39 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   `core/optics/powers.dart`. Test helpers: `FakeAuthServer.routes`, `openTestCache()` (no-isolate ffi),
   `loggedInStorage()` / `loggedInServer()`.
 
+### Decisions recorded in P3
+- **Validation error codes**: validation responses now also carry `error_codes` (same shape as `errors`,
+  DRF codes instead of English text). Flutter maps them to Arabic (`fieldCodeMessage(error, path)`,
+  `errorMessageFor` prefers the first known nested code).
+- **Patient**: lab-scoped; `age` may be sent instead of `birth_date` and is stored as an estimated
+  birth date (`birth_date_estimated=true`), so the age stays right in later years. Status is the §5 enum and
+  only moves forward automatically (exam/Rx → `exam_done`); it can be set by hand on edit. No delete:
+  `is_archived`. Any lab member (staff included) manages patients, exams and prescriptions.
+- **Exams & Rx**: `EyeExam` (+ VA/IOP per eye, `examined_by` = recording user unless an external
+  `examiner_name` is typed) and `Prescription` (OneToOne `exam`, null = standalone). Exams are created/edited
+  with a nested `prescription` in one transaction; the nested Rx must be sent complete. Records are
+  **voided, never deleted** (`VoidableModel`: `is_void`, reason, who/when; `POST …/void/`, owner or author
+  only; voiding an exam voids its Rx; voided records are read-only, `record_void`). Exam patient cannot
+  change (`patient_locked`).
+- **Rx rules** (`patients/rx.py`): SPH/CYL/ADD per §5 in 0.25 steps; AXIS 1..180 required iff CYL ≠ 0 and
+  dropped when CYL = 0; an eye may be left completely empty but at least one eye needs SPH (`rx_empty`);
+  SPH required for an eye that has any power (`sph_required`); prism 0.25..20 needs a base (up/down/in/out);
+  PD 40..85 (mono 20..45) in 0.5 mm steps; lens design/index/coatings use the catalog choices.
+  **Plus-cylinder input is transposed to minus-cyl on save** (stored convention); `POST patients/transpose/`
+  and the form's ± button offer the helper explicitly. Endpoints: `patients/`, `patients/exams/`,
+  `patients/prescriptions/` (filters `patient`, `is_void`…).
+- **Printing**: `pdf` + `printing` packages. `services/printing/pdf_kit.dart` (fonts, lab header/footer,
+  tables) — Noto Naskh Arabic has **no Latin glyphs**, so Helvetica is the PDF font fallback; Rx tables are
+  printed LTR (OD/OS, SPH…) inside an RTL page. Prescription = A5, exam report = A4 (`patient_pdfs.dart`).
+  `PrintService` (`printServiceProvider`) sends bytes to `Printing.layoutPdf`; tests inject `printer`.
+  The lab logo is downloaded when online and kept on disk (`LogoCache`) so offline prints keep it.
+  Linux builds of `printing` download pdfium at CMake time (needs network once).
+- Flutter: cache v3 adds `patients, eye_exams, prescriptions`. Screens `/patients` (search name/phone,
+  status filter) and `/patients/:id` (profile, exams tab with Rx summary + print/edit/void, prescriptions
+  tab). Reusable `widgets/rx_form.dart` (`RxFormController` mirrors the server rules, ± transposition).
+  `patientExtraActionsProvider` lets later phases add buttons (new sale/job) to the profile header.
+  All `DropdownButtonFormField`s use `isExpanded: true` (avoids overflow with long Arabic labels).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -331,7 +364,7 @@ Keep each session to one roadmap item; commit with clear messages.
       + feature flags, Django Admin for all of it. Flutter: activation + login + main layout with sidebar.
 - [x] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
       weighted-average cost. Flutter: inventory screens (list, filters, add/edit per kind, lens power grid).
-- [ ] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
+- [x] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
       profile, exam history, Rx entry form (OD/OS table), print prescription + exam report.
 - [ ] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
       screen, credit customers list, invoice print (A4/A5 + thermal).

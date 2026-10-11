@@ -97,3 +97,19 @@ def stock_in(item, qty, unit_cost="1000.00", movement_type="purchase", user=None
         )
     item.refresh_from_db()
     return movement
+
+
+# --- Patients (P3) ----------------------------------------------------------------------
+
+
+def make_patient(lab, **fields):
+    from apps.patients.models import Patient
+
+    return Patient.objects.create(lab=lab, **{"full_name": f"Patient {next(_seq)}", **fields})
+
+
+def make_rx(patient, **fields):
+    from apps.patients.models import Prescription
+
+    defaults = {"od_sph": "-1.00", "os_sph": "-1.25"}
+    return Prescription.objects.create(lab=patient.lab, patient=patient, **{**defaults, **fields})

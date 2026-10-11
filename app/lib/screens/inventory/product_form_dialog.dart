@@ -235,6 +235,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
             FieldGrid(
               children: [
                 DropdownButtonFormField<ProductKind>(
+                  isExpanded: true,
                   key: const Key('product-kind'),
                   initialValue: _kind,
                   decoration: const InputDecoration(labelText: AppStrings.productKind),
@@ -246,6 +247,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                 ),
                 text('name', AppStrings.productName, validator: Inputs.requiredText),
                 DropdownButtonFormField<int?>(
+                  isExpanded: true,
                   initialValue: brands.any((b) => b.id == _brandId) ? _brandId : null,
                   decoration: const InputDecoration(labelText: AppStrings.brand),
                   items: [
@@ -256,6 +258,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                   onChanged: (v) => setState(() => _brandId = v),
                 ),
                 DropdownButtonFormField<int?>(
+                  isExpanded: true,
                   initialValue: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
                   decoration: const InputDecoration(labelText: AppStrings.category),
                   items: [
@@ -350,6 +353,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
     final label = AppStrings.label(AppStrings.attributeLabels, s.key);
     if (s.choices != null) {
       return DropdownButtonFormField<String?>(
+        isExpanded: true,
         key: Key('attr-${s.key}'),
         initialValue: s.choices!.contains(_choice[s.key]) ? _choice[s.key] : null,
         decoration: InputDecoration(labelText: label),
