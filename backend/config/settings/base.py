@@ -134,9 +134,14 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
-    # Activation/login are public: throttle them (per client IP).
+    # Activation/login are public: throttle them per real client IP
+    # (`apps.core.throttling.ClientIPScopedRateThrottle`, see TRUSTED_PROXIES).
     "DEFAULT_THROTTLE_RATES": {"desktop_auth": env("AUTH_THROTTLE_RATE", default="30/min")},
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     "COERCE_DECIMAL_TO_STRING": True,
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
+
+# Reverse proxies whose X-Forwarded-For / CF-Connecting-IP headers are believed (IPs/CIDRs).
+# Empty = use REMOTE_ADDR only (development). Production adds nginx + Cloudflare.
+TRUSTED_PROXIES = env.list("TRUSTED_PROXIES", default=[])

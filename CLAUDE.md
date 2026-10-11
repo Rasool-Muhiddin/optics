@@ -250,6 +250,13 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
 - Business-rule errors raised from serializers use `APIError` (not `ValidationError`) so `code` survives.
 - Tests use `config.settings.test` (local + MD5 hasher) via `pytest.ini`; `manage.py test` still works.
   Dev helper: `python manage.py create_lab "<name>" <owner_username> <password> [--plan code]`.
+- **Real client IP (post-P1 fix)**: throttles key on `apps.core.client_ip.get_client_ip` via
+  `apps.core.throttling.ClientIPScopedRateThrottle`. Forwarding headers are believed only when the direct
+  peer is in `TRUSTED_PROXIES` (IPs/CIDRs; empty in dev → `REMOTE_ADDR`). Production defaults to loopback
+  (nginx) + Cloudflare ranges (`config/settings/proxies.py`, toggle `TRUST_CLOUDFLARE`). `CF-Connecting-IP`
+  is used only if the hop that reached nginx is itself trusted (a Cloudflare edge); otherwise
+  `X-Forwarded-For` is walked right-to-left skipping trusted hops. nginx must keep
+  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` and pass `CF-Connecting-IP` through.
 - Flutter: `AuthStorage` persists device id/key, lab, token and the last session JSON in
   `optics_auth.json` (app-support dir, plain JSON — no new plugin). `AuthController`
   (`AsyncNotifier<AuthState>`: `NeedsActivation | LoggedOut | LoggedIn`) drives go_router redirects
@@ -298,6 +305,9 @@ Keep each session to one roadmap item; commit with clear messages.
       supplier balances; export gated by plan.
 - [ ] **P9 Offline read cache** completion across all domains + offline banners.
 - [ ] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.
+      Before release: move token/device-key storage from plain `optics_auth.json` to encrypted storage
+      (Windows DPAPI via `CryptProtectData`, or equivalent: Keychain on macOS, libsecret on Linux), with a
+      one-time migration of the existing file and deletion of the plain copy.
 
 ---
 
