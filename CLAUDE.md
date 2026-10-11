@@ -192,7 +192,9 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
 - Known Windows issue from pharmacy_APP: set `Content-Length` explicitly on JSON POSTs (Django runserver does
   not handle chunked requests well).
 - Cache DB: `sqflite_common_ffi` + `sqlite3_flutter_libs`, rows keyed by server id, `last_synced_at`.
-- State management: pick one (recommended: Riverpod) in Phase 0 and use it everywhere.
+  (`package:sqlite3` 3.x bundles SQLite itself via build hooks; `sqlite3_flutter_libs` is pinned to the
+  no-op `0.6.0+eol` so the old 0.5.x build scripts are never pulled in.)
+- State management: **Riverpod** (`flutter_riverpod` 3.x), decided in P0 — use it everywhere. Routing: `go_router`.
 - Printing: generate PDFs in Flutter with the `pdf` + `printing` packages (works from cache while offline).
   Templates: prescription, exam report, invoice (A4/A5 and 80mm thermal), job ticket.
   Header uses lab settings (name, logo, phone, address).
@@ -200,6 +202,19 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   update service (Inno Setup installer download), connectivity service.
 
 ---
+
+### Decisions recorded in P0
+- Backend: `django-environ` for settings (`.env.local` read by `base.py` in dev only);
+  `requirements.txt` (runtime) + `requirements-dev.txt` (pytest). Custom `accounts.User` (AbstractUser)
+  exists from day one. `core.TimeStampedModel` is in place; `LabScopedModel` + lab-scoped base viewset
+  come in P1 with `labs.Lab`. Tests are written as `APITestCase`/`TestCase` classes so both `pytest` and
+  `python manage.py test` run them.
+- Error format: `{ "detail", "code" }`; validation errors use `code = "validation_error"` and add `errors`
+  (per-field dict). Raise business errors with `apps.core.exceptions.APIError(detail, code=...)`.
+- `GET /api/v1/health/` is public and also checks the DB (`503` + `status: degraded` if the DB is down).
+- Flutter: bundled font is **Noto Naskh Arabic** (OFL). All UI strings in `lib/core/strings/app_strings.dart`;
+  Arabic error messages by `code` in `lib/core/errors/error_messages.dart`. HTTP via `package:http`
+  (`ApiClient`, explicit `Content-Length`). Requires Flutter with Dart ≥ 3.12 (current deps).
 
 ## 8. Environments & deployment
 
@@ -220,7 +235,7 @@ Keep each session to one roadmap item; commit with clear messages.
 
 ## 9. Roadmap (one item per session, in order)
 
-- [ ] **P0 Scaffold**: Django project + apps skeleton, settings split, DRF, token auth, health endpoint,
+- [x] **P0 Scaffold**: Django project + apps skeleton, settings split, DRF, token auth, health endpoint,
       pytest setup; Flutter desktop project with RTL theme, router, ApiService base, ConnectivityService,
       cache DB base, repository base class.
 - [ ] **P1 Accounts & tenancy**: Lab, LabUser roles, lab-scoped base viewset, activation/login, billing plans
