@@ -24,6 +24,7 @@ class AppRoutes {
   static String patientDetail(int id) => '$patients/$id';
   static String invoiceDetail(int id) => '$invoices/$id';
   static String jobDetail(int id) => '$jobs/$id';
+  static String orderDetail(int id) => '$orders/$id';
 
   static const Set<String> _public = {splash, activate, login};
 

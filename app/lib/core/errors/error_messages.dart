@@ -78,6 +78,16 @@ const Map<String, String> _messagesByCode = {
   'invoice_mismatch': AppStrings.errInvoiceMismatch,
   'invalid_frame': AppStrings.errInvalidFrame,
   'invalid_lens': AppStrings.errInvalidLens,
+  // Supplier orders (P6)
+  'order_locked': AppStrings.errOrderLocked,
+  'order_closed': AppStrings.errOrderClosed,
+  'over_receive': AppStrings.errOverReceive,
+  'invalid_line': AppStrings.errValidation,
+  'cancel_refund_required': AppStrings.errCancelRefundRequired,
+  'order_not_sent': AppStrings.errOrderNotSent,
+  'cost_permission_required': AppStrings.errCostPermission,
+  'job_required': AppStrings.errJobRequired,
+  'invalid_job': AppStrings.errInvalidJob,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

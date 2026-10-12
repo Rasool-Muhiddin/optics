@@ -15,11 +15,14 @@ def _name(user):
 
 
 class InvoiceLineSerializer(CostFieldsMixin, serializers.ModelSerializer):
-    cost_fields = ("unit_cost",)
+    cost_fields = ("unit_cost", "cost_source")
 
     class Meta:
         model = InvoiceLine
-        fields = ["id", "product", "variant", "description", "qty", "unit_price", "discount", "line_total", "unit_cost"]
+        fields = [
+            "id", "product", "variant", "description", "qty", "unit_price", "discount", "line_total", "unit_cost",
+            "cost_source",
+        ]
         read_only_fields = fields
 
 

@@ -418,6 +418,54 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   weighted average) but never get costs back. Exposed as `membership.can_manage_inventory` in the session
   (`Session.canManageInventory` in Flutter), on `lab/users/` and in Django Admin.
 
+### Decisions recorded in P6
+- **Models** (`purchasing`): `Supplier` (unique name per lab, no delete, `is_active`); `SupplierOrder` numbered per
+  lab (`SupplierOrderCounter`), `type` stock | rx_for_job | other, `job` (rx_for_job only, required there),
+  `status` pending (not sent yet) | ordered | partially_received | received | cancelled, `payment_status`
+  unpaid | partial | paid, `order_date`, `expected_date`, `supplier_ref`; stored `total` / `paid` / `balance`
+  recomputed by `refresh_totals()` (like invoices). `SupplierOrderLine`: product and/or variant or free-text
+  `description`, `eye` (od/os for rx), `qty`, `unit_cost`, `qty_received`. `SupplierPayment` (always against
+  one order; voided, never deleted). Orders are read-only in Django Admin (writes only through services).
+- **Supplier balance is not stored**: `Σ order.balance` (annotated). A cancelled order is payable only for what
+  was received (`payable`); cancelling is refused while more was paid than received (`cancel_refund_required`).
+  No opening-balance field: enter an old debt as an `other` order (free-text line).
+- **Statuses**: new orders default to `ordered` (the form's "تم إرسال الطلب" box; `pending` = draft not sent);
+  manual moves only pending ⇄ ordered (`POST …/status/`); `partially_received` / `received` only by receiving;
+  `cancelled` by `POST …/cancel/ {reason}` (the rest of the order; received stock stays). Editing (lines replaced
+  wholesale) only while pending/ordered with nothing received (`order_locked`). Paying a `pending` order is
+  refused (`order_not_sent`).
+- **Receiving** `POST …/receive/ {lines?: [{line, qty}], supplier_ref?}` (no lines = everything remaining), one
+  transaction: `purchase` movements (`reference_type="supplier_order"`) at the line cost → weighted average;
+  non-stock lines (rx lens, service) are only marked received; the product's reference `purchase_price` becomes
+  the last received cost. Over-receiving → `over_receive`. Stock orders accept stock-tracked products only.
+- **rx_for_job ↔ job**: placing an rx order (status `ordered`) moves its job `pending → lens_ordered` (logged
+  "PO #n"). Free-text lines of an rx order become the job's lens product (when it has no variants).
+  `apply_job_lens_cost(job)` (on receive, cancel, and when a job's invoice/lens is edited) sets the job
+  invoice's lines for that lens to the **received supplier cost** (Σ received value ÷ sold qty) and recomputes
+  `cost_total`; with nothing received it falls back to the reference price. New `InvoiceLine.cost_source`
+  = average | reference | supplier (cost field; migration marks old non-stock lines `reference`). Jobs expose
+  `supplier_orders` (number/status/supplier/expected date, no costs).
+- **Permissions**: everyone reads suppliers/orders (all money fields — `total`, `paid`, `balance`, `unit_cost`,
+  `line_total`, payments, supplier `balance`, summary `owed` — hidden without `can_view_costs`; the
+  `has_balance` filter is ignored for them). Writes (suppliers, orders, receive, status, cancel) need
+  `CanManageInventory`. Order line `unit_cost` may be *entered* by such staff (`CostOutputMixin`: accepted on
+  write, dropped from responses) but replacing lines of an existing order needs cost permission
+  (`cost_permission_required`, they would wipe costs they cannot see). Payments (order / supplier "pay") need
+  inventory management **and** cost permission (`CanPaySuppliers`); voiding a payment is owner-only;
+  `purchasing/payments/` is empty for users without costs.
+- **Ageing**: orders expose `age_days` (today − order_date) and `is_late` (expected date passed while open).
+  Filters `open`, `late`, `min_age`, `status`/`type`/`payment_status` lists, `supplier`, `job`, date range.
+  `GET purchasing/orders/summary/` → counts per status, `open`, `late`, ageing buckets 0–7 / 8–14 / 15–30 / 31+
+  days of open orders, `owed` (cost permission only). Supplier "pay" spreads oldest order first (like credit
+  customers).
+- Flutter: cache v6 `suppliers, supplier_orders`; `/orders` (open orders by default, oldest first, filters,
+  summary chips — tapping an ageing bucket sets `min_age`, late rows red), `/orders/:id` (lines with
+  received/remaining, receive dialog per line, send, cancel, payments + owner void; costs only with
+  permission), order form (type, supplier, job picker for rx orders, product/variant or free-text lines with
+  eye), suppliers dialog (add/edit, balance, pay). Job detail: "طلب عدسة من المورد" (pre-filled rx order, one
+  line per eye described from the Rx) and the job's supplier orders. `SupplierOrder.ageOn/lateOn` re-evaluate
+  cached rows offline.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -449,7 +497,7 @@ Keep each session to one roadmap item; commit with clear messages.
 - [x] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
       screen, credit customers list, invoice print (A4/A5 + thermal).
 - [x] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
-- [ ] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
+- [x] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
 - [ ] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.
 - [ ] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,

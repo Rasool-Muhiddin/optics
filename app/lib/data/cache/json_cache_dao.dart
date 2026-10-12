@@ -28,4 +28,6 @@ class CacheTables {
   static const String invoices = 'invoices';
   static const String creditCustomers = 'credit_customers';
   static const String jobs = 'jobs';
+  static const String suppliers = 'suppliers';
+  static const String supplierOrders = 'supplier_orders';
 }

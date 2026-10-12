@@ -50,6 +50,7 @@ class JobSerializer(serializers.ModelSerializer):
     prescription_detail = PrescriptionSerializer(source="prescription", read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     status_logs = JobStatusLogSerializer(many=True, read_only=True)
+    supplier_orders = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -58,7 +59,7 @@ class JobSerializer(serializers.ModelSerializer):
             "id", "number", "patient", "patient_name", "patient_phone", "prescription", "prescription_detail",
             "invoice", "invoice_number", "invoice_balance", "frame_source", "frame", "frame_name", "frame_notes",
             "lens", "lens_name", "lens_od", "lens_od_label", "lens_os", "lens_os_label", "lens_notes", "status",
-            "promised_date", "is_overdue", "delivered_at", "notes", "status_logs", "created_by_name",
+            "promised_date", "is_overdue", "delivered_at", "notes", "status_logs", "supplier_orders", "created_by_name",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "number", "status", "delivered_at", "created_at", "updated_at"]
@@ -68,6 +69,14 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_lens_os_label(self, obj):
         return obj.lens_os.power_label if obj.lens_os_id else ""
+
+    def get_supplier_orders(self, obj):
+        """Rx orders placed for this job (no costs: those live on the order, cost-gated)."""
+        return [
+            {"id": o.id, "number": o.number, "status": o.status, "supplier_name": o.supplier.name,
+             "expected_date": o.expected_date}
+            for o in obj.supplier_orders.all()
+        ]
 
     def get_created_by_name(self, obj):
         return _name(obj.created_by)

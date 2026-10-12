@@ -21,3 +21,20 @@ class CostFieldsMixin:
             for name in self.cost_fields:
                 fields.pop(name, None)
         return fields
+
+
+class CostOutputMixin:
+    """
+    Serializer mixin for write forms where staff may *enter* a cost (e.g. the purchase cost
+    of a stock entry or a supplier order line) but must not *see* costs: the fields listed
+    in `output_cost_fields` are accepted on write and dropped from the response.
+    """
+
+    output_cost_fields = ()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not request_sees_costs(self.context.get("request")):
+            for name in self.output_cost_fields:
+                data.pop(name, None)
+        return data

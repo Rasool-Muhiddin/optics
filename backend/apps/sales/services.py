@@ -189,14 +189,16 @@ def checkout(*, lab_user, user, data):
                 reference_id=invoice.id,
                 note=f"#{invoice.number}",
             )
-            unit_cost = movement.unit_cost
+            unit_cost, cost_source = movement.unit_cost, "average"
         else:
-            unit_cost = line.product.purchase_price  # made-to-order / services: reference cost
+            # Made-to-order / services: reference cost (an rx lens gets the real supplier cost
+            # later, when the job's supplier order is received — `purchasing.services`).
+            unit_cost, cost_source = line.product.purchase_price, "reference"
         cost_total += money(unit_cost * line.qty)
         InvoiceLine.objects.create(
             lab=lab, invoice=invoice, product=line.product, variant=line.variant, description=line.description,
             qty=line.qty, unit_price=line.unit_price, discount=line.discount, line_total=line.line_total,
-            unit_cost=unit_cost,
+            unit_cost=unit_cost, cost_source=cost_source,
         )
 
     invoice.cost_total = cost_total

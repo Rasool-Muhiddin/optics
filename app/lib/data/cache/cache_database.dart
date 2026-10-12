@@ -50,6 +50,12 @@ class CacheDatabase {
     },
     // v5 (P5): customer jobs.
     (db) => db.execute(CacheDao.createTableSql('jobs')),
+    // v6 (P6): suppliers and supplier orders.
+    (db) async {
+      for (final table in const ['suppliers', 'supplier_orders']) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

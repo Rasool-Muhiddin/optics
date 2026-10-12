@@ -487,4 +487,89 @@ class AppStrings {
   static const String errInvoiceMismatch = 'الفاتورة تعود لزبون آخر.';
   static const String errInvalidFrame = 'اختيار الإطار غير صحيح.';
   static const String errInvalidLens = 'اختيار العدسة أو القوة غير صحيح.';
+
+  // Supplier orders (P6)
+  static const String ordersTitle = 'طلبات الموردين';
+  static const String pendingOrders = 'الطلبات المفتوحة';
+  static const String supplier = 'المورد';
+  static const String suppliers = 'الموردون';
+  static const String manageSuppliers = 'إدارة الموردين';
+  static const String addSupplier = 'إضافة مورد';
+  static const String editSupplier = 'تعديل المورد';
+  static const String chooseSupplier = 'اختر المورد';
+  static const String supplierBalance = 'المستحق للمورد';
+  static const String paySupplier = 'دفع للمورد';
+  static const String openOrdersCount = 'طلبات مفتوحة';
+  static const String newOrder = 'طلب جديد من مورد';
+  static const String editOrder = 'تعديل طلب المورد';
+  static const String orderNumber = 'رقم الطلب';
+  static const String orderType = 'نوع الطلب';
+  static const String orderDate = 'تاريخ الطلب';
+  static const String expectedDate = 'تاريخ الوصول المتوقع';
+  static const String supplierRef = 'رقم فاتورة المورد';
+  static const String paymentStatus = 'حالة الدفع';
+  static const String orderLines = 'المواد المطلوبة';
+  static const String addLine = 'إضافة مادة';
+  static const String addProductLine = 'منتج من المخزون';
+  static const String addTextLine = 'مادة بوصف حر';
+  static const String description = 'الوصف';
+  static const String eye = 'العين';
+  static const String received = 'المستلم';
+  static const String remaining = 'المتبقي';
+  static const String receive = 'استلام';
+  static const String receiveAll = 'استلام الكل';
+  static const String receiveOrder = 'استلام الطلب';
+  static const String receiveHint =
+      'أدخل الكميات المستلمة الآن (المواد المخزنية تُضاف إلى المخزون).';
+  static const String markOrdered = 'تم إرسال الطلب';
+  static const String markPending = 'إرجاع إلى غير مُرسل';
+  static const String cancelOrder = 'إلغاء الطلب';
+  static const String cancelOrderConfirm =
+      'سيتم إلغاء ما لم يُستلم من الطلب. ما استُلم يبقى في المخزون ويبقى مستحقاً للمورد.';
+  static const String ageDays = 'العمر (يوم)';
+  static const String daysOld = 'يوم';
+  static const String late = 'متأخر';
+  static const String lateOnly = 'المتأخرة فقط';
+  static const String openOnly = 'المفتوحة فقط';
+  static const String minAge = 'أقدم من (يوم)';
+  static const String ageing = 'أعمار الطلبات المفتوحة';
+  static const String totalOwed = 'إجمالي المستحق للموردين';
+  static const String noOrders = 'لا توجد طلبات.';
+  static const String orderForJob = 'طلب عدسة من المورد';
+  static const String supplierOrdersOfJob = 'طلبات الموردين لهذا الطلب';
+  static const String chooseJob = 'اختر طلب الزبون';
+  static const String linesRequired = 'أضف مادة واحدة على الأقل';
+
+  static const Map<String, String> orderStatuses = {
+    'pending': 'غير مُرسل',
+    'ordered': 'مطلوب',
+    'partially_received': 'مستلم جزئياً',
+    'received': 'مستلم',
+    'cancelled': 'ملغى',
+  };
+
+  static const Map<String, String> orderTypes = {
+    'stock': 'مخزون',
+    'rx_for_job': 'عدسة طبية لطلب زبون',
+    'other': 'أخرى',
+  };
+
+  static const Map<String, String> orderPaymentStatuses = {
+    'unpaid': 'غير مدفوع',
+    'partial': 'مدفوع جزئياً',
+    'paid': 'مدفوع',
+  };
+
+  static const Map<String, String> eyes = {'': '—', 'od': 'اليمنى (OD)', 'os': 'اليسرى (OS)'};
+
+  // Errors (P6)
+  static const String errOrderLocked = 'لا يمكن تعديل طلب تم استلامه أو إلغاؤه.';
+  static const String errOrderClosed = 'الطلب مستلم بالكامل أو ملغى.';
+  static const String errOverReceive = 'لا يمكن استلام كمية أكبر من المطلوبة.';
+  static const String errCancelRefundRequired =
+      'المبلغ المدفوع أكبر من قيمة المستلم. ألغِ الدفعات الزائدة أولاً.';
+  static const String errOrderNotSent = 'أرسل الطلب إلى المورد قبل الدفع.';
+  static const String errCostPermission = 'هذا الإجراء يتطلب صلاحية الاطلاع على التكاليف.';
+  static const String errJobRequired = 'طلب العدسة الطبية يجب أن يرتبط بطلب زبون.';
+  static const String errInvalidJob = 'فقط طلبات العدسات الطبية ترتبط بطلب زبون.';
 }
