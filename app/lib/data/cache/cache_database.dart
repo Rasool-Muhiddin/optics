@@ -69,6 +69,12 @@ class CacheDatabase {
     },
     // v8 (P8): last dashboard (single row, id 1).
     (db) => db.execute(CacheDao.createTableSql('dashboard')),
+    // v9 (Users screen): lab users and devices.
+    (db) async {
+      for (final table in const ['lab_users', 'devices']) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

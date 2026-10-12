@@ -85,3 +85,56 @@ class LabSettingsApiTests(LabAPITestCase):
         lab.refresh_from_db()
         self.assertEqual(lab.print_header, "فحص النظر")
         self.assertNotIn("activation_code", response.json())
+
+
+class UsersScreenApiTests(LabAPITestCase):
+    def setUp(self):
+        super().setUp()
+        from apps.core.testing import make_device
+
+        self.lab = make_lab(plan=make_plan(max_users=2, max_devices=2))
+        self.owner = make_member(self.lab, LabUser.Role.OWNER, username="boss")
+        self.device, _ = make_device(self.lab, name="PC 1")
+        self.login_as(self.owner, device=self.device)
+
+    def test_phone_flags_and_usage(self):
+        response = self.client.post(URL, {
+            "username": "sara", "password": "Sara-Pass-123", "first_name": "سارة", "phone": "0770",
+            "can_manage_inventory": True,
+        })
+        self.assertEqual(response.status_code, 201, response.content)
+        body = response.json()
+        self.assertEqual((body["phone"], body["can_manage_inventory"], body["can_view_costs"]), ("0770", True, False))
+        usage = self.client.get("/api/v1/lab/usage/").json()
+        self.assertEqual(usage, {"users": 2, "max_users": 2, "devices": 1, "max_devices": 2})
+        third = self.client.post(URL, {"username": "x3", "password": "X3-Pass-12345"})
+        self.assertEqual(third.json()["code"], "user_limit_reached")
+
+    def test_password_reset_and_deactivation_end_sessions(self):
+        from apps.accounts.models import AuthToken
+
+        staff = make_member(self.lab, username="cash")
+        AuthToken.issue(staff.user, self.device)
+        self.client.patch(f"{URL}{staff.id}/", {"password": "N3w-Passw0rd!"})
+        self.assertFalse(AuthToken.objects.filter(user=staff.user).exists())
+        AuthToken.issue(staff.user, self.device)
+        self.client.patch(f"{URL}{staff.id}/", {"is_active": False})
+        self.assertFalse(AuthToken.objects.filter(user=staff.user).exists())
+
+    def test_revoking_a_device_deletes_its_tokens_and_reactivation_respects_limit(self):
+        from apps.accounts.models import AuthToken
+        from apps.core.testing import make_device
+
+        other, _ = make_device(self.lab, name="PC 2")
+        staff = make_member(self.lab, username="cash2")
+        AuthToken.issue(staff.user, other)
+        response = self.client.patch(f"/api/v1/lab/devices/{other.id}/", {"is_active": False})
+        self.assertFalse(response.json()["is_active"])
+        self.assertFalse(AuthToken.objects.filter(device=other).exists())
+        make_device(self.lab, name="PC 3")
+        response = self.client.patch(f"/api/v1/lab/devices/{other.id}/", {"is_active": True})
+        self.assertEqual(response.json()["code"], "device_limit_reached")
+
+    def test_staff_cannot_read_usage(self):
+        self.login_as(make_member(self.lab))
+        self.assertEqual(self.client.get("/api/v1/lab/usage/").json()["code"], "owner_required")

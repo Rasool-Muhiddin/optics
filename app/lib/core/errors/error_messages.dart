@@ -32,6 +32,10 @@ const Map<String, String> _messagesByCode = {
   'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
   'cannot_modify_self': AppStrings.errCannotModifySelf,
   'username_taken': AppStrings.errUsernameTaken,
+  'password_too_short': AppStrings.errWeakPassword,
+  'password_too_common': AppStrings.errWeakPassword,
+  'password_entirely_numeric': AppStrings.errWeakPassword,
+  'password_too_similar': AppStrings.errWeakPassword,
   'not_cached': AppStrings.errNotCached,
   // Catalog & inventory (P2)
   'insufficient_stock': AppStrings.errInsufficientStock,

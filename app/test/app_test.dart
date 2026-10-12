@@ -196,7 +196,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('nav-${AppRoutes.users}')));
       await tester.pumpAndSettle();
-      expect(find.text(AppStrings.comingSoon), findsOneWidget);
+      expect(find.text(AppStrings.usersTitle), findsOneWidget);
     });
 
     testWidgets('logout revokes the token and returns to login', (tester) async {

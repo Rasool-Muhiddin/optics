@@ -148,6 +148,8 @@ class DeviceViewSet(
         if serializer.validated_data.get("is_active") and not device.is_active:
             check_device_limit(self.request.lab, exclude_pk=device.pk, error_class=APIError)
         serializer.save()
+        if not serializer.instance.is_active:
+            serializer.instance.auth_tokens.all().delete()  # revoked: sessions end now
 
 
 class _Forbidden(exceptions.PermissionDenied):

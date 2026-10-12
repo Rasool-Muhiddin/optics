@@ -539,6 +539,20 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   (report chips, date range + day/month for sales/profit, "show all" for stock/suppliers, generic
   `ReportTableCard`, totals, extra sections).
 
+### Decisions recorded for the Users screen (after P8)
+- `/users` (owner only, existing `lab/users/` + `lab/devices/`): users tab (add staff, edit first/last name,
+  **`LabUser.phone`** (new field), password reset, role, `can_view_costs`, `can_manage_inventory`, deactivate)
+  and devices tab (rename, revoke = deactivate, reactivate). The device the owner is using is marked
+  "هذا الجهاز" and cannot be revoked from the app (it would log the owner out). The owner cannot change
+  their own role/active flag (`cannot_modify_self`, the form hides those fields for self).
+- **Limits**: `GET lab/usage/` (owner) → active users/devices vs plan `max_users`/`max_devices` (0 =
+  unlimited), shown as chips (red when full) with an Arabic explanation; "add" is refused locally when full
+  and the server still enforces `user_limit_reached` / `device_limit_reached`.
+- **Sessions end on security changes**: a password reset or a deactivation deletes that user's tokens;
+  revoking a device deletes its tokens (both were already refused by auth; now they are also removed).
+  Django password-validator codes (`password_too_short`…) map to one Arabic message.
+- Flutter cache v9 `lab_users, devices`. No section shows "coming soon" any more.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
