@@ -33,15 +33,24 @@ class ApiException extends AppException {
     required String code,
     String? detail,
     this.fieldErrors,
+    this.errorCodes,
   }) : super(code, detail);
 
   final int statusCode;
 
   /// Per-field validation errors (`errors` in the response), if any.
   final Map<String, dynamic>? fieldErrors;
+
+  /// Same shape as [fieldErrors] with stable codes (`error_codes` in the response).
+  final Map<String, dynamic>? errorCodes;
 }
 
 /// 401: token missing, invalid or revoked.
 class UnauthorizedException extends ApiException {
   const UnauthorizedException({required super.code, super.detail}) : super(statusCode: 401);
+}
+
+/// Offline and the requested record was never cached on this device.
+class NotCachedException extends AppException {
+  const NotCachedException() : super('not_cached');
 }

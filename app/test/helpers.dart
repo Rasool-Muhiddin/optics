@@ -8,8 +8,10 @@ import 'package:http/testing.dart';
 import 'package:optics_app/app.dart';
 import 'package:optics_app/data/api/api_client.dart';
 import 'package:optics_app/data/api/health_api_service.dart';
+import 'package:optics_app/data/cache/cache_database.dart';
 import 'package:optics_app/services/auth_storage.dart';
 import 'package:optics_app/services/connectivity_service.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// ApiClient whose server is a function.
 ApiClient fakeApi(Future<http.Response> Function(http.Request request) handler) =>
@@ -86,10 +88,21 @@ class FakeAuthServer {
 
   final List<http.Request> requests = [];
 
+  /// Extra domain endpoints: key `"GET catalog/products/"` (path without query string).
+  final Map<String, Future<http.Response> Function(http.Request request)> routes = {};
+
+  /// Requests sent to [routes] (for asserting bodies).
+  List<http.Request> sent(String method, String path) => [
+    for (final r in requests)
+      if (r.method == method && r.url.path.replaceFirst('/api/v1/', '') == path) r,
+  ];
+
   Future<http.Response> handle(http.Request request) async {
     requests.add(request);
     if (down) throw http.ClientException('connection refused');
     final path = request.url.path.replaceFirst('/api/v1/', '');
+    final route = routes['${request.method} $path'];
+    if (route != null) return route(request);
     final body = request.body.isEmpty ? <String, dynamic>{} : jsonDecode(request.body) as Map;
     final auth = request.headers['authorization']?.replaceFirst('Token ', '');
 
@@ -136,6 +149,7 @@ Future<void> pumpOpticsApp(
   required FakeAuthServer server,
   required AuthStorage storage,
   ConnectivityService? connectivity,
+  CacheDatabase? cache,
 }) async {
   tester.view.physicalSize = const Size(1400, 900);
   tester.view.devicePixelRatio = 1;
@@ -148,9 +162,43 @@ Future<void> pumpOpticsApp(
         connectivityServiceProvider.overrideWithValue(
           connectivity ?? fakeConnectivity(serverUp: !server.down),
         ),
+        cacheDatabaseProvider.overrideWithValue(cache ?? await openTestCache()),
       ],
       child: const OpticsApp(),
     ),
   );
   await tester.pumpAndSettle();
 }
+
+/// In-memory cache DB usable inside `testWidgets` (no isolate, so futures complete).
+Future<CacheDatabase> openTestCache() {
+  sqfliteFfiInit();
+  return CacheDatabase.open(path: inMemoryDatabasePath, factory: databaseFactoryFfiNoIsolate);
+}
+
+/// Storage of an activated, logged-in device.
+Future<AuthStorage> loggedInStorage({Map<String, dynamic>? session, String token = 'token-1'}) =>
+    AuthStorage.open(
+      MemoryAuthStore({
+        'device_id': 'dev-1',
+        'device_key': 'device-key-1',
+        'lab_id': 7,
+        'lab_name': 'مختبر النور',
+        'token': token,
+        'session': session ?? sessionJson(),
+      }),
+    );
+
+/// A server that already knows [token] (so `auth/me/` restores the session).
+FakeAuthServer loggedInServer({Map<String, dynamic>? session, String token = 'token-1'}) =>
+    FakeAuthServer(session: session)..tokens.add(token);
+
+/// DRF-style page.
+Map<String, dynamic> page(List<Map<String, dynamic>> rows) => {
+  'count': rows.length,
+  'next': null,
+  'previous': null,
+  'results': rows,
+};
+
+Map<String, dynamic> decodeBody(http.Request r) => jsonDecode(r.body) as Map<String, dynamic>;

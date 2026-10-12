@@ -41,6 +41,7 @@ class LabAdmin(admin.ModelAdmin):
         (None, {"fields": ["name", "phone", "address", "is_active", "notes"]}),
         ("Activation", {"fields": ["activation_code"]}),
         ("Printing", {"fields": ["logo", "currency", "print_header", "print_footer"]}),
+        ("Sales", {"fields": ["max_discount_percent"]}),
         ("Timestamps", {"fields": ["created_at", "updated_at"]}),
     ]
 

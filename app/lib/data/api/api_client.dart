@@ -122,6 +122,9 @@ class ApiClient {
       fieldErrors: map['errors'] is Map<String, dynamic>
           ? map['errors'] as Map<String, dynamic>
           : null,
+      errorCodes: map['error_codes'] is Map<String, dynamic>
+          ? map['error_codes'] as Map<String, dynamic>
+          : null,
     );
   }
 

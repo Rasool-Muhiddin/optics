@@ -108,7 +108,7 @@ class Sidebar extends ConsumerWidget {
                       key: Key('nav-${item.path}'),
                       leading: Icon(item.icon),
                       title: Text(item.label),
-                      selected: item.path == location,
+                      selected: item.path == location || navSectionFor(location) == item,
                       selectedTileColor: scheme.primaryContainer,
                       dense: true,
                       onTap: () => context.go(item.path),

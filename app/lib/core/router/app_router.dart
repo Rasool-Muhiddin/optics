@@ -4,7 +4,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../screens/activation/activation_screen.dart';
 import '../../screens/home/home_screen.dart';
+import '../../screens/inventory/inventory_screen.dart';
+import '../../screens/inventory/product_detail_screen.dart';
+import '../../screens/jobs/job_detail_screen.dart';
+import '../../screens/jobs/jobs_board_screen.dart';
 import '../../screens/login/login_screen.dart';
+import '../../screens/patients/patient_detail_screen.dart';
+import '../../screens/patients/patients_screen.dart';
+import '../../screens/pos/pos_screen.dart';
+import '../../screens/sales/credit_customers_screen.dart';
+import '../../screens/sales/invoice_detail_screen.dart';
+import '../../screens/sales/invoices_screen.dart';
 import '../../screens/placeholder/coming_soon_screen.dart';
 import '../../screens/shell/main_shell.dart';
 import '../../screens/shell/nav_items.dart';
@@ -26,11 +36,22 @@ String? authRedirect(AuthState? state, String location) {
       return location == AppRoutes.login ? null : AppRoutes.login;
     case LoggedIn(:final session):
       if (AppRoutes.isPublic(location)) return AppRoutes.home;
-      final item = navItemFor(location);
+      final item = navItemFor(location) ?? navSectionFor(location);
       if (item != null && !item.visibleTo(session)) return AppRoutes.home;
       return null;
   }
 }
+
+/// Sections with a real screen (the rest show "coming soon").
+const _builtSections = {
+  AppRoutes.home,
+  AppRoutes.inventory,
+  AppRoutes.patients,
+  AppRoutes.pos,
+  AppRoutes.invoices,
+  AppRoutes.credit,
+  AppRoutes.jobs,
+};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -50,7 +71,56 @@ final routerProvider = Provider<GoRouter>((ref) {
             MainShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
-          for (final item in navItems.where((i) => i.path != AppRoutes.home))
+          GoRoute(
+            path: AppRoutes.patients,
+            builder: (context, state) => const PatientsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    PatientDetailScreen(patientId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          GoRoute(path: AppRoutes.pos, builder: (context, state) => const PosScreen()),
+          GoRoute(
+            path: AppRoutes.invoices,
+            builder: (context, state) => const InvoicesScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    InvoiceDetailScreen(invoiceId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.credit,
+            builder: (context, state) => const CreditCustomersScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.jobs,
+            builder: (context, state) => const JobsBoardScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    JobDetailScreen(jobId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.inventory,
+            builder: (context, state) => const InventoryScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          for (final item in navItems.where((i) => !_builtSections.contains(i.path)))
             GoRoute(
               path: item.path,
               builder: (context, state) => ComingSoonScreen(title: item.label),

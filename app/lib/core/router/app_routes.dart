@@ -10,6 +10,8 @@ class AppRoutes {
   static const String home = '/';
   static const String patients = '/patients';
   static const String pos = '/pos';
+  static const String invoices = '/invoices';
+  static const String credit = '/credit';
   static const String jobs = '/jobs';
   static const String inventory = '/inventory';
   static const String orders = '/orders';
@@ -17,6 +19,11 @@ class AppRoutes {
   static const String reports = '/reports';
   static const String users = '/users';
   static const String settings = '/settings';
+
+  static String productDetail(int id) => '$inventory/$id';
+  static String patientDetail(int id) => '$patients/$id';
+  static String invoiceDetail(int id) => '$invoices/$id';
+  static String jobDetail(int id) => '$jobs/$id';
 
   static const Set<String> _public = {splash, activate, login};
 

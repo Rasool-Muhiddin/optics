@@ -10,6 +10,11 @@ api_v1 = [
     path("desktop/", include(desktop_urlpatterns)),
     path("auth/", include(auth_urlpatterns)),
     path("lab/", include("apps.labs.urls")),
+    path("catalog/", include("apps.catalog.urls")),
+    path("inventory/", include("apps.inventory.urls")),
+    path("patients/", include("apps.patients.urls")),
+    path("sales/", include("apps.sales.urls")),
+    path("jobs/", include("apps.jobs.urls")),
 ]
 
 urlpatterns = [

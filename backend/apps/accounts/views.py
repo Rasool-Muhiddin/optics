@@ -5,12 +5,12 @@ from django.utils import timezone
 from rest_framework import exceptions, mixins, status, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.billing.features import check_device_limit
 from apps.core.exceptions import APIError
 from apps.core.permissions import IsLabOwner, LabAccess
+from apps.core.throttling import ClientIPScopedRateThrottle
 from apps.core.tenancy import check_lab_access, get_membership
 from apps.core.viewsets import LabScopedMixin
 from apps.labs.models import Lab, normalize_activation_code
@@ -22,7 +22,7 @@ from .serializers import ActivateSerializer, DeviceSerializer, LoginSerializer, 
 class _PublicAuthView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ClientIPScopedRateThrottle]
     throttle_scope = "desktop_auth"
 
 

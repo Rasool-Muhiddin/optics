@@ -3,6 +3,7 @@
 import secrets
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
@@ -33,6 +34,13 @@ class Lab(TimeStampedModel):
     currency = models.CharField(max_length=3, default="IQD")
     print_header = models.TextField(blank=True, help_text="Extra lines printed under the lab name.")
     print_footer = models.TextField(blank=True)
+    max_discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=10,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Staff may give at most this total discount (% of the invoice); above it needs the owner.",
+    )
     activation_code = models.CharField(
         max_length=32,
         unique=True,

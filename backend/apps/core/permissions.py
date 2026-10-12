@@ -33,7 +33,8 @@ class IsLabOwner(LabAccess):
     """Lab access + `owner` role."""
 
     def has_permission(self, request, view):
-        super().has_permission(request, view)
+        if not super().has_permission(request, view):
+            return False
         if not request.lab_user.is_owner:
             raise exceptions.PermissionDenied("Only the lab owner can do this.", code="owner_required")
         return True
@@ -43,7 +44,8 @@ class IsLabOwnerOrReadOnly(LabAccess):
     """Any lab member may read; only the owner may write."""
 
     def has_permission(self, request, view):
-        super().has_permission(request, view)
+        if not super().has_permission(request, view):
+            return False
         if request.method not in SAFE_METHODS and not request.lab_user.is_owner:
             raise exceptions.PermissionDenied("Only the lab owner can do this.", code="owner_required")
         return True
@@ -61,7 +63,8 @@ def requires_feature(flag):
 
     class RequiresFeature(LabAccess):
         def has_permission(self, request, view):
-            super().has_permission(request, view)
+            if not super().has_permission(request, view):
+                return False
             if not request.lab.license.plan.has_feature(flag):
                 raise exceptions.PermissionDenied(
                     f"Feature '{flag}' is not included in the lab's plan.", code="feature_not_in_plan"

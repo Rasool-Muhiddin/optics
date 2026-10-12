@@ -250,6 +250,13 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
 - Business-rule errors raised from serializers use `APIError` (not `ValidationError`) so `code` survives.
 - Tests use `config.settings.test` (local + MD5 hasher) via `pytest.ini`; `manage.py test` still works.
   Dev helper: `python manage.py create_lab "<name>" <owner_username> <password> [--plan code]`.
+- **Real client IP (post-P1 fix)**: throttles key on `apps.core.client_ip.get_client_ip` via
+  `apps.core.throttling.ClientIPScopedRateThrottle`. Forwarding headers are believed only when the direct
+  peer is in `TRUSTED_PROXIES` (IPs/CIDRs; empty in dev → `REMOTE_ADDR`). Production defaults to loopback
+  (nginx) + Cloudflare ranges (`config/settings/proxies.py`, toggle `TRUST_CLOUDFLARE`). `CF-Connecting-IP`
+  is used only if the hop that reached nginx is itself trusted (a Cloudflare edge); otherwise
+  `X-Forwarded-For` is walked right-to-left skipping trusted hops. nginx must keep
+  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` and pass `CF-Connecting-IP` through.
 - Flutter: `AuthStorage` persists device id/key, lab, token and the last session JSON in
   `optics_auth.json` (app-support dir, plain JSON — no new plugin). `AuthController`
   (`AsyncNotifier<AuthState>`: `NeedsActivation | LoggedOut | LoggedIn`) drives go_router redirects
@@ -259,6 +266,137 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   the read cache. Sidebar sections live in `screens/shell/nav_items.dart` (`ownerOnly` / `feature` only hide
   items; the router also blocks direct navigation); unbuilt sections show a "coming soon" page.
   `httpClientProvider` is the seam for tests (`MockClient`).
+
+### Decisions recorded in P2
+- **Permission bug fixed (from P1)**: `IsLabOwner` / `IsLabOwnerOrReadOnly` / `requires_feature` ignored
+  `LabAccess` returning False, so anonymous GETs passed (empty lists / 500). They now return False → 401.
+  `core/tests/test_permissions.py::AnonymousIsRejectedEverywhereTests` walks every `/api/v1/` route.
+- **Catalog**: `Category` (tree, cycle-checked), `Brand` (unique name per lab) and `Product` are lab-scoped;
+  `Product.kind` per §5; kind-specific details in validated JSON `attributes` (`catalog/attributes.py`
+  holds the schema per kind — unknown keys rejected; add a key there + in the Flutter `AttributeSpec`).
+  `rx_lens` / `service` force `track_stock=False`; `stock_lens` / `contact_lens` force `True` and keep stock
+  on `LensVariant` (SPH + CYL ≤ 0 minus-cyl + ADD, **ADD 0 = none**, not null, so the unique constraint
+  works on every DB). `sku`/`barcode` unique per lab across products *and* variants. Variants may override
+  `sale_price` (null = product price). Kind cannot change, and a variant's power cannot change, once
+  stock history exists. Catalog writes are **owner-only** (`IsLabOwnerOrReadOnly`); everyone reads.
+- **Stock**: `inventory.services.record_movement()` is the only writer of `quantity` / `average_cost`
+  (row lock via `select_for_update`, must run in `transaction.atomic()`); `Product.quantity` mirrors the
+  sum of its variants (F() update) for lists/low-stock. **No negative stock** (`insufficient_stock`).
+  `StockMovement` is an immutable ledger (`qty` signed, `unit_cost`, `qty_after`, `average_cost_after`,
+  `reference_type`/`reference_id`; admin read-only). Weighted-average cost changes only on incoming
+  movements with a stated cost (`purchase`, or a positive `adjustment` with `unit_cost` = opening stock);
+  everything else is valued at the current average. `average_cost` is stored with 2 decimals
+  (ROUND_HALF_UP) — fine for IQD. `Product.purchase_price` is a reference price (last/expected), editable.
+- **Manual stock entry** `POST inventory/movements/ {type, note, lines:[{product|variant, qty, unit_cost?}]}`
+  is **owner-only** and atomic across lines (the lens grid posts many powers at once). Types: purchase,
+  adjustment (signed), damage, return_in, return_out. Sales post `sale` movements from checkout (P4).
+- **Cost hiding**: `core.costs.CostFieldsMixin` drops `cost_fields` from serializers (not rendered, not
+  accepted) unless `lab_user.sees_costs`. Ordering by cost fields is not allowed (would be an oracle).
+  `inventory/tests/test_stock.py::CostVisibilityTests` scans every catalog/inventory response for cost keys.
+- Other endpoints: `catalog/products/{id}/grid/` (unpaginated variants for the power grid),
+  `catalog/products/{id}/generate-variants/` (SPH×CYL range, ≤ 2000, existing skipped),
+  `catalog/lookup/?code=` (barcode/SKU → product + variant), `catalog/options/` (kinds + choices).
+  Shared optics rules (ranges, 0.25 steps, axis, transposition) live in `apps/core/optics.py`.
+- Flutter: cache v2 adds tables `products, categories, brands, lens_variants, stock_movements`
+  (`JsonCacheDao`, offline filtering in Dart via `ProductQuery.matches`); `NotCachedException`
+  (`not_cached`) when offline and never cached. Screens: `/inventory` (filters, cost column only when the
+  session `can_view_costs`), `/inventory/:id` (info, lens power grid with ADD selector, grid entry mode,
+  per-power edit/stock, ledger). Shared widgets in `widgets/common.dart`; power helpers in
+  `core/optics/powers.dart`. Test helpers: `FakeAuthServer.routes`, `openTestCache()` (no-isolate ffi),
+  `loggedInStorage()` / `loggedInServer()`.
+
+### Decisions recorded in P3
+- **Validation error codes**: validation responses now also carry `error_codes` (same shape as `errors`,
+  DRF codes instead of English text). Flutter maps them to Arabic (`fieldCodeMessage(error, path)`,
+  `errorMessageFor` prefers the first known nested code).
+- **Patient**: lab-scoped; `age` may be sent instead of `birth_date` and is stored as an estimated
+  birth date (`birth_date_estimated=true`), so the age stays right in later years. Status is the §5 enum and
+  only moves forward automatically (exam/Rx → `exam_done`); it can be set by hand on edit. No delete:
+  `is_archived`. Any lab member (staff included) manages patients, exams and prescriptions.
+- **Exams & Rx**: `EyeExam` (+ VA/IOP per eye, `examined_by` = recording user unless an external
+  `examiner_name` is typed) and `Prescription` (OneToOne `exam`, null = standalone). Exams are created/edited
+  with a nested `prescription` in one transaction; the nested Rx must be sent complete. Records are
+  **voided, never deleted** (`VoidableModel`: `is_void`, reason, who/when; `POST …/void/`, owner or author
+  only; voiding an exam voids its Rx; voided records are read-only, `record_void`). Exam patient cannot
+  change (`patient_locked`).
+- **Rx rules** (`patients/rx.py`): SPH/CYL/ADD per §5 in 0.25 steps; AXIS 1..180 required iff CYL ≠ 0 and
+  dropped when CYL = 0; an eye may be left completely empty but at least one eye needs SPH (`rx_empty`);
+  SPH required for an eye that has any power (`sph_required`); prism 0.25..20 needs a base (up/down/in/out);
+  PD 40..85 (mono 20..45) in 0.5 mm steps; lens design/index/coatings use the catalog choices.
+  **Plus-cylinder input is transposed to minus-cyl on save** (stored convention); `POST patients/transpose/`
+  and the form's ± button offer the helper explicitly. Endpoints: `patients/`, `patients/exams/`,
+  `patients/prescriptions/` (filters `patient`, `is_void`…).
+- **Printing**: `pdf` + `printing` packages. `services/printing/pdf_kit.dart` (fonts, lab header/footer,
+  tables) — Noto Naskh Arabic has **no Latin glyphs**, so Helvetica is the PDF font fallback; Rx tables are
+  printed LTR (OD/OS, SPH…) inside an RTL page. Prescription = A5, exam report = A4 (`patient_pdfs.dart`).
+  `PrintService` (`printServiceProvider`) sends bytes to `Printing.layoutPdf`; tests inject `printer`.
+  The lab logo is downloaded when online and kept on disk (`LogoCache`) so offline prints keep it.
+  Linux builds of `printing` download pdfium at CMake time (needs network once).
+- Flutter: cache v3 adds `patients, eye_exams, prescriptions`. Screens `/patients` (search name/phone,
+  status filter) and `/patients/:id` (profile, exams tab with Rx summary + print/edit/void, prescriptions
+  tab). Reusable `widgets/rx_form.dart` (`RxFormController` mirrors the server rules, ± transposition).
+  `patientExtraActionsProvider` lets later phases add buttons (new sale/job) to the profile header.
+  All `DropdownButtonFormField`s use `isExpanded: true` (avoids overflow with long Arabic labels).
+
+### Decisions recorded in P4
+- **Checkout** `POST sales/checkout/` (atomic: number → invoice → lines → `sale` movements → payment) takes
+  only `lines [{product|variant, qty, discount | discount_percent}]`, `invoice_discount_type/value`,
+  `payment_type`, `patient` or walk-in `customer_name/phone`, `payment {amount, method}`, `notes`. Any
+  client price/total/number is ignored. `POST sales/checkout/preview/` returns the server's pricing for the
+  same body (incl. `available` stock per line and `requires_owner`) and saves nothing — the POS shows totals
+  only from it (no client money arithmetic). Variant `sale_price` overrides the product price.
+- **Numbering**: `sales.InvoiceCounter` (one row per lab, `select_for_update`), sequential integers from 1;
+  a failed checkout does not consume a number.
+- **Discount limit**: `Lab.max_discount_percent` (default 10, owner edits via `PATCH lab/`). Total discount
+  (line + invoice) as % of the subtotal above the limit → staff get 403 `discount_requires_owner`; owner
+  unlimited. Discounts can't exceed the amount (`invalid_discount`).
+- **Payments / credit**: cash sales are always paid in full at checkout. **Credit (آجل) requires a patient
+  file** (`credit_requires_patient`) so balances belong to someone; an optional down payment. Status:
+  `open` (nothing paid) / `partially_paid` / `paid` / `cancelled`, recomputed from non-void payments.
+  `POST sales/invoices/{id}/payments/` (any member, no overpayment), `POST sales/payments/{id}/void/`
+  (owner). `GET sales/credit-customers/` aggregates open balances per patient; `POST
+  sales/credit-customers/{patient}/pay/` spreads one payment over the oldest invoices first.
+- **Cancel** `POST sales/invoices/{id}/cancel/` (owner): stock returns as `return_in` at the sold unit
+  cost (average restored), payments are voided (money refunded), invoice kept with reason. Invoices are
+  read-only otherwise (no edit/delete, admin read-only).
+- **Costs**: lines snapshot `unit_cost` (average at sale; for non-stock kinds the product's reference
+  `purchase_price`); invoice `cost_total`/`profit` and line `unit_cost` are cost fields (hidden from staff
+  without `can_view_costs`). A checkout moves the patient to `lens_selected` (forward only).
+- Lookups for missing barcodes / other-lab patients now answer **404** (`not_found`).
+- Flutter: cache v4 `invoices, credit_customers` (invoice detail cached with lines → printable offline;
+  selling itself needs the server — `OfflineWriteException`). `PosController` (kept alive across navigation)
+  holds items only; `cartPreviewProvider` re-prices on every change. Lens powers are picked from the power
+  grid. Barcode scanners type + Enter → `catalog/lookup/`. New sidebar sections `/invoices` (+ detail with
+  payments, owner cancel/void, prints) and `/credit`. Patient profile gets a "بيع" action (POS with that
+  patient). Invoice PDFs: A4/A5 table layout and 80 mm roll (`PdfPageFormat.roll80`) compact layout.
+  Dialogs that own `TextEditingController`s are StatefulWidgets (disposing after `showDialog` returns
+  crashes during the exit animation).
+
+### Decisions recorded in P5
+- **Job**: lab-scoped, server-numbered per lab (`jobs.JobCounter`, like invoices); links: `patient`
+  (required, cannot change), `prescription` (must be that patient's, not void), `invoice` (same patient when
+  the invoice has one, not cancelled); `frame_source` = `lab` (optional frame product, kind `frame`) |
+  `customer` ("customer's own frame", no product, describe it in `frame_notes`) | `none` (lenses only);
+  `lens` product (stock / rx / contact lens) with optional stock powers per eye (`lens_od`, `lens_os`, must
+  belong to that lens) and `lens_notes`; `promised_date`; `notes`.
+- **Jobs do not move stock** — stock leaves at checkout (P4); the job only tracks where the glasses are.
+  Ordering an `rx_lens` from a supplier is P6 (`SupplierOrder.type = rx_for_job`, linked job).
+- **Lifecycle**: `pending → lens_ordered → in_workshop → ready → delivered`, `cancelled` from any open
+  status; also allowed: `lens_ordered → pending`, `in_workshop → lens_ordered` (re-order), `ready →
+  in_workshop` (rework), and skipping forward (`pending → in_workshop/ready`). `delivered`/`cancelled` are
+  final (no moves, no edits: `job_closed`). Status changes only via `POST jobs/{id}/status/ {status, note}`
+  (`invalid_transition`), each one written to `JobStatusLog` (who/when/note; creation logs `'' → pending`).
+  Patient status follows forward only: job created → `in_job`, delivered → `delivered`.
+- **Overdue** = `promised_date < today` while `pending | lens_ordered | in_workshop` (a `ready` job waits on
+  the customer, it is not late). Exposed as `is_overdue`, filter `?overdue=true`, `GET jobs/summary/`
+  (counts per status + overdue). Any lab member manages jobs.
+- Flutter: cache v5 `jobs`; `/jobs` Kanban board (open jobs + delivered in the last 14 days, overdue first
+  with a red border/badge, "move to next" button + full status dialog), `/jobs/:id` detail (history, edit,
+  status, print), job form (patient picker, Rx and invoice of that patient, frame source, product pickers,
+  lens powers picked from the power grid). Patient profile: "طلب نظارة جديد" action + jobs tab. Shared
+  pickers in `widgets/product_pickers.dart` / `widgets/patient_picker.dart`. Job ticket PDF: A5 or 80 mm
+  (patient, promised date, frame, lens powers, Rx table + PD, invoice balance, signature line).
+  `Job.overdueOn(today)` re-evaluates overdue for cached rows offline.
 
 ## 8. Environments & deployment
 
@@ -284,13 +422,13 @@ Keep each session to one roadmap item; commit with clear messages.
       cache DB base, repository base class.
 - [x] **P1 Accounts & tenancy**: Lab, LabUser roles, lab-scoped base viewset, activation/login, billing plans
       + feature flags, Django Admin for all of it. Flutter: activation + login + main layout with sidebar.
-- [ ] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
+- [x] **P2 Catalog & inventory**: categories, brands, products by kind, lens power variants, stock ledger,
       weighted-average cost. Flutter: inventory screens (list, filters, add/edit per kind, lens power grid).
-- [ ] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
+- [x] **P3 Patients, exams, prescriptions**: models, validation, transposition helper. Flutter: patient
       profile, exam history, Rx entry form (OD/OS table), print prescription + exam report.
-- [ ] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
+- [x] **P4 POS & sales**: atomic checkout, discounts, credit + payments, invoice numbering. Flutter: POS
       screen, credit customers list, invoice print (A4/A5 + thermal).
-- [ ] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
+- [x] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
 - [ ] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
 - [ ] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.
@@ -298,6 +436,9 @@ Keep each session to one roadmap item; commit with clear messages.
       supplier balances; export gated by plan.
 - [ ] **P9 Offline read cache** completion across all domains + offline banners.
 - [ ] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.
+      Before release: move token/device-key storage from plain `optics_auth.json` to encrypted storage
+      (Windows DPAPI via `CryptProtectData`, or equivalent: Keychain on macOS, libsecret on Linux), with a
+      one-time migration of the existing file and deletion of the plain copy.
 
 ---
 
