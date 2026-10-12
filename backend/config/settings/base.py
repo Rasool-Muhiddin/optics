@@ -5,6 +5,7 @@ Environment-specific values come from environment variables (or `.env.local` in
 development, which is never committed). See `.env.example`.
 """
 
+import os
 from pathlib import Path
 
 import environ
@@ -17,8 +18,10 @@ env = environ.Env(
     APP_VERSION=(str, "0.1.0"),
 )
 
-# Development convenience only: production gets real environment variables.
-if (BASE_DIR / ".env.local").exists():
+# Development convenience only: production gets real environment variables (and never
+# reads a stray .env.local).
+_PRODUCTION = os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith(".production")
+if not _PRODUCTION and (BASE_DIR / ".env.local").exists():
     environ.Env.read_env(str(BASE_DIR / ".env.local"))
 
 SECRET_KEY = env("SECRET_KEY", default="")
@@ -110,6 +113,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+ADMIN_URL = "admin/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

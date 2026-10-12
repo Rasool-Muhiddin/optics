@@ -1,0 +1,13 @@
+# /etc/systemd/system/optics-backup.service — one PostgreSQL + media backup to Cloudflare R2.
+[Unit]
+Description=Optics Lab backup (PostgreSQL + media → R2)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=optics
+EnvironmentFile=/srv/optics/.env.production
+# awscli is installed in the venv (deploy step 4).
+Environment=PATH=/srv/optics/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/srv/optics/app/deploy/backup/optics-backup.sh

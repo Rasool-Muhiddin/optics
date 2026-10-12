@@ -67,7 +67,7 @@ void main() {
     expect(progress.last, 1.0);
     await s.install(file);
     expect(started.first, file.path);
-    expect(started, containsAll(['/SILENT', '/CLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS']));
+    expect(started, containsAll(['/SILENT', '/CLOSEAPPLICATIONS']));
     expect(exited, [true]);
   });
 

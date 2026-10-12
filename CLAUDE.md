@@ -578,13 +578,55 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   existing print (invoice A4/A5/80 mm, prescription, exam report, job ticket) works offline for synced data.
 - Cache v10 adds `report_results` (v9 = `lab_users, devices`).
 
+### Decisions recorded in P10
+- **Secrets storage** (`services/secret_store.dart`): `device_key` and `token` live in a `SecretStore`, everything else
+  stays in `optics_auth.json`. Windows = `DpapiSecretStore`: one JSON map encrypted with **DPAPI**
+  (`CryptProtectData`, current user, extra entropy, `CRYPTPROTECT_UI_FORBIDDEN`) in `optics_secrets.bin` via
+  `dart:ffi` + `package:ffi` (no plugin). macOS = Keychain via `/usr/bin/security`; Linux = libsecret via
+  `secret-tool`; Linux without libsecret = `PlainFileSecretStore` (0600 file, `secretsEncrypted == false`; dev only).
+  `AuthStorage.open()` migrates once: secrets found in the old plain file are written to the store and removed
+  from the file (rewritten). Getters stay synchronous (in-memory copy). `AuthStorage.open(store)` in tests uses
+  a `MemorySecretStore` unless one is passed. New direct deps `ffi`, `crypto` (already in the lock as transitive).
+- **Desktop updates** (approach recorded here as the reference for pharmacy_APP-style updates): Tera publishes
+  `app_updates.DesktopAppVersion` in admin (platform windows, version + build, uploaded `.exe` → SHA-256 + size
+  computed on save, or external URL + given SHA-256, Arabic release notes, `is_mandatory`, `min_supported_version`,
+  `is_active`, `published_at`). `GET desktop/latest-version/?platform=windows&version=x.y.z` is public (works
+  before login), throttled per IP (`UPDATE_THROTTLE_RATE`, default 120/min) and answers the newest active
+  published release (numeric version compare, then build) with `update_available` and `mandatory`. Flutter
+  `UpdateService`: check at start-up (`updateInfoProvider`, errors = no banner) → `UpdateBanner` in both shells
+  and on the activation/login card (red when mandatory) → dialog with notes → download to the temp folder with
+  progress → **SHA-256 must match** (`update_checksum`, file deleted) → start the installer detached with
+  `/SILENT /SP- /NOCANCEL /CLOSEAPPLICATIONS /NORESTART` (UAC prompt, admin install) → `exit(0)`; the installer's
+  `[Run]` entry (`skipifnotsilent runasoriginaluser`) starts the new version unelevated. Windows only
+  (`update_unsupported` elsewhere). Mandatory is shown, not enforced by the server (no login block).
+- **Installer** `installer/optics.iss` (Inno Setup 6): fixed `AppId`, per-machine `{autopf}\Tera\Optics Lab`, Arabic +
+  English languages (`Arabic.isl` from Inno 6.3+) with custom messages, app icon, optional desktop shortcut, close
+  the running app, user data in `%APPDATA%\com.terasoftware\Optics Lab` kept on update/uninstall.
+  `installer/build_release.ps1 -Version x.y.z -BuildNumber n`: tests, `flutter build windows --release` with
+  `--build-name`, `--build-number`, `--dart-define=API_BASE_URL=…` and `APP_VERSION` (must equal build-name), then
+  `iscc`, prints the SHA-256. Instructions in `RELEASE.md`.
+- **Production settings**: `.env.local` is never read when `DJANGO_SETTINGS_MODULE` ends with `.production`;
+  `STATIC_ROOT`/`MEDIA_ROOT` from env (default `/srv/optics/static|media`, served by nginx); `ADMIN_URL` env (admin
+  path); HSTS 1 year by default without subdomains/preload (W005/W021 silenced on purpose); referrer policy,
+  `X_FRAME_OPTIONS=DENY`, `CONN_HEALTH_CHECKS`, uploads > 5 MB stream to temp files; logs to stdout (journald).
+  `core/tests/test_production_settings.py` runs `check --deploy --fail-level WARNING` and `collectstatic` in a
+  subprocess and checks that missing secrets fail.
+- **Deployment** (`deploy/`, `DEPLOY.md`): separate user/folder/DB/role/unit/socket from the pharmacy; nginx site
+  (`listen 443 ssl http2` for nginx 1.24, Cloudflare origin cert, `/static/` + `/media/` aliases, 300 MB uploads,
+  forwards `X-Forwarded-For`, `X-Forwarded-Proto`, `CF-Connecting-IP`); `optics-api.service` (gunicorn on
+  `/run/optics/gunicorn.sock`, 3 workers, hardening); daily `optics-backup.timer` → `deploy/backup/optics-backup.sh`
+  (`pg_dump -Fc` checked with `pg_restore --list`, upload + media sync to R2 with awscli from the venv, 7 days
+  local); `deploy/.env.production.example`. Cloudflare SSL mode is per zone: use a Configuration Rule for this host
+  instead of changing the zone (pharmacy).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
   SQLite allowed for local dev.
-- Production (proposed): same Hetzner server as pharmacy backend, separate Django project/service and
-  database, subdomain e.g. `optics-api.tera-software1.com`, nginx + gunicorn + systemd, Cloudflare SSL,
+- Production: same Hetzner server as pharmacy backend, separate Django project/service and
+  database, `optics-api.tera-software1.com`, nginx + gunicorn + systemd, Cloudflare SSL,
   daily DB backup to R2, `DEBUG=False`, strong `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL`.
+  Step by step: `DEPLOY.md` (files in `deploy/`); desktop releases: `RELEASE.md` (files in `installer/`).
 - Do NOT touch the pharmacy_APP project, its database or its service.
 
 ### Cloud-session note (Claude Code on the web)
@@ -615,7 +657,7 @@ Keep each session to one roadmap item; commit with clear messages.
 - [x] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,
       supplier balances; export gated by plan.
 - [x] **P9 Offline read cache** completion across all domains + offline banners.
-- [ ] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.
+- [x] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.
       Before release: move token/device-key storage from plain `optics_auth.json` to encrypted storage
       (Windows DPAPI via `CryptProtectData`, or equivalent: Keychain on macOS, libsecret on Linux), with a
       one-time migration of the existing file and deletion of the plain copy.

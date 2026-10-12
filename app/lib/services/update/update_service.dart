@@ -46,7 +46,7 @@ typedef ProcessStarter = Future<void> Function(String executable, List<String> a
 
 /// Desktop self-update: ask the server for the newest release, download the installer to
 /// the temp folder, verify its SHA-256, start it silently and close the app (the Inno Setup
-/// installer replaces the files and starts the new version).
+/// installer replaces the files and starts the new version from its `[Run]` section).
 class UpdateService {
   UpdateService({
     required this.api,
@@ -75,7 +75,7 @@ class UpdateService {
     '/SP-',
     '/NOCANCEL',
     '/CLOSEAPPLICATIONS',
-    '/RESTARTAPPLICATIONS',
+    '/NORESTART',
   ];
 
   /// The newer release, or null when up to date (or nothing is published).
