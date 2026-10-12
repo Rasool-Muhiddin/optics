@@ -119,6 +119,25 @@ class StockApiTests(LabAPITestCase):
         self.login_as(self.staff)
         response = self._post("adjustment", [{"product": self.frame.id, "qty": 1}])
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "inventory_permission_required")
+
+    def test_inventory_manager_records_entries_without_seeing_costs(self):
+        manager = make_member(self.lab, can_manage_inventory=True)
+        self.login_as(manager)
+        for type_, qty in (("purchase", 5), ("adjustment", -1), ("damage", 1), ("return_out", 1), ("return_in", 1)):
+            line = {"product": self.frame.id, "qty": qty}
+            if type_ == "purchase":
+                line["unit_cost"] = "3000"
+            response = self._post(type_, [line])
+            self.assertEqual(response.status_code, 201, (type_, response.content))
+            self.assertNotIn("unit_cost", response.json()["movements"][0])
+        self.frame.refresh_from_db()
+        self.assertEqual((self.frame.quantity, self.frame.average_cost), (3, Decimal("3000.00")))
+        # With can_view_costs as well, costs are visible.
+        manager.can_view_costs = True
+        manager.save()
+        response = self._post("purchase", [{"product": self.frame.id, "qty": 1, "unit_cost": "3000"}])
+        self.assertEqual(response.json()["movements"][0]["unit_cost"], "3000.00")
 
     def test_ledger_filters(self):
         stock_in(self.frame, 3)

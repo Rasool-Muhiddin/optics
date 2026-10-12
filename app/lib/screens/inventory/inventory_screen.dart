@@ -62,7 +62,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
-    final isOwner = session?.isOwner ?? false;
+    final canManage = session?.canManageInventory ?? false;
     final seesCosts = session?.membership.canViewCosts ?? false;
     final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
     final brands = ref.watch(brandsProvider).value ?? const <Brand>[];
@@ -73,7 +73,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         PageHeader(
           title: AppStrings.inventoryTitle,
           actions: [
-            if (isOwner)
+            if (canManage)
               OutlinedButton.icon(
                 key: const Key('manage-categories'),
                 icon: const Icon(Icons.category_outlined),
@@ -83,7 +83,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   builder: (_) => const CategoriesBrandsDialog(),
                 ),
               ),
-            if (isOwner)
+            if (canManage)
               FilledButton.icon(
                 key: const Key('add-product'),
                 icon: const Icon(Icons.add),

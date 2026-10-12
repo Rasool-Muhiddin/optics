@@ -23,6 +23,13 @@ class CatalogApiService {
   Future<Map<String, dynamic>> grid(int productId) async =>
       await _client.get('catalog/products/$productId/grid/') as Map<String, dynamic>;
 
+  Future<Map<String, dynamic>> matchRx(int productId, int prescriptionId) async =>
+      await _client.get(
+            'catalog/products/$productId/match/',
+            query: {'prescription': prescriptionId},
+          )
+          as Map<String, dynamic>;
+
   Future<Map<String, dynamic>> generateVariants(int productId, Map<String, dynamic> body) async =>
       await _client.post('catalog/products/$productId/generate-variants/', body: body)
           as Map<String, dynamic>;

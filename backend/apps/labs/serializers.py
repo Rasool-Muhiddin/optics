@@ -37,7 +37,7 @@ class LabUserSerializer(serializers.ModelSerializer):
         model = LabUser
         fields = [
             "id", "user_id", "username", "first_name", "last_name", "password",
-            "role", "can_view_costs", "is_active", "created_at",
+            "role", "can_view_costs", "can_manage_inventory", "is_active", "created_at",
         ]
         read_only_fields = ["id", "user_id", "created_at"]
 

@@ -44,6 +44,7 @@ Map<String, dynamic> sessionJson({
     'role': role,
     'is_owner': role == 'owner',
     'can_view_costs': role == 'owner',
+    'can_manage_inventory': role == 'owner',
   },
   'lab': {
     'id': 7,

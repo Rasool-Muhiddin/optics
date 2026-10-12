@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.exceptions import APIError
-from apps.core.permissions import IsLabOwnerOrReadOnly, LabAccess
+from apps.core.permissions import CanManageInventoryOrReadOnly, LabAccess
 from apps.core.viewsets import LabScopedNoDeleteViewSet
 
 from .attributes import (
@@ -20,11 +20,11 @@ from .serializers import (
 
 
 class CategoryViewSet(LabScopedNoDeleteViewSet):
-    """`/api/v1/catalog/categories/` — tree via `parent`. Members read, owner edits."""
+    """`/api/v1/catalog/categories/` — tree via `parent`. Members read; owner / inventory managers edit."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsLabOwnerOrReadOnly]
+    permission_classes = [CanManageInventoryOrReadOnly]
     filterset_fields = ["parent", "is_active"]
     search_fields = ["name"]
     ordering_fields = ["name", "id"]
@@ -35,7 +35,7 @@ class BrandViewSet(LabScopedNoDeleteViewSet):
 
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    permission_classes = [IsLabOwnerOrReadOnly]
+    permission_classes = [CanManageInventoryOrReadOnly]
     filterset_fields = ["is_active"]
     search_fields = ["name"]
     ordering_fields = ["name", "id"]
@@ -50,7 +50,7 @@ class ProductViewSet(LabScopedNoDeleteViewSet):
 
     queryset = Product.objects.select_related("brand", "category")
     serializer_class = ProductSerializer
-    permission_classes = [IsLabOwnerOrReadOnly]
+    permission_classes = [CanManageInventoryOrReadOnly]
     filterset_class = ProductFilter
     search_fields = ["name", "sku", "barcode", "brand__name", "notes"]
     # Never order by cost fields: that would leak them to staff.
@@ -69,9 +69,36 @@ class ProductViewSet(LabScopedNoDeleteViewSet):
         data = LensVariantSerializer(rows, many=True, context=self.get_serializer_context()).data
         return Response({"product": self.get_serializer(product).data, "variants": data})
 
+    @action(detail=True, methods=["get"])
+    def match(self, request, pk=None):
+        """
+        `GET products/{id}/match/?prescription=<id>` — the stock powers of this lens that fit
+        the Rx, per eye (`{"od": variant|null, "os": variant|null}`). Uses the Rx's normalized
+        minus-cyl copy (stock powers are minus-cyl) + its ADD; the axis is not part of a stock power.
+        """
+        from apps.patients.models import Prescription
+
+        product = self.get_object()
+        if not product.uses_variants:
+            raise APIError("This product has no power variants.", code="variant_not_allowed")
+        rx = Prescription.objects.filter(lab=request.lab, pk=request.query_params.get("prescription") or 0).first()
+        if rx is None:
+            raise exceptions.NotFound("Prescription not found.", code="not_found")
+        context = self.get_serializer_context()
+        result = {}
+        for eye in ("od", "os"):
+            power = rx.minus_cyl(eye)
+            variant = None
+            if power is not None:
+                sph, cyl, _ = power
+                add = getattr(rx, f"{eye}_add") or 0
+                variant = product.variants.filter(sph=sph, cyl=cyl, add=add, is_active=True).first()
+            result[eye] = LensVariantSerializer(variant, context=context).data if variant else None
+        return Response(result)
+
     @action(detail=True, methods=["post"], url_path="generate-variants")
     def generate_variants(self, request, pk=None):
-        """Owner: create all powers of a range with zero stock. Existing powers are kept."""
+        """Owner / inventory manager: create all powers of a range with zero stock (existing kept)."""
         product = self.get_object()
         if not product.uses_variants:
             raise APIError("This product has no power variants.", code="variant_not_allowed")
@@ -95,7 +122,7 @@ class LensVariantViewSet(LabScopedNoDeleteViewSet):
 
     queryset = LensVariant.objects.select_related("product")
     serializer_class = LensVariantSerializer
-    permission_classes = [IsLabOwnerOrReadOnly]
+    permission_classes = [CanManageInventoryOrReadOnly]
     filterset_class = LensVariantFilter
     search_fields = ["product__name", "sku", "barcode"]
     ordering_fields = ["sph", "cyl", "add", "quantity", "id"]

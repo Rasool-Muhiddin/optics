@@ -51,6 +51,28 @@ class IsLabOwnerOrReadOnly(LabAccess):
         return True
 
 
+class CanManageInventory(LabAccess):
+    """Owner, or staff with `LabUser.can_manage_inventory` (products + stock entries)."""
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if not request.lab_user.manages_inventory:
+            raise exceptions.PermissionDenied(
+                "Only the owner or an inventory manager can do this.", code="inventory_permission_required"
+            )
+        return True
+
+
+class CanManageInventoryOrReadOnly(CanManageInventory):
+    """Any lab member may read; writes need `CanManageInventory`."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return LabAccess.has_permission(self, request, view)
+        return super().has_permission(request, view)
+
+
 def requires_feature(flag):
     """
     Permission class gating an endpoint by a plan feature flag (see `apps.billing.features`):

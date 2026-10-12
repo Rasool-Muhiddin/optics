@@ -24,8 +24,11 @@ class PatientPdfs {
 
   static String _p(String? v) => v == null ? '' : Powers.format(v);
 
-  /// OD / OS rows: SPH CYL AXIS ADD PRISM BASE VA.
-  pw.Widget rxTable(Prescription rx) {
+  /// OD / OS rows: SPH CYL AXIS ADD PRISM BASE VA — exactly as entered (no transposition).
+  pw.Widget rxTable(Prescription rx) => kit.table(ltr: true, rxRows(rx));
+
+  /// Header + OD + OS cells of [rxTable] (also used by the job ticket).
+  static List<List<String>> rxRows(Prescription rx) {
     List<String> eye(String name, EyeRx e) => [
       name,
       _p(e.sph),
@@ -36,11 +39,11 @@ class PatientPdfs {
       e.base.isEmpty ? '' : AppStrings.label(AppStrings.prismBasesLatin, e.base),
       e.va,
     ];
-    return kit.table(ltr: true, [
+    return [
       ['', 'SPH', 'CYL', 'AXIS', 'ADD', 'PRISM', 'BASE', 'VA'],
       eye('OD (R)', rx.od),
       eye('OS (L)', rx.os),
-    ]);
+    ];
   }
 
   List<pw.Widget> _rxDetails(Prescription rx) => [

@@ -16,7 +16,7 @@ class LabUserInline(admin.TabularInline):
     model = LabUser
     extra = 0
     autocomplete_fields = ["user"]
-    fields = ["user", "role", "can_view_costs", "is_active"]
+    fields = ["user", "role", "can_view_costs", "can_manage_inventory", "is_active"]
 
 
 class DeviceInline(admin.TabularInline):
@@ -58,7 +58,7 @@ class LabAdmin(admin.ModelAdmin):
 
 @admin.register(LabUser)
 class LabUserAdmin(admin.ModelAdmin):
-    list_display = ["user", "lab", "role", "can_view_costs", "is_active", "created_at"]
+    list_display = ["user", "lab", "role", "can_view_costs", "can_manage_inventory", "is_active", "created_at"]
     list_filter = ["role", "is_active", "lab"]
     search_fields = ["user__username", "user__first_name", "user__last_name", "lab__name"]
     autocomplete_fields = ["user", "lab"]

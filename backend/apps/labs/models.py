@@ -78,6 +78,11 @@ class LabUser(LabScopedModel):
     can_view_costs = models.BooleanField(
         default=False, help_text="Staff only: may see purchase prices and profit. Owners always can."
     )
+    can_manage_inventory = models.BooleanField(
+        default=False,
+        help_text="Staff only: may create/edit products and record stock entries (purchase, adjustment, "
+        "damage, returns). Costs stay hidden unless can_view_costs is also set. Owners always can.",
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -94,6 +99,10 @@ class LabUser(LabScopedModel):
     @property
     def sees_costs(self):
         return self.is_owner or self.can_view_costs
+
+    @property
+    def manages_inventory(self):
+        return self.is_owner or self.can_manage_inventory
 
     def clean(self):
         super().clean()

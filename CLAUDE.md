@@ -129,8 +129,9 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   per eye (OD right / OS left): `sph`, `cyl`, `axis`, `add`, `prism`, `base`, `va`;
   plus `pd_distance`, `pd_near` (or mono PD per eye), `usage` (distance/near/both), recommended lens
   type/index/coatings, recommended frame notes.
-  - Validation: SPH −30..+30 step 0.25; CYL −10..+10 step 0.25 (store minus-cyl convention, offer
-    transposition helper); AXIS integer 1..180, required iff CYL ≠ 0; ADD +0.50..+4.00 step 0.25.
+  - Validation: SPH −30..+30 step 0.25; CYL −10..+10 step 0.25 (stored and printed **as entered**,
+    plus- or minus-cyl; a normalized minus-cyl copy is kept for internal use; transposition helper
+    offered); AXIS integer 1..180, required iff CYL ≠ 0; ADD +0.50..+4.00 step 0.25.
 - Patient status examples: `new | exam_done | lens_selected | in_job | delivered` — make it a lab-configurable
   list later, enum for now.
 
@@ -278,7 +279,8 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   on `LensVariant` (SPH + CYL ≤ 0 minus-cyl + ADD, **ADD 0 = none**, not null, so the unique constraint
   works on every DB). `sku`/`barcode` unique per lab across products *and* variants. Variants may override
   `sale_price` (null = product price). Kind cannot change, and a variant's power cannot change, once
-  stock history exists. Catalog writes are **owner-only** (`IsLabOwnerOrReadOnly`); everyone reads.
+  stock history exists. Catalog writes: owner or staff with `can_manage_inventory`
+  (`CanManageInventoryOrReadOnly`, see "Pre-P6 changes"); everyone reads.
 - **Stock**: `inventory.services.record_movement()` is the only writer of `quantity` / `average_cost`
   (row lock via `select_for_update`, must run in `transaction.atomic()`); `Product.quantity` mirrors the
   sum of its variants (F() update) for lists/low-stock. **No negative stock** (`insufficient_stock`).
@@ -288,7 +290,7 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   everything else is valued at the current average. `average_cost` is stored with 2 decimals
   (ROUND_HALF_UP) — fine for IQD. `Product.purchase_price` is a reference price (last/expected), editable.
 - **Manual stock entry** `POST inventory/movements/ {type, note, lines:[{product|variant, qty, unit_cost?}]}`
-  is **owner-only** and atomic across lines (the lens grid posts many powers at once). Types: purchase,
+  is owner / `can_manage_inventory` only and atomic across lines (the lens grid posts many powers at once). Types: purchase,
   adjustment (signed), damage, return_in, return_out. Sales post `sale` movements from checkout (P4).
 - **Cost hiding**: `core.costs.CostFieldsMixin` drops `cost_fields` from serializers (not rendered, not
   accepted) unless `lab_user.sees_costs`. Ordering by cost fields is not allowed (would be an oracle).
@@ -323,8 +325,9 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   dropped when CYL = 0; an eye may be left completely empty but at least one eye needs SPH (`rx_empty`);
   SPH required for an eye that has any power (`sph_required`); prism 0.25..20 needs a base (up/down/in/out);
   PD 40..85 (mono 20..45) in 0.5 mm steps; lens design/index/coatings use the catalog choices.
-  **Plus-cylinder input is transposed to minus-cyl on save** (stored convention); `POST patients/transpose/`
-  and the form's ± button offer the helper explicitly. Endpoints: `patients/`, `patients/exams/`,
+  ~~Plus-cylinder input is transposed to minus-cyl on save~~ — **replaced** (see "Pre-P6 changes"): the Rx
+  is stored and printed exactly as entered. `POST patients/transpose/` and the form's ± button offer the
+  helper explicitly. Endpoints: `patients/`, `patients/exams/`,
   `patients/prescriptions/` (filters `patient`, `is_void`…).
 - **Printing**: `pdf` + `printing` packages. `services/printing/pdf_kit.dart` (fonts, lab header/footer,
   tables) — Noto Naskh Arabic has **no Latin glyphs**, so Helvetica is the PDF font fallback; Rx tables are
@@ -397,6 +400,23 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   pickers in `widgets/product_pickers.dart` / `widgets/patient_picker.dart`. Job ticket PDF: A5 or 80 mm
   (patient, promised date, frame, lens powers, Rx table + PD, invoice balance, signature line).
   `Job.overdueOn(today)` re-evaluates overdue for cached rows offline.
+
+### Decisions recorded before P6 (changes to existing work)
+- **Rx as entered (replaces the P3 "transpose on save" rule)**: `Prescription.od_*/os_*` are stored, returned
+  and printed exactly as typed — plus-cyl stays plus-cyl. `Prescription.save()` always recomputes a
+  normalized minus-cyl copy `od_mc_sph/cyl/axis`, `os_mc_*` (`normalize()`, `minus_cyl(eye)`), never exposed by
+  the API nor printed — internal only (stock matching, comparisons). Migration `patients.0002` fills the copy
+  for old rows (they were stored minus-cyl already, so their values stay as they are). Validation is unchanged
+  (CYL −10..+10). `GET catalog/products/{id}/match/?prescription=` returns the stock power per eye matching
+  the Rx (minus-cyl copy + ADD; axis is not part of a stock power); the job form's "اختيار القوى المطابقة
+  للوصفة" uses it. `Prescription.summary` / PDFs format signs with `Powers.format` (`PatientPdfs.rxRows`).
+- **`LabUser.can_manage_inventory`** (separate from `can_view_costs`; owners always have both): create/edit
+  categories, brands, products, lens variants, generate powers, and record manual stock entries (purchase,
+  adjustment, damage, returns). Permissions `CanManageInventory` / `CanManageInventoryOrReadOnly`
+  (code `inventory_permission_required`). Costs stay hidden (and cost fields are not accepted, e.g.
+  `purchase_price`) unless `can_view_costs` too; such staff *may* type a purchase `unit_cost` (needed for the
+  weighted average) but never get costs back. Exposed as `membership.can_manage_inventory` in the session
+  (`Session.canManageInventory` in Flutter), on `lab/users/` and in Django Admin.
 
 ## 8. Environments & deployment
 

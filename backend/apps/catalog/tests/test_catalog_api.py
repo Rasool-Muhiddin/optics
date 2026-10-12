@@ -44,7 +44,25 @@ class CategoryBrandTests(CatalogBase):
         self.assertEqual(self.client.get(BRANDS).json()["count"], 1)
         response = self.client.post(BRANDS, {"name": "Zeiss"})
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["code"], "owner_required")
+        self.assertEqual(response.json()["code"], "inventory_permission_required")
+
+    def test_inventory_manager_staff_can_write_catalog(self):
+        manager = make_member(self.lab, can_manage_inventory=True)
+        self.login_as(manager)
+        self.assertEqual(self.client.post(BRANDS, {"name": "Zeiss"}).status_code, 201)
+        self.assertEqual(self.client.post(CATEGORIES, {"name": "Frames"}).status_code, 201)
+        response = self.client.post(
+            PRODUCTS, {"kind": "frame", "name": "RB", "sale_price": "50000", "purchase_price": "20000"}, format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        # Costs stay hidden (and are not accepted) without can_view_costs.
+        self.assertNotIn("purchase_price", response.json())
+        self.assertEqual(Product.objects.get(pk=response.json()["id"]).purchase_price, Decimal("0"))
+        lens = self.client.post(PRODUCTS, {"kind": "stock_lens", "name": "CR39", "sale_price": "1"}).json()
+        response = self.client.post(
+            f"{PRODUCTS}{lens['id']}/generate-variants/", {"sph_from": "-1", "sph_to": "0"}, format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.content)
 
     def test_no_delete(self):
         brand = Brand.objects.create(lab=self.lab, name="Hoya")
@@ -224,3 +242,21 @@ class CatalogIsolationTests(CatalogBase):
         other_product.barcode = "555"
         other_product.save()
         self.assertEqual(self.client.get("/api/v1/catalog/lookup/", {"code": "555"}).status_code, 404)
+
+
+class RxMatchTests(LabAPITestCase):
+    def test_plus_cyl_rx_matches_minus_cyl_stock(self):
+        from apps.core.testing import make_patient, make_rx, make_variant
+
+        lab = make_lab()
+        self.login_as(make_member(lab))
+        lens = make_product(lab, kind="stock_lens")
+        v_od = make_variant(lens, sph="-0.50", cyl="-1.00")
+        make_variant(lens, sph="-1.50", cyl="0")
+        rx = make_rx(make_patient(lab), od_sph="-1.50", od_cyl="+1.00", od_axis=90, os_sph="-1.25")
+        body = self.client.get(f"/api/v1/catalog/products/{lens.id}/match/", {"prescription": rx.id}).json()
+        self.assertEqual(body["od"]["id"], v_od.id)
+        self.assertIsNone(body["os"])  # -1.25 not stocked
+        other_rx = make_rx(make_patient(make_lab()))
+        response = self.client.get(f"/api/v1/catalog/products/{lens.id}/match/", {"prescription": other_rx.id})
+        self.assertEqual(response.status_code, 404)

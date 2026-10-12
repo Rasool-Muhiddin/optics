@@ -24,7 +24,7 @@ class ProductDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionProvider);
-    final isOwner = session?.isOwner ?? false;
+    final canManage = session?.canManageInventory ?? false;
     final seesCosts = session?.membership.canViewCosts ?? false;
 
     return AsyncView(
@@ -58,14 +58,14 @@ class ProductDetailScreen extends ConsumerWidget {
                 onPressed: () => context.go(AppRoutes.inventory),
               ),
               actions: [
-                if (isOwner && product.trackStock && !product.usesVariants)
+                if (canManage && product.trackStock && !product.usesVariants)
                   FilledButton.tonalIcon(
                     key: const Key('stock-entry'),
                     icon: const Icon(Icons.swap_vert),
                     label: const Text(AppStrings.stockEntry),
                     onPressed: stock,
                   ),
-                if (isOwner)
+                if (canManage)
                   OutlinedButton.icon(
                     key: const Key('edit-product'),
                     icon: const Icon(Icons.edit_outlined),
@@ -81,7 +81,7 @@ class ProductDetailScreen extends ConsumerWidget {
             if (product.usesVariants)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: _GridCard(product: product, isOwner: isOwner),
+                child: _GridCard(product: product, canManage: canManage),
               ),
             if (product.trackStock)
               Padding(
@@ -145,10 +145,10 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _GridCard extends ConsumerStatefulWidget {
-  const _GridCard({required this.product, required this.isOwner});
+  const _GridCard({required this.product, required this.canManage});
 
   final Product product;
-  final bool isOwner;
+  final bool canManage;
 
   @override
   ConsumerState<_GridCard> createState() => _GridCardState();
@@ -209,7 +209,7 @@ class _GridCardState extends ConsumerState<_GridCard> {
   }
 
   Future<void> _openVariant(LensVariant v) async {
-    if (!widget.isOwner) return;
+    if (!widget.canManage) return;
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
@@ -281,7 +281,7 @@ class _GridCardState extends ConsumerState<_GridCard> {
                         ],
                         onChanged: (v) => setState(() => _add = v!),
                       ),
-                    if (widget.isOwner && _entry == null) ...[
+                    if (widget.canManage && _entry == null) ...[
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         key: const Key('generate-variants'),

@@ -1,3 +1,4 @@
+import '../core/optics/powers.dart';
 import 'json.dart';
 
 /// Patient status list (must match `patients.Patient.Status`).
@@ -162,14 +163,15 @@ class Prescription {
   final String voidReason;
   final String createdByName;
 
-  /// Short one-line summary, e.g. `OD -2.25 -0.50×170 | OS -2.00`.
+  /// Short one-line summary as entered, e.g. `OD -2.25 -0.50×170 | OS -2.00`
+  /// (a plus-cyl Rx stays plus-cyl: `OD -2.50 +0.50×80`).
   String get summary {
     String eye(EyeRx e) {
       if (e.isEmpty) return '—';
-      final b = StringBuffer(e.sph ?? '');
+      final b = StringBuffer(Powers.format(e.sph));
       final cyl = double.tryParse(e.cyl ?? '') ?? 0;
-      if (cyl != 0) b.write(' ${e.cyl}×${e.axis ?? ''}');
-      if (e.add != null) b.write(' ADD ${e.add}');
+      if (cyl != 0) b.write(' ${Powers.format(e.cyl)}×${e.axis ?? ''}');
+      if (e.add != null) b.write(' ADD ${Powers.format(e.add)}');
       return b.toString();
     }
 

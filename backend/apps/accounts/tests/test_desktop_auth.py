@@ -150,6 +150,13 @@ class LoginTests(LabAPITestCase):
         self.assertFalse(self._login(username="cashier").json()["membership"]["can_view_costs"])
         self.assertTrue(self._login(username="senior").json()["membership"]["can_view_costs"])
 
+    def test_inventory_permission_in_session(self):
+        make_member(self.lab, username="stock1", can_manage_inventory=True)
+        make_member(self.lab, username="plain1")
+        stock = self._login(username="stock1").json()["membership"]
+        self.assertEqual((stock["can_manage_inventory"], stock["can_view_costs"]), (True, False))
+        self.assertFalse(self._login(username="plain1").json()["membership"]["can_manage_inventory"])
+
     def test_activation_then_login_end_to_end(self):
         key = self.client.post(
             ACTIVATE, {"activation_code": self.lab.activation_code, "device_id": "new-pc"}

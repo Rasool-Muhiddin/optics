@@ -1,12 +1,14 @@
 """Patients (المراجعين), eye exams and structured prescriptions (Rx)."""
 
 import datetime
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 from apps.core.models import LabScopedModel
+from apps.core.optics import to_minus_cyl
 
 
 class Patient(LabScopedModel):
@@ -116,7 +118,10 @@ EYE_FIELDS = ("sph", "cyl", "axis", "add", "prism", "base", "va")
 class Prescription(VoidableModel):
     """
     Structured Rx: one per exam (`exam`), or standalone (e.g. brought from another clinic).
-    Cylinder is stored in minus-cyl form (plus-cyl input is transposed on save).
+
+    `od_*` / `os_*` are stored and printed exactly as entered (plus- or minus-cyl). `save()`
+    also keeps a normalized minus-cyl copy in `od_mc_*` / `os_mc_*` — internal only (matching
+    lens stock, which is minus-cyl, and comparing prescriptions); never shown or printed.
     """
 
     class Usage(models.TextChoices):
@@ -158,6 +163,14 @@ class Prescription(VoidableModel):
     pd_od = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, help_text="Mono PD right.")
     pd_os = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, help_text="Mono PD left.")
 
+    # Normalized minus-cyl copy (computed in save(); not editable, not printed).
+    od_mc_sph = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, editable=False)
+    od_mc_cyl = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, editable=False)
+    od_mc_axis = models.PositiveSmallIntegerField(null=True, blank=True, editable=False)
+    os_mc_sph = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, editable=False)
+    os_mc_cyl = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, editable=False)
+    os_mc_axis = models.PositiveSmallIntegerField(null=True, blank=True, editable=False)
+
     usage = models.CharField(max_length=10, choices=Usage.choices, default=Usage.DISTANCE)
     lens_design = models.CharField(max_length=20, blank=True, help_text="single_vision / bifocal / progressive…")
     lens_index = models.CharField(max_length=5, blank=True)
@@ -170,3 +183,29 @@ class Prescription(VoidableModel):
 
     def __str__(self):
         return f"Rx {self.patient} — {self.rx_date}"
+
+    def normalize(self):
+        """Recomputes the minus-cyl copy of both eyes from the entered values."""
+        for eye in ("od", "os"):
+            sph = getattr(self, f"{eye}_sph")
+            if sph is None:
+                values = (None, None, None)
+            else:
+                cyl = getattr(self, f"{eye}_cyl") or Decimal("0")
+                values = to_minus_cyl(sph, cyl, getattr(self, f"{eye}_axis"))
+            for name, value in zip(("sph", "cyl", "axis"), values):
+                setattr(self, f"{eye}_mc_{name}", value)
+
+    def minus_cyl(self, eye):
+        """`(sph, cyl, axis)` of one eye (`"od"`/`"os"`) in minus-cyl form, or None if empty."""
+        sph = getattr(self, f"{eye}_mc_sph")
+        if sph is None:
+            return None
+        return sph, getattr(self, f"{eye}_mc_cyl") or Decimal("0.00"), getattr(self, f"{eye}_mc_axis")
+
+    def save(self, *args, **kwargs):
+        self.normalize()
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = {*update_fields, *(f"{e}_mc_{n}" for e in ("od", "os") for n in ("sph", "cyl", "axis"))}
+        super().save(*args, **kwargs)

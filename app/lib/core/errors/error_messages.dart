@@ -28,6 +28,7 @@ const Map<String, String> _messagesByCode = {
   'no_lab_membership': AppStrings.errNoLabMembership,
   'membership_inactive': AppStrings.errMembershipInactive,
   'owner_required': AppStrings.errOwnerRequired,
+  'inventory_permission_required': AppStrings.errInventoryPermission,
   'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
   'cannot_modify_self': AppStrings.errCannotModifySelf,
   'username_taken': AppStrings.errUsernameTaken,

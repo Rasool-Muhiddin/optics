@@ -1,13 +1,16 @@
 """
 Prescription validation (CLAUDE.md §5):
 SPH −30..+30, CYL −10..+10, ADD +0.50..+4.00 (0.25 steps); AXIS 1..180 required iff CYL ≠ 0;
-prism 0.25..20 needs a base; PD within human ranges. Plus-cyl input is transposed to minus-cyl.
+prism 0.25..20 needs a base; PD within human ranges.
+
+The Rx is kept exactly as entered (plus-cyl stays plus-cyl); `Prescription.save()` keeps a
+normalized minus-cyl copy (`od_mc_*` / `os_mc_*`) for internal use (stock matching, comparisons).
 """
 
 from decimal import Decimal
 
 from apps.catalog.attributes import LENS_COATINGS, LENS_DESIGNS, LENS_INDEXES
-from apps.core.optics import PowerError, check_add, check_axis, check_cyl, check_sph, check_step, to_decimal, transpose
+from apps.core.optics import PowerError, check_add, check_axis, check_cyl, check_sph, check_step, to_decimal
 
 PRISM_RANGE = (Decimal("0.25"), Decimal("20"))
 PD_RANGE = (Decimal("40"), Decimal("85"))
@@ -63,8 +66,6 @@ def clean_rx(data):
             )
             if not values["base"]:
                 errors[f("base")] = ("Prism needs a base direction.", "base_required")
-        if sph is not None and cyl is not None and axis is not None and cyl > 0:
-            sph, cyl, axis = transpose(sph, cyl, axis)
         out[f("sph")] = sph
         out[f("cyl")] = None if cyl is None else (cyl or Decimal("0.00"))
         out[f("axis")] = axis

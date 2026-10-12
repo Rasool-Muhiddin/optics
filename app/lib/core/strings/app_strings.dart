@@ -85,6 +85,8 @@ class AppStrings {
   static const String errNoLabMembership = 'هذا الحساب غير مرتبط بأي مختبر.';
   static const String errMembershipInactive = 'تم إيقاف حسابك في المختبر.';
   static const String errOwnerRequired = 'هذا الإجراء متاح لمالك المختبر فقط.';
+  static const String errInventoryPermission =
+      'إدارة المخزون (الأصناف وإدخالات المخزون) متاحة للمالك أو لمن لديه صلاحية إدارة المخزون.';
   static const String errFeatureNotInPlan = 'هذه الميزة غير مشمولة في اشتراكك الحالي.';
   static const String errCannotModifySelf = 'لا يمكنك إيقاف حسابك أو تغيير صلاحيتك بنفسك.';
   static const String errUsernameTaken = 'اسم المستخدم مستخدم مسبقاً.';
@@ -289,7 +291,10 @@ class AppStrings {
   static const String prescribedBy = 'الطبيب / الجهة';
   static const String signature = 'التوقيع';
   static const String transpose = 'تحويل الأسطوانة (±)';
-  static const String transposeHint = 'تحويل الوصفة بين صيغة الأسطوانة الموجبة والسالبة';
+  static const String transposeHint =
+      'تحويل الوصفة بين صيغة الأسطوانة الموجبة والسالبة (تُحفظ الوصفة وتُطبع كما أُدخلت)';
+  static const String matchRxPowers = 'اختيار القوى المطابقة للوصفة';
+  static const String matchRxPartial = 'لا توجد قوة مطابقة في المخزون لإحدى العينين أو كلتيهما.';
   static const String pdDistance = 'PD بعيد';
   static const String pdNear = 'PD قريب';
   static const String pdRight = 'PD يمين';

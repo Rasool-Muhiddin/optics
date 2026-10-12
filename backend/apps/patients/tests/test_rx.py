@@ -38,9 +38,9 @@ class RxValidationTests(SimpleTestCase):
         self.assertEqual(codes({"od_sph": "-1", "od_cyl": "-1", "od_axis": 181}), {"od_axis": "invalid_axis"})
         self.assertEqual(codes({"od_sph": "-1", "od_axis": 45}), {})
 
-    def test_plus_cyl_is_stored_as_minus_cyl(self):
+    def test_plus_cyl_is_kept_as_entered(self):
         out = clean_rx({"od_sph": "-1.00", "od_cyl": "+2.00", "od_axis": 90})
-        self.assertEqual((out["od_sph"], out["od_cyl"], out["od_axis"]), (D("1.00"), D("-2.00"), 180))
+        self.assertEqual((out["od_sph"], out["od_cyl"], out["od_axis"]), (D("-1.00"), D("2.00"), 90))
 
     def test_sph_required_when_eye_used_and_one_eye_minimum(self):
         self.assertEqual(codes({"od_cyl": "-1", "od_axis": 10}), {"od_sph": "sph_required"})
