@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../core/config/app_config.dart';
+import 'secret_store.dart';
 
 /// Where [AuthStorage] persists its values.
 abstract class AuthStore {
@@ -63,22 +64,54 @@ class MemoryAuthStore implements AuthStore {
 /// - `device_id`: random, generated once per installation.
 /// - `device_key` + `lab_name`: from `desktop/activate/`.
 /// - `token` + `session`: from `desktop/login/` (session JSON lets the app start offline).
+///
+/// **Secrets** (`device_key`, `token`) live in a [SecretStore] (DPAPI / Keychain / libsecret);
+/// `optics_auth.json` keeps only non-secret values. Files written by older versions are
+/// migrated once on [open]: the secrets move to the store and are removed from the file.
 class AuthStorage {
-  AuthStorage._(this._store, this._data);
+  AuthStorage._(this._store, this._data, this._secretStore, this._secrets);
+
+  static const secretKeys = ['device_key', 'token'];
 
   final AuthStore _store;
   final Map<String, dynamic> _data;
+  final SecretStore _secretStore;
 
-  static Future<AuthStorage> open([AuthStore? store]) async {
+  /// In-memory copy of the secrets (getters stay synchronous).
+  final Map<String, String> _secrets;
+
+  /// Without [store] the real files + the OS secret store are used; with a [store] (tests)
+  /// the secrets default to memory unless [secrets] is given.
+  static Future<AuthStorage> open([AuthStore? store, SecretStore? secrets]) async {
     final backing = store ?? await FileAuthStore.inAppSupportDir();
-    return AuthStorage._(backing, await backing.load());
+    final secretStore =
+        secrets ?? (store == null ? await SecretStore.platform() : MemorySecretStore());
+    final data = await backing.load();
+    final values = <String, String>{};
+    var migrated = false;
+    for (final key in secretKeys) {
+      final plain = data.remove(key);
+      if (plain is String && plain.isNotEmpty) {
+        await secretStore.write(key, plain); // one-time migration from the plain file
+        values[key] = plain;
+        migrated = true;
+      } else {
+        final stored = await secretStore.read(key);
+        if (stored != null) values[key] = stored;
+      }
+    }
+    if (migrated) await backing.save(data); // the plain copies are gone from disk
+    return AuthStorage._(backing, data, secretStore, values);
   }
 
+  /// False only on the Linux fallback without libsecret.
+  bool get secretsEncrypted => _secretStore.isEncrypted;
+
   String? get deviceId => _data['device_id'] as String?;
-  String? get deviceKey => _data['device_key'] as String?;
+  String? get deviceKey => _secrets['device_key'];
   String? get activatedLabName => _data['lab_name'] as String?;
   int? get activatedLabId => _data['lab_id'] as int?;
-  String? get token => _data['token'] as String?;
+  String? get token => _secrets['token'];
   Map<String, dynamic>? get session => _data['session'] as Map<String, dynamic>?;
 
   bool get isActivated => deviceKey != null;
@@ -104,20 +137,19 @@ class AuthStorage {
     required String deviceKey,
     required int labId,
     required String labName,
-  }) {
+  }) async {
     _data
-      ..['device_key'] = deviceKey
       ..['lab_id'] = labId
       ..['lab_name'] = labName
-      ..remove('token')
       ..remove('session');
+    await _setSecret('device_key', deviceKey);
+    await _setSecret('token', null);
     return _persist();
   }
 
-  Future<void> saveSession({required String token, required Map<String, dynamic> session}) {
-    _data
-      ..['token'] = token
-      ..['session'] = session;
+  Future<void> saveSession({required String token, required Map<String, dynamic> session}) async {
+    _data['session'] = session;
+    await _setSecret('token', token);
     return _persist();
   }
 
@@ -126,22 +158,26 @@ class AuthStorage {
     return _persist();
   }
 
-  Future<void> clearSession() {
-    _data
-      ..remove('token')
-      ..remove('session');
+  Future<void> clearSession() async {
+    _data.remove('session');
+    await _setSecret('token', null);
     return _persist();
   }
 
   /// Forgets the activation (keeps `device_id`, so re-activating reuses the device slot).
-  Future<void> clearActivation() {
+  Future<void> clearActivation() async {
     _data
-      ..remove('device_key')
       ..remove('lab_id')
       ..remove('lab_name')
-      ..remove('token')
       ..remove('session');
+    await _setSecret('device_key', null);
+    await _setSecret('token', null);
     return _persist();
+  }
+
+  Future<void> _setSecret(String key, String? value) async {
+    value == null ? _secrets.remove(key) : _secrets[key] = value;
+    await _secretStore.write(key, value);
   }
 
   Future<void> _persist() => _store.save(_data);
