@@ -34,4 +34,5 @@ class CacheTables {
   static const String labDoctorLinks = 'lab_doctor_links';
   static const String doctorSideLinks = 'doctor_side_links';
   static const String doctorSideReferrals = 'doctor_side_referrals';
+  static const String dashboard = 'dashboard';
 }

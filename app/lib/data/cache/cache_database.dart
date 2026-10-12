@@ -67,6 +67,8 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v8 (P8): last dashboard (single row, id 1).
+    (db) => db.execute(CacheDao.createTableSql('dashboard')),
   ];
 
   static int get schemaVersion => migrations.length;

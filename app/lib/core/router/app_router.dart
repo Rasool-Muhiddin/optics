@@ -20,6 +20,8 @@ import '../../screens/patients/patients_screen.dart';
 import '../../screens/pos/pos_screen.dart';
 import '../../screens/referrals/referral_detail_screen.dart';
 import '../../screens/referrals/referrals_screen.dart';
+import '../../screens/reports/reports_screen.dart';
+import '../../screens/settings/settings_screen.dart';
 import '../../screens/sales/credit_customers_screen.dart';
 import '../../screens/sales/invoice_detail_screen.dart';
 import '../../screens/sales/invoices_screen.dart';
@@ -67,6 +69,8 @@ const _builtSections = {
   AppRoutes.jobs,
   AppRoutes.orders,
   AppRoutes.referrals,
+  AppRoutes.reports,
+  AppRoutes.settings,
 };
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -162,6 +166,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(path: AppRoutes.reports, builder: (context, state) => const ReportsScreen()),
+          GoRoute(path: AppRoutes.settings, builder: (context, state) => const SettingsScreen()),
           GoRoute(
             path: AppRoutes.inventory,
             builder: (context, state) => const InventoryScreen(),

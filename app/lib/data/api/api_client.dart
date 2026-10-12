@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -47,6 +48,59 @@ class ApiClient {
   Future<dynamic> patch(String path, {Object? body}) => send('PATCH', path, body: body);
 
   Future<dynamic> delete(String path) => send('DELETE', path);
+
+  /// Raw body of a GET (e.g. a CSV export). Errors map like [send].
+  Future<Uint8List> getBytes(String path, {Map<String, dynamic>? query}) async {
+    final request = http.Request('GET', uri(path, query));
+    final response = await _transport(request);
+    if (response.statusCode >= 200 && response.statusCode < 300) return response.bodyBytes;
+    return await _guard(request, () => _handle(response)) as Uint8List;
+  }
+
+  /// `multipart/form-data` (file uploads, e.g. the lab logo). [files]: field → (bytes, filename).
+  Future<dynamic> multipart(
+    String method,
+    String path, {
+    Map<String, String> fields = const {},
+    Map<String, ({List<int> bytes, String filename})> files = const {},
+  }) async {
+    final request = http.MultipartRequest(method, uri(path))..fields.addAll(fields);
+    for (final f in files.entries) {
+      request.files.add(
+        http.MultipartFile.fromBytes(f.key, f.value.bytes, filename: f.value.filename),
+      );
+    }
+    final response = await _transport(request);
+    return _guard(request, () => _handle(response));
+  }
+
+  /// Adds auth headers, sends, and maps transport failures to [NetworkException].
+  Future<http.Response> _transport(http.BaseRequest request, {Duration? timeout}) async {
+    request.headers[HttpHeaders.acceptHeader] = 'application/json';
+    final token = await tokenReader?.call();
+    if (token != null && token.isNotEmpty) {
+      request.headers[HttpHeaders.authorizationHeader] = 'Token $token';
+    }
+    try {
+      final streamed = await _http.send(request).timeout(timeout ?? this.timeout);
+      return await http.Response.fromStream(streamed).timeout(timeout ?? this.timeout);
+    } on TimeoutException {
+      throw const NetworkException(timeout: true);
+    } on SocketException catch (e) {
+      throw NetworkException(detail: e.message);
+    } on http.ClientException catch (e) {
+      throw NetworkException(detail: e.message);
+    }
+  }
+
+  dynamic _guard(http.BaseRequest request, dynamic Function() handle) {
+    try {
+      return handle();
+    } on UnauthorizedException catch (e) {
+      if (request.headers.containsKey(HttpHeaders.authorizationHeader)) onUnauthorized?.call(e);
+      rethrow;
+    }
+  }
 
   Uri uri(String path, [Map<String, dynamic>? query]) {
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;

@@ -136,6 +136,13 @@ class AuthRepository extends BaseRepository {
     }
   }
 
+  /// Reloads the session from the server (e.g. after the owner changed the lab settings).
+  Future<Session> refresh() => write(() async {
+    final session = await api.me();
+    await storage.updateSession(session.raw);
+    return session;
+  });
+
   /// Revokes the token on the server when reachable; always forgets it locally.
   Future<void> logout() async {
     if (storage.token != null && !connectivity.isOffline) {

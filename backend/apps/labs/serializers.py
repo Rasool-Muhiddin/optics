@@ -10,15 +10,41 @@ from .models import Lab, LabUser
 
 
 class LabSettingsSerializer(serializers.ModelSerializer):
-    """What the desktop needs about its lab (print header, currency…). No internal fields."""
+    """
+    What the desktop needs about its lab (print header, currency…). No internal fields.
+    The owner edits it with `PATCH lab/` — JSON, or multipart to upload `logo` (PNG/JPEG,
+    ≤ 1 MB); `remove_logo=true` clears the logo.
+    """
+
+    MAX_LOGO_BYTES = 1024 * 1024
+
+    remove_logo = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Lab
         fields = [
             "id", "name", "phone", "address", "logo", "currency", "print_header", "print_footer",
-            "max_discount_percent",
+            "max_discount_percent", "remove_logo",
         ]
         read_only_fields = ["id"]
+
+    def validate_name(self, value):
+        value = " ".join(value.split())
+        if not value:
+            raise serializers.ValidationError("Required.", code="required")
+        return value
+
+    def validate_logo(self, value):
+        if value and value.size > self.MAX_LOGO_BYTES:
+            raise serializers.ValidationError("The logo must be at most 1 MB.", code="logo_too_large")
+        return value
+
+    def update(self, instance, validated_data):
+        if validated_data.pop("remove_logo", False) and "logo" not in validated_data:
+            if instance.logo:
+                instance.logo.delete(save=False)
+            validated_data["logo"] = ""
+        return super().update(instance, validated_data)
 
 
 class LabUserSerializer(serializers.ModelSerializer):

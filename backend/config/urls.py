@@ -21,6 +21,7 @@ api_v1 = [
     path("purchasing/", include("apps.purchasing.urls")),
     path("doctor/", include(doctor_urlpatterns)),
     path("referrals/", include(referral_urlpatterns)),
+    path("reports/", include("apps.reports.urls")),
 ]
 
 urlpatterns = [

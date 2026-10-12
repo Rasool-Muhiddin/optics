@@ -11,6 +11,7 @@ class NavItem {
     required this.label,
     required this.icon,
     this.ownerOnly = false,
+    this.reportsOnly = false,
     this.feature,
   });
 
@@ -18,10 +19,15 @@ class NavItem {
   final String label;
   final IconData icon;
   final bool ownerOnly;
+
+  /// Owner or staff with the cost permission (reports).
+  final bool reportsOnly;
   final String? feature;
 
   bool visibleTo(Session session) =>
-      (!ownerOnly || session.isOwner) && (feature == null || session.hasFeature(feature!));
+      (!ownerOnly || session.isOwner) &&
+      (!reportsOnly || session.canViewReports) &&
+      (feature == null || session.hasFeature(feature!));
 }
 
 /// Sidebar order. Screens are added per roadmap phase; until then the path shows "coming soon".
@@ -56,7 +62,7 @@ const List<NavItem> navItems = [
     path: AppRoutes.reports,
     label: AppStrings.navReports,
     icon: Icons.bar_chart,
-    ownerOnly: true,
+    reportsOnly: true,
   ),
   NavItem(
     path: AppRoutes.users,

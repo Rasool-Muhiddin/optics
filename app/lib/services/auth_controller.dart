@@ -79,6 +79,12 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(LoggedIn(session));
   }
 
+  /// Re-reads the lab session (lab name, logo, print header…) after settings changed.
+  Future<void> refreshSession() async {
+    if (state.value is! LoggedIn) return;
+    state = AsyncData(LoggedIn(await _repo.refresh()));
+  }
+
   Future<void> doctorLogin(String username, String password) async {
     final session = await _repo.doctorLogin(username, password);
     state = AsyncData(DoctorLoggedIn(session));

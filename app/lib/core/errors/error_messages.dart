@@ -97,6 +97,8 @@ const Map<String, String> _messagesByCode = {
   'cannot_answer_own_request': AppStrings.errCannotAnswerOwnRequest,
   'not_linked': AppStrings.errNotLinked,
   'lab_unavailable': AppStrings.errLabUnavailable,
+  // Reports & settings (P8)
+  'logo_too_large': AppStrings.errLogoTooLarge,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

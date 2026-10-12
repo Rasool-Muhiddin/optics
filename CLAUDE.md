@@ -506,6 +506,39 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   `ReferralView`, `RxTableView`. Cache v7: `referrals, lab_doctor_links, doctor_side_links,
   doctor_side_referrals`.
 
+### Decisions recorded in P8
+- **`reports` app** (no models; `reports/services.py` aggregates, all filtered by lab; cancelled invoices
+  excluded; dates are local (`Asia/Baghdad`), default range = this month so far, `?date_from&date_to`
+  inclusive, `group=day|month`). Every report = `{columns, rows, totals, …extra sections}` so the desktop renders
+  any report as a table and the same rows export to CSV.
+- `GET reports/dashboard/` (any member): today (invoices, sales, collected = non-void payments received today),
+  this month (invoices, sales, `profit` only with cost permission), credit (customers, balance), jobs
+  (open = active + ready, overdue, ready), low-stock product count, supplier orders (open, late), referrals open
+  (only with plan `doctor_linking`), sales of the last 7 days. Cached offline (cache v8 `dashboard`, one row).
+- **Reports are for the owner and staff with `can_view_costs`** (§4: reports are the owner's; profit needs the
+  cost permission) — `ReportAccess`, code `cost_permission_required`; the sidebar item uses
+  `NavItem.reportsOnly` (`Session.canViewReports`). Reports: `sales/` (+ payments by method, top 10 products),
+  `profit/` (revenue − cost snapshots per period, by product kind — kind rows are before invoice-level
+  discounts; `estimated_cost_lines` counts lines still at the reference price), `credit/` (per patient +
+  ageing 0–30/31–60/61–90/91+ days by oldest unpaid invoice), `stock/` (low stock; `all=true` every
+  stock-tracked product; value at weighted average + value by kind incl. lens variants), `jobs/` (overdue
+  list + counts per status), `suppliers/` (balances + open orders; `all=true` includes zero balances).
+- **Export**: `?export=csv` on any report, server-side gate plan `report_export` (`feature_not_in_plan`;
+  viewing stays allowed). CSV = main table + totals, UTF-8 with BOM, Arabic headers/kind/status labels
+  (`reports/csv_labels.py` — the CSV is a user document; the JSON API keeps stable keys). Flutter saves it to
+  the Downloads folder (`fileSaverProvider`, documents folder fallback) and shows the path; the button is
+  disabled when the plan lacks the flag. `ApiClient.getBytes` for non-JSON downloads.
+- **Lab settings screen** `/settings` (owner only, existing `PATCH lab/`): name, phone, address, print header
+  (multi-line) / footer, `max_discount_percent` (0–100), logo upload (multipart, PNG/JPEG ≤ 1 MB →
+  `logo_too_large`; `remove_logo=true` clears it). `ApiClient.multipart`; file chosen with the official
+  **`file_selector`** plugin (new dependency, desktop-supported; `logoPickerProvider` is the test seam). After
+  saving, `AuthController.refreshSession()` re-reads `auth/me/` so the sidebar and print headers update.
+  `LabInfo.maxDiscountPercent` added. Currency stays as is (not on the screen).
+- Flutter: home = dashboard (KPI cards linking to their sections, red border when something is overdue/late/
+  low, 7-day bar chart drawn with plain containers — no chart package) + the old session card; `/reports`
+  (report chips, date range + day/month for sales/profit, "show all" for stock/suppliers, generic
+  `ReportTableCard`, totals, extra sections).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -540,7 +573,7 @@ Keep each session to one roadmap item; commit with clear messages.
 - [x] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
 - [x] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.
-- [ ] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,
+- [x] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,
       supplier balances; export gated by plan.
 - [ ] **P9 Offline read cache** completion across all domains + offline banners.
 - [ ] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.

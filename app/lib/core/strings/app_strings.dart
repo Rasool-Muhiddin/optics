@@ -644,4 +644,97 @@ class AppStrings {
   static const String errCannotAnswerOwnRequest = 'لا يمكنك الرد على طلب أرسلته بنفسك.';
   static const String errNotLinked = 'لست مرتبطاً بهذا المختبر.';
   static const String errLabUnavailable = 'المختبر غير متاح حالياً.';
+
+  // Dashboard & reports (P8)
+  static const String dashboard = 'لوحة المتابعة';
+  static const String todaySales = 'مبيعات اليوم';
+  static const String todayCollected = 'المقبوض اليوم';
+  static const String monthSales = 'مبيعات الشهر';
+  static const String monthProfit = 'ربح الشهر';
+  static const String creditOutstanding = 'ديون الزبائن';
+  static const String openJobs = 'طلبات زبائن مفتوحة';
+  static const String readyJobs = 'جاهزة للتسليم';
+  static const String lowStockItems = 'أصناف منخفضة';
+  static const String openSupplierOrders = 'طلبات موردين مفتوحة';
+  static const String openReferrals = 'إحالات جديدة';
+  static const String last7Days = 'المبيعات آخر ٧ أيام';
+  static const String invoicesCountShort = 'فاتورة';
+  static const String reportsTitle = 'التقارير';
+  static const String exportCsv = 'تصدير CSV';
+  static const String exportedTo = 'تم حفظ الملف في';
+  static const String exportNotInPlan = 'التصدير غير مشمول في اشتراكك';
+  static const String dateFrom = 'من تاريخ';
+  static const String dateTo = 'إلى تاريخ';
+  static const String groupByDay = 'يومي';
+  static const String groupByMonth = 'شهري';
+  static const String showAll = 'عرض الكل';
+  static const String totals = 'المجاميع';
+  static const String paymentsByMethod = 'المقبوضات حسب طريقة الدفع';
+  static const String topProducts = 'الأكثر مبيعاً';
+  static const String byKind = 'حسب النوع (قبل خصم الفاتورة)';
+  static const String stockValueByKind = 'قيمة المخزون حسب النوع';
+  static const String estimatedCostLines = 'أسطر بكلفة تقديرية (عدسات لم تُستلم من المورد بعد)';
+  static const String countsByStatus = 'العدد حسب الحالة';
+
+  static const Map<String, String> reportNames = {
+    'sales': 'المبيعات',
+    'profit': 'الأرباح',
+    'credit': 'ديون الزبائن',
+    'stock': 'المخزون المنخفض',
+    'jobs': 'الطلبات المتأخرة',
+    'suppliers': 'أرصدة الموردين',
+  };
+
+  /// Column / total keys of the report tables.
+  static const Map<String, String> reportColumns = {
+    'period': 'الفترة',
+    'invoices': 'الفواتير',
+    'subtotal': 'قبل الخصم',
+    'discount': 'الخصم',
+    'total': 'الإجمالي',
+    'balance': 'المتبقي',
+    'revenue': 'المبيعات',
+    'cost': 'الكلفة',
+    'profit': 'الربح',
+    'margin': 'الهامش %',
+    'name': 'الاسم',
+    'phone': 'الهاتف',
+    'oldest': 'أقدم فاتورة',
+    'days': 'الأيام',
+    'customers': 'الزبائن',
+    'kind': 'النوع',
+    'brand': 'الماركة',
+    'quantity': 'الكمية',
+    'reorder_level': 'حد الطلب',
+    'value': 'القيمة',
+    'products': 'الأصناف',
+    'number': 'الرقم',
+    'patient': 'المراجع',
+    'status': 'الحالة',
+    'promised_date': 'موعد التسليم',
+    'days_late': 'أيام التأخير',
+    'overdue': 'المتأخرة',
+    'open_orders': 'طلبات مفتوحة',
+    'suppliers': 'الموردون',
+    'method': 'الطريقة',
+    'count': 'العدد',
+    'amount': 'المبلغ',
+    'qty': 'الكمية',
+    'range': 'العمر (يوم)',
+  };
+  static const String creditAgeing = 'أعمار الديون (حسب أقدم فاتورة)';
+
+  // Lab settings (P8)
+  static const String settingsTitle = 'إعدادات المختبر';
+  static const String labName = 'اسم المختبر';
+  static const String logo = 'الشعار';
+  static const String chooseLogo = 'اختيار شعار';
+  static const String removeLogo = 'حذف الشعار';
+  static const String logoHint = 'صورة PNG أو JPG بحجم 1 ميغابايت كحد أقصى.';
+  static const String printHeader = 'ترويسة الطباعة (أسطر تحت اسم المختبر)';
+  static const String printFooter = 'تذييل الطباعة';
+  static const String maxDiscountPercent = 'أقصى خصم للموظفين (%)';
+  static const String maxDiscountHint = 'الخصم الأعلى من هذه النسبة يحتاج المالك.';
+  static const String settingsSaved = 'تم حفظ الإعدادات.';
+  static const String errLogoTooLarge = 'حجم الشعار أكبر من 1 ميغابايت.';
 }

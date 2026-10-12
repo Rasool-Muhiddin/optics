@@ -32,6 +32,9 @@ class Session {
   /// Owner, or staff with `can_manage_inventory` (products + stock entries).
   bool get canManageInventory => membership.isOwner || membership.canManageInventory;
 
+  /// Owner or staff with `can_view_costs`: may open the reports (server enforces).
+  bool get canViewReports => membership.isOwner || membership.canViewCosts;
+
   /// UI hint only — the server enforces plan features.
   bool hasFeature(String flag) => plan.features[flag] ?? false;
 }
@@ -94,6 +97,7 @@ class LabInfo {
     this.currency = 'IQD',
     this.printHeader = '',
     this.printFooter = '',
+    this.maxDiscountPercent = '10',
   });
 
   factory LabInfo.fromJson(Map<String, dynamic> json) => LabInfo(
@@ -105,6 +109,7 @@ class LabInfo {
     currency: json['currency'] as String? ?? 'IQD',
     printHeader: json['print_header'] as String? ?? '',
     printFooter: json['print_footer'] as String? ?? '',
+    maxDiscountPercent: json['max_discount_percent']?.toString() ?? '10',
   );
 
   final int id;
@@ -115,6 +120,9 @@ class LabInfo {
   final String currency;
   final String printHeader;
   final String printFooter;
+
+  /// Staff discount limit (% of the invoice), as the server sent it (`"10.00"`).
+  final String maxDiscountPercent;
 }
 
 class PlanInfo {
