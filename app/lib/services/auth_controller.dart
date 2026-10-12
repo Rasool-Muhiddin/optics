@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
 import '../data/repositories/auth_repository.dart';
+import '../models/doctors.dart';
 import '../models/session.dart';
 import 'auth_storage.dart';
 
@@ -32,6 +33,14 @@ class LoggedIn extends AuthState {
   final bool restoredOffline;
 }
 
+/// A doctor account is logged in (doctor mode: its own sidebar, no lab data).
+class DoctorLoggedIn extends AuthState {
+  const DoctorLoggedIn(this.session, {this.restoredOffline = false});
+
+  final DoctorSession session;
+  final bool restoredOffline;
+}
+
 /// Drives the auth flow; the router redirects on its state. Errors from
 /// [activate] / [login] are rethrown for the form to show (state stays as is).
 class AuthController extends AsyncNotifier<AuthState> {
@@ -40,6 +49,15 @@ class AuthController extends AsyncNotifier<AuthState> {
 
   @override
   Future<AuthState> build() async {
+    if (_storage.isDoctorSession) {
+      try {
+        final restored = await _repo.restoreDoctor();
+        final session = restored.session;
+        if (session != null) return DoctorLoggedIn(session, restoredOffline: restored.offline);
+      } catch (_) {
+        // Fall through to the lab flow.
+      }
+    }
     if (!_storage.isActivated) return const NeedsActivation();
     try {
       final restored = await _repo.restore();
@@ -61,9 +79,14 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(LoggedIn(session));
   }
 
+  Future<void> doctorLogin(String username, String password) async {
+    final session = await _repo.doctorLogin(username, password);
+    state = AsyncData(DoctorLoggedIn(session));
+  }
+
   Future<void> logout() async {
     await _repo.logout();
-    state = AsyncData(_loggedOut());
+    state = AsyncData(_afterLogout());
   }
 
   /// Back to the activation screen (e.g. the lab got a new activation code).
@@ -74,18 +97,27 @@ class AuthController extends AsyncNotifier<AuthState> {
 
   /// The server rejected our token mid-session (revoked, device deactivated…).
   Future<void> sessionExpired() async {
-    if (state.value is! LoggedIn) return;
+    final current = state.value;
+    if (current is! LoggedIn && current is! DoctorLoggedIn) return;
     await _storage.clearSession();
-    state = AsyncData(
-      _loggedOut(error: const ApiException(statusCode: 401, code: 'not_authenticated')),
-    );
+    const error = ApiException(statusCode: 401, code: 'not_authenticated');
+    state = AsyncData(current is DoctorLoggedIn ? _afterLogout() : _loggedOut(error: error));
   }
+
+  /// After a logout: the lab login if this installation is activated, else activation.
+  AuthState _afterLogout() => _storage.isActivated ? _loggedOut() : const NeedsActivation();
 
   LoggedOut _loggedOut({AppException? error}) =>
       LoggedOut(labName: _storage.activatedLabName ?? '', error: error);
 }
 
 final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(AuthController.new);
+
+/// The logged-in doctor, or null.
+final doctorSessionProvider = Provider<DoctorSession?>((ref) {
+  final state = ref.watch(authControllerProvider).value;
+  return state is DoctorLoggedIn ? state.session : null;
+});
 
 /// The current session, or null when logged out.
 final sessionProvider = Provider<Session?>((ref) {

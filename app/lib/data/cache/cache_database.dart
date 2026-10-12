@@ -56,6 +56,17 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v7 (P7): referrals and doctor links (lab side) + doctor mode tables.
+    (db) async {
+      for (final table in const [
+        'referrals',
+        'lab_doctor_links',
+        'doctor_side_links',
+        'doctor_side_referrals',
+      ]) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
   ];
 
   static int get schemaVersion => migrations.length;

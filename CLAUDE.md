@@ -466,6 +466,46 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   line per eye described from the Rx) and the job's supplier orders. `SupplierOrder.ageOn/lateOn` re-evaluate
   cached rows offline.
 
+### Decisions recorded in P7
+- **Doctor accounts**: `doctors.DoctorProfile` (OneToOne `user`, name, specialty, clinic, phone, address,
+  `link_code`, `is_active`) created by Tera in Django Admin or `python manage.py create_doctor "<name>"
+  <username> <password>`. A user is either a lab member or a doctor (both `clean()`s refuse the other).
+  Doctors log in with `POST desktop/doctor-login/ {username, password}` (throttled like lab login) **without
+  device activation** — they are not tied to a lab, so device limits do not apply; the token has no device.
+  `GET doctor/me/` = doctor session (`role: "doctor"`, `user`, `doctor`). Permission `doctors.permissions.IsDoctor`
+  (`not_a_doctor`, `doctor_inactive`). Doctor tokens get 403 on every lab endpoint (no membership → `LabAccess`).
+- **Finding each other = link codes** (8 unambiguous chars, `apps/core/codes.py`): `DoctorProfile.link_code`
+  (shown in doctor mode) and `Lab.doctor_link_code` (owner only: `GET/POST referrals/links/code/`, POST makes a
+  new one; never in lab settings/session; migration `labs.0004` fills existing labs). No directory of labs or
+  doctors is exposed. `DoctorLabLink` (unique lab+doctor; `requested_by` doctor|lab): `POST doctor/links/
+  {code}` or `POST referrals/links/ {code}` (owner); only the other side answers (`…/{id}/accept|reject/`,
+  `cannot_answer_own_request`); both sides asking = accepted; either side `revoke`s (also withdraws a pending
+  request); asking again after reject/revoke reopens the same row. Lab-side link management is owner-only.
+- **Gating**: every lab-side endpoint (`referrals/…`) needs plan `doctor_linking` (`requires_feature`); a doctor
+  cannot request/accept a link with, or send to, a lab whose plan lacks it (`feature_not_in_plan`), or that is
+  inactive / unlicensed (`lab_unavailable`). Sending needs an **accepted** link (`not_linked`).
+- **Referral** (lab-scoped, `doctor` FK): patient snapshot (name, age, gender, phone), exam (date, complaint,
+  diagnosis, details, VA, IOP), `prescription_data` JSON validated with the same `clean_rx` rules and kept as
+  entered (decimals as strings), `notes`. Status sent → received → in_progress → completed, or rejected (with
+  reason) from sent/received. Lab actions (any member): `receive/`, `accept/ {patient?}`, `reject/ {reason}`,
+  `complete/`, `GET referrals/summary/`. **Accept** (one transaction) creates a Patient (age → estimated birth
+  date) or attaches to the given existing patient, an `EyeExam` (`examiner_name` "د. <doctor>",
+  `created_by` = lab user) and, if sent, its `Prescription` (`prescribed_by` = doctor); patient → `exam_done`.
+  Referrals are not editable after sending; read-only in Django Admin.
+- **What the doctor sees**: own links (lab name/phone/address) and own referrals (what they sent + status,
+  timestamps, reject reason, lab name). Never the lab's patient id/exam/handler, invoices, prices or any
+  unlinked lab. Tests walk every lab route with a doctor token (403/404/405, no prices or patient names) and
+  scan doctor responses for price/cost/invoice keys.
+- Flutter: `DoctorLoggedIn` auth state (`AuthStorage.isDoctorSession` = stored session has `role: doctor`;
+  activation is not needed or touched); `/doctor-login` reachable from the activation and login screens
+  ("أنا طبيب"); doctor mode has its own `DoctorShell` sidebar (`/doctor` referrals with the RxForm,
+  `/doctor/labs` link code + links); router confines doctors to `/doctor…` and labs away from it. Lab side
+  `/referrals` (sidebar item gated by the plan feature): inbox (open by default) + "الأطباء المرتبطون" tab
+  (owner: lab code, request by doctor code, accept/reject/revoke); `/referrals/:id` with receive / accept (new
+  or existing patient via the patient picker) / reject / complete / open patient file. Shared `LinksPanel`,
+  `ReferralView`, `RxTableView`. Cache v7: `referrals, lab_doctor_links, doctor_side_links,
+  doctor_side_referrals`.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -498,7 +538,7 @@ Keep each session to one roadmap item; commit with clear messages.
       screen, credit customers list, invoice print (A4/A5 + thermal).
 - [x] **P5 Customer jobs**: lifecycle + status log, link to invoice/prescription. Flutter: jobs board.
 - [x] **P6 Supplier orders**: suppliers, orders, receiving → stock, payments. Flutter: pending orders screen.
-- [ ] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
+- [x] **P7 Doctor linking**: doctor accounts, links, referrals, accept → patient/exam/Rx in lab.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.
 - [ ] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,
       supplier balances; export gated by plan.

@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../screens/activation/activation_screen.dart';
+import '../../screens/doctor/doctor_labs_screen.dart';
+import '../../screens/doctor/doctor_login_screen.dart';
+import '../../screens/doctor/doctor_referrals_screen.dart';
+import '../../screens/doctor/doctor_shell.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/inventory/inventory_screen.dart';
 import '../../screens/inventory/product_detail_screen.dart';
@@ -14,6 +18,8 @@ import '../../screens/orders/orders_screen.dart';
 import '../../screens/patients/patient_detail_screen.dart';
 import '../../screens/patients/patients_screen.dart';
 import '../../screens/pos/pos_screen.dart';
+import '../../screens/referrals/referral_detail_screen.dart';
+import '../../screens/referrals/referrals_screen.dart';
 import '../../screens/sales/credit_customers_screen.dart';
 import '../../screens/sales/invoice_detail_screen.dart';
 import '../../screens/sales/invoices_screen.dart';
@@ -33,11 +39,17 @@ String? authRedirect(AuthState? state, String location) {
     case null:
       return location == AppRoutes.splash ? null : AppRoutes.splash;
     case NeedsActivation():
-      return location == AppRoutes.activate ? null : AppRoutes.activate;
+      return location == AppRoutes.activate || location == AppRoutes.doctorLogin
+          ? null
+          : AppRoutes.activate;
     case LoggedOut():
-      return location == AppRoutes.login ? null : AppRoutes.login;
+      return location == AppRoutes.login || location == AppRoutes.doctorLogin
+          ? null
+          : AppRoutes.login;
+    case DoctorLoggedIn():
+      return AppRoutes.isDoctorArea(location) ? null : AppRoutes.doctorHome;
     case LoggedIn(:final session):
-      if (AppRoutes.isPublic(location)) return AppRoutes.home;
+      if (AppRoutes.isPublic(location) || AppRoutes.isDoctorArea(location)) return AppRoutes.home;
       final item = navItemFor(location) ?? navSectionFor(location);
       if (item != null && !item.visibleTo(session)) return AppRoutes.home;
       return null;
@@ -54,6 +66,7 @@ const _builtSections = {
   AppRoutes.credit,
   AppRoutes.jobs,
   AppRoutes.orders,
+  AppRoutes.referrals,
 };
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -69,6 +82,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: AppRoutes.activate, builder: (context, state) => const ActivationScreen()),
       GoRoute(path: AppRoutes.login, builder: (context, state) => const LoginScreen()),
+      GoRoute(path: AppRoutes.doctorLogin, builder: (context, state) => const DoctorLoginScreen()),
+      ShellRoute(
+        builder: (context, state, child) =>
+            DoctorShell(location: state.matchedLocation, child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.doctorHome,
+            builder: (context, state) => const DoctorReferralsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorLabs,
+            builder: (context, state) => const DoctorLabsScreen(),
+          ),
+        ],
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             MainShell(location: state.matchedLocation, child: child),
@@ -120,6 +148,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (context, state) =>
                     OrderDetailScreen(orderId: int.parse(state.pathParameters['id']!)),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.referrals,
+            builder: (context, state) => const ReferralsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    ReferralDetailScreen(referralId: int.parse(state.pathParameters['id']!)),
               ),
             ],
           ),

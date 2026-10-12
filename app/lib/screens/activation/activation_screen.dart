@@ -5,6 +5,7 @@ import '../../core/errors/error_messages.dart';
 import '../../core/strings/app_strings.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/auth_card.dart';
+import '../doctor/doctor_login_screen.dart';
 
 /// First run: link this installation to a lab with the code Tera provides.
 class ActivationScreen extends ConsumerStatefulWidget {
@@ -74,6 +75,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                   ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator())
                   : const Text(AppStrings.activate),
             ),
+            const DoctorLoginLink(),
           ],
         ),
       ),

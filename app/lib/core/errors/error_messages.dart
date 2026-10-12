@@ -88,6 +88,15 @@ const Map<String, String> _messagesByCode = {
   'cost_permission_required': AppStrings.errCostPermission,
   'job_required': AppStrings.errJobRequired,
   'invalid_job': AppStrings.errInvalidJob,
+  // Doctor linking (P7)
+  'not_a_doctor': AppStrings.errNotADoctor,
+  'doctor_inactive': AppStrings.errDoctorInactive,
+  'invalid_link_code': AppStrings.errInvalidLinkCode,
+  'already_linked': AppStrings.errAlreadyLinked,
+  'already_requested': AppStrings.errAlreadyRequested,
+  'cannot_answer_own_request': AppStrings.errCannotAnswerOwnRequest,
+  'not_linked': AppStrings.errNotLinked,
+  'lab_unavailable': AppStrings.errLabUnavailable,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

@@ -39,7 +39,7 @@ class LabAdmin(admin.ModelAdmin):
     inlines = [LicenseInline, LabUserInline, DeviceInline]
     fieldsets = [
         (None, {"fields": ["name", "phone", "address", "is_active", "notes"]}),
-        ("Activation", {"fields": ["activation_code"]}),
+        ("Activation", {"fields": ["activation_code", "doctor_link_code"]}),
         ("Printing", {"fields": ["logo", "currency", "print_header", "print_footer"]}),
         ("Sales", {"fields": ["max_discount_percent"]}),
         ("Timestamps", {"fields": ["created_at", "updated_at"]}),

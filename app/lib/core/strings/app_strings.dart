@@ -572,4 +572,76 @@ class AppStrings {
   static const String errCostPermission = 'هذا الإجراء يتطلب صلاحية الاطلاع على التكاليف.';
   static const String errJobRequired = 'طلب العدسة الطبية يجب أن يرتبط بطلب زبون.';
   static const String errInvalidJob = 'فقط طلبات العدسات الطبية ترتبط بطلب زبون.';
+
+  // Doctor linking (P7)
+  static const String doctorMode = 'وضع الطبيب';
+  static const String doctorLogin = 'دخول الطبيب';
+  static const String doctorLoginHint = 'حساب الطبيب لا يحتاج إلى تفعيل الجهاز.';
+  static const String iAmDoctor = 'أنا طبيب — دخول حساب طبيب';
+  static const String backToLab = 'العودة إلى دخول المختبر';
+  static const String navDoctorReferrals = 'إحالاتي';
+  static const String navDoctorLabs = 'المختبرات المرتبطة';
+  static const String myLinkCode = 'رمز الربط الخاص بك';
+  static const String myLinkCodeHint =
+      'أعطِ هذا الرمز للمختبر ليرسل طلب ربط، أو أدخل رمز المختبر هنا.';
+  static const String labLinkCode = 'رمز ربط المختبر';
+  static const String labLinkCodeHint =
+      'أعطِ هذا الرمز للأطباء ليرسلوا طلب ربط، أو أدخل رمز الطبيب لإرسال الطلب منك.';
+  static const String regenerateCode = 'رمز جديد';
+  static const String requestLink = 'طلب ربط';
+  static const String enterLabCode = 'رمز المختبر';
+  static const String enterDoctorCode = 'رمز الطبيب';
+  static const String linkedDoctors = 'الأطباء المرتبطون';
+  static const String linkedLabs = 'المختبرات';
+  static const String acceptLink = 'قبول';
+  static const String rejectLink = 'رفض';
+  static const String revokeLink = 'إلغاء الربط';
+  static const String requestedByThem = 'طلب وارد';
+  static const String requestedByUs = 'طلب مُرسل';
+  static const String noLinks = 'لا توجد روابط بعد.';
+  static const String referralsTitle = 'إحالات الأطباء';
+  static const String referralInbox = 'الإحالات الواردة';
+  static const String referral = 'إحالة';
+  static const String newReferral = 'إحالة جديدة';
+  static const String sendReferral = 'إرسال الإحالة';
+  static const String chooseLab = 'المختبر';
+  static const String doctor = 'الطبيب';
+  static const String noReferrals = 'لا توجد إحالات.';
+  static const String referralSent = 'تم إرسال الإحالة.';
+  static const String markReceived = 'تأكيد الاستلام';
+  static const String acceptReferral = 'قبول وإنشاء ملف';
+  static const String acceptIntoNew = 'ملف مراجع جديد';
+  static const String acceptIntoExisting = 'ربط بملف مراجع موجود';
+  static const String rejectReferral = 'رفض الإحالة';
+  static const String completeReferral = 'إنهاء الإحالة';
+  static const String openPatientFile = 'فتح ملف المراجع';
+  static const String doctorNote = 'ملاحظة الطبيب';
+  static const String rejectReason = 'سبب الرفض';
+  static const String openReferralsOnly = 'المفتوحة فقط';
+  static const String noLinkedLabs = 'لا يوجد مختبر مرتبط مقبول. اطلب الربط من شاشة المختبرات.';
+
+  static const Map<String, String> linkStatuses = {
+    'pending': 'بانتظار الرد',
+    'accepted': 'مرتبط',
+    'rejected': 'مرفوض',
+    'revoked': 'ملغى',
+  };
+
+  static const Map<String, String> referralStatuses = {
+    'sent': 'مُرسلة',
+    'received': 'مستلمة',
+    'in_progress': 'قيد العمل',
+    'completed': 'مكتملة',
+    'rejected': 'مرفوضة',
+  };
+
+  // Errors (P7)
+  static const String errNotADoctor = 'هذا الحساب ليس حساب طبيب.';
+  static const String errDoctorInactive = 'حساب الطبيب موقوف. يرجى التواصل مع تيرا.';
+  static const String errInvalidLinkCode = 'رمز الربط غير صحيح.';
+  static const String errAlreadyLinked = 'الربط موجود مسبقاً.';
+  static const String errAlreadyRequested = 'طلب الربط مُرسل مسبقاً وينتظر الرد.';
+  static const String errCannotAnswerOwnRequest = 'لا يمكنك الرد على طلب أرسلته بنفسك.';
+  static const String errNotLinked = 'لست مرتبطاً بهذا المختبر.';
+  static const String errLabUnavailable = 'المختبر غير متاح حالياً.';
 }

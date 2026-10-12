@@ -131,7 +131,11 @@ FakeAuthServer ordersServer({bool owner = true}) {
 }
 
 Future<void> openOrders(WidgetTester tester, FakeAuthServer server) async {
-  await pumpOpticsApp(tester, server: server, storage: await loggedInStorage(session: server.session));
+  await pumpOpticsApp(
+    tester,
+    server: server,
+    storage: await loggedInStorage(session: server.session),
+  );
   tester.view.physicalSize = const Size(1600, 1000);
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('nav-/orders')));
@@ -212,14 +216,7 @@ void main() {
     expect(body['type'], 'stock');
     expect(body['status'], 'ordered');
     expect(body['lines'], [
-      {
-        'product': 7,
-        'variant': null,
-        'description': '',
-        'eye': '',
-        'qty': 3,
-        'unit_cost': '2500',
-      },
+      {'product': 7, 'variant': null, 'description': '', 'eye': '', 'qty': 3, 'unit_cost': '2500'},
     ]);
     // Opens the new order.
     expect(find.textContaining('#3'), findsWidgets);

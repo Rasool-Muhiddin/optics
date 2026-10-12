@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from apps.core.codes import generate_link_code, normalize_link_code
 from apps.core.models import LabScopedModel, TimeStampedModel
 
 
@@ -47,6 +48,12 @@ class Lab(TimeStampedModel):
         default=generate_activation_code,
         help_text="Given to the lab to activate desktop devices. Keep it secret.",
     )
+    doctor_link_code = models.CharField(
+        max_length=16,
+        unique=True,
+        default=generate_link_code,
+        help_text="Given by the lab to doctors so they can request a link (P7). Not secret like the activation code.",
+    )
     is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True, help_text="Internal (Tera only).")
 
@@ -58,6 +65,7 @@ class Lab(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         self.activation_code = normalize_activation_code(self.activation_code)
+        self.doctor_link_code = normalize_link_code(self.doctor_link_code)
         super().save(*args, **kwargs)
 
 
@@ -106,6 +114,8 @@ class LabUser(LabScopedModel):
 
     def clean(self):
         super().clean()
+        if self.user_id and hasattr(self.user, "doctor_profile"):
+            raise ValidationError({"user": "This user is a doctor account; doctors cannot belong to a lab."})
         if self.is_active and self.lab_id:
             from apps.billing.features import check_user_limit
 

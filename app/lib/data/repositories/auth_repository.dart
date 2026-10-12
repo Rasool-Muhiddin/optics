@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/errors/app_exception.dart';
+import '../../models/doctors.dart';
 import '../../models/session.dart';
 import '../../services/auth_storage.dart';
 import '../../services/connectivity_service.dart';
@@ -69,6 +70,38 @@ class AuthRepository extends BaseRepository {
     );
     await storage.saveSession(token: result.token, session: result.session.raw);
     return result.session;
+  }
+
+  Future<DoctorSession> doctorLogin(String username, String password) async {
+    final result = await write(
+      () => api.doctorLogin(username: username.trim(), password: password),
+    );
+    await storage.saveSession(token: result.token, session: result.session.raw);
+    return result.session;
+  }
+
+  /// Doctor version of [restore] (`doctor/me/`, stored session when offline).
+  Future<({DoctorSession? session, bool offline, AppException? error})> restoreDoctor() async {
+    final cached = storage.session;
+    DoctorSession? fromDisk() => cached == null ? null : DoctorSession.fromJson(cached);
+    try {
+      var fromServer = true;
+      final session = await read<DoctorSession?>(
+        remote: api.doctorMe,
+        cached: () async {
+          fromServer = false;
+          return fromDisk();
+        },
+        saveToCache: (s) async => storage.updateSession(s!.raw),
+      );
+      return (session: session, offline: !fromServer, error: null);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await storage.clearSession();
+        return (session: null, offline: false, error: e);
+      }
+      return (session: fromDisk(), offline: true, error: e);
+    }
   }
 
   /// Validates the stored token with the server, or falls back to the stored
