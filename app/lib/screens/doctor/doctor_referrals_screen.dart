@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/error_messages.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/doctors_repository.dart';
 import '../../models/doctors.dart';
 import '../../widgets/common.dart';
@@ -30,6 +31,7 @@ class _DoctorReferralsScreenState extends ConsumerState<DoctorReferralsScreen> {
       children: [
         PageHeader(
           title: AppStrings.navDoctorReferrals,
+          cacheTables: const [CacheTables.doctorSideReferrals],
           actions: [
             FilledButton.icon(
               key: const Key('new-referral'),

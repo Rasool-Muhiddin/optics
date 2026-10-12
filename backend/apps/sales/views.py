@@ -47,7 +47,11 @@ class InvoiceViewSet(LabScopedReadOnlyViewSet):
     ordering_fields = ["number", "created_at", "total", "balance"]
 
     def get_serializer_class(self):
-        return InvoiceListSerializer if self.action == "list" else InvoiceSerializer
+        # `?with_lines=true` returns full invoices in the list (offline cache warm-up: every
+        # listed invoice can then be opened and printed from the desktop cache).
+        if self.action == "list" and self.request.query_params.get("with_lines") != "true":
+            return InvoiceListSerializer
+        return InvoiceSerializer
 
     @action(detail=True, methods=["post"])
     def payments(self, request, pk=None):

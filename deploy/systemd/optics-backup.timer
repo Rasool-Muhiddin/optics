@@ -1,0 +1,11 @@
+# /etc/systemd/system/optics-backup.timer — daily at 03:15 (Asia/Baghdad if the server uses it).
+[Unit]
+Description=Daily Optics Lab backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

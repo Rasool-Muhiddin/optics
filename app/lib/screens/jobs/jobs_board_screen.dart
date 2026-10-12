@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/jobs_repository.dart';
 import '../../models/jobs.dart';
 import '../../widgets/common.dart';
@@ -40,6 +41,7 @@ class _JobsBoardScreenState extends ConsumerState<JobsBoardScreen> {
       children: [
         PageHeader(
           title: AppStrings.jobsTitle,
+          cacheTables: const [CacheTables.jobs],
           actions: [
             FilledButton.icon(
               key: const Key('new-job'),

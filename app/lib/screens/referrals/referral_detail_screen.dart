@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/doctors_repository.dart';
 import '../../models/doctors.dart';
 import '../../widgets/common.dart';
@@ -69,6 +70,7 @@ class ReferralDetailScreen extends ConsumerWidget {
         children: [
           PageHeader(
             title: '${AppStrings.referral}: ${r.patientName}',
+            cacheTables: const [CacheTables.referrals],
             leading: IconButton(
               tooltip: AppStrings.back,
               icon: const Icon(Icons.arrow_forward),

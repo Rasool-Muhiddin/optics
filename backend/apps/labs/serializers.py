@@ -58,12 +58,13 @@ class LabUserSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source="user.last_name", max_length=150, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
     user_id = serializers.IntegerField(source="user.id", read_only=True)
+    last_login = serializers.DateTimeField(source="user.last_login", read_only=True)
 
     class Meta:
         model = LabUser
         fields = [
-            "id", "user_id", "username", "first_name", "last_name", "password",
-            "role", "can_view_costs", "can_manage_inventory", "is_active", "created_at",
+            "id", "user_id", "username", "first_name", "last_name", "phone", "password",
+            "role", "can_view_costs", "can_manage_inventory", "is_active", "last_login", "created_at",
         ]
         read_only_fields = ["id", "user_id", "created_at"]
 
@@ -114,4 +115,8 @@ class LabUserSerializer(serializers.ModelSerializer):
         if password:
             user.set_password(password)
         user.save()
-        return super().update(instance, validated_data)
+        membership = super().update(instance, validated_data)
+        if password or not membership.is_active:
+            # A password reset or a deactivation ends every open session of that user.
+            user.auth_tokens.all().delete()
+        return membership

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:optics_app/services/auth_storage.dart';
+import 'package:optics_app/services/secret_store.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -39,13 +40,55 @@ void main() {
     addTearDown(() => dir.delete(recursive: true));
     final path = p.join(dir.path, 'nested', 'auth.json');
 
-    final storage = await AuthStorage.open(FileAuthStore(path));
+    final secrets = MemorySecretStore();
+    final storage = await AuthStorage.open(FileAuthStore(path), secrets);
     await storage.saveActivation(deviceKey: 'k', labId: 2, labName: 'مختبر');
-    final reopened = await AuthStorage.open(FileAuthStore(path));
+    final reopened = await AuthStorage.open(FileAuthStore(path), secrets);
     expect(reopened.deviceKey, 'k');
     expect(reopened.activatedLabName, 'مختبر');
+    // The secret is not in the JSON file.
+    expect(await File(path).readAsString(), isNot(contains('"k"')));
 
     await File(path).writeAsString('{not json');
-    expect((await AuthStorage.open(FileAuthStore(path))).isActivated, isFalse);
+    expect((await AuthStorage.open(FileAuthStore(path), secrets)).activatedLabName, isNull);
+  });
+
+  test('plain-file token and device key are migrated once into the secret store', () async {
+    final store = MemoryAuthStore({
+      'device_id': 'd1',
+      'device_key': 'old-key',
+      'lab_id': 7,
+      'lab_name': 'مختبر النور',
+      'token': 'old-token',
+      'session': {'role': 'x'},
+    });
+    final secrets = MemorySecretStore();
+    final storage = await AuthStorage.open(store, secrets);
+
+    expect((storage.deviceKey, storage.token), ('old-key', 'old-token'));
+    expect(secrets.values, {'device_key': 'old-key', 'token': 'old-token'});
+    expect(store.data.containsKey('device_key'), isFalse);
+    expect(store.data.containsKey('token'), isFalse);
+    expect(store.data['lab_name'], 'مختبر النور');
+
+    // Next start: read from the secret store, nothing in the file.
+    final again = await AuthStorage.open(store, secrets);
+    expect((again.deviceKey, again.token), ('old-key', 'old-token'));
+
+    await again.clearSession();
+    expect(secrets.values.containsKey('token'), isFalse);
+    await again.clearActivation();
+    expect(secrets.values, isEmpty);
+  });
+
+  test('plain-file fallback store round-trips (Linux without libsecret)', () async {
+    final dir = await Directory.systemTemp.createTemp('secrets');
+    addTearDown(() => dir.delete(recursive: true));
+    final store = PlainFileSecretStore(File(p.join(dir.path, 's.json')));
+    await store.write('token', 't1');
+    expect(await store.read('token'), 't1');
+    await store.write('token', null);
+    expect(await store.read('token'), isNull);
+    expect(store.isEncrypted, isFalse);
   });
 }

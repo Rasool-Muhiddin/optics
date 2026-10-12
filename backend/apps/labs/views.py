@@ -26,3 +26,22 @@ class LabUserViewSet(LabScopedNoDeleteViewSet):
     filterset_fields = ["role", "is_active"]
     search_fields = ["user__username", "user__first_name", "user__last_name"]
     ordering_fields = ["id", "created_at"]
+
+
+class LabUsageView(generics.GenericAPIView):
+    """`GET /api/v1/lab/usage/` — active users / devices against the plan limits (owner)."""
+
+    permission_classes = [IsLabOwner]
+
+    def get(self, request):
+        from rest_framework.response import Response
+
+        from apps.accounts.models import Device
+
+        plan = request.lab.license.plan
+        return Response({
+            "users": LabUser.objects.filter(lab=request.lab, is_active=True).count(),
+            "max_users": plan.max_users,
+            "devices": Device.objects.filter(lab=request.lab, is_active=True).count(),
+            "max_devices": plan.max_devices,
+        })

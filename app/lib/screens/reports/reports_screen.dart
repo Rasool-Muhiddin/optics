@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/formatters/formatters.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/reports_repository.dart';
 import '../../models/reports.dart';
 import '../../models/session.dart';
@@ -102,6 +103,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       children: [
         PageHeader(
           title: AppStrings.reportsTitle,
+          cacheTables: const [CacheTables.reportResults],
           actions: [
             Tooltip(
               message: canExport ? '' : AppStrings.exportNotInPlan,

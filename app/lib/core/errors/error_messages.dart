@@ -32,6 +32,10 @@ const Map<String, String> _messagesByCode = {
   'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
   'cannot_modify_self': AppStrings.errCannotModifySelf,
   'username_taken': AppStrings.errUsernameTaken,
+  'password_too_short': AppStrings.errWeakPassword,
+  'password_too_common': AppStrings.errWeakPassword,
+  'password_entirely_numeric': AppStrings.errWeakPassword,
+  'password_too_similar': AppStrings.errWeakPassword,
   'not_cached': AppStrings.errNotCached,
   // Catalog & inventory (P2)
   'insufficient_stock': AppStrings.errInsufficientStock,
@@ -99,6 +103,10 @@ const Map<String, String> _messagesByCode = {
   'lab_unavailable': AppStrings.errLabUnavailable,
   // Reports & settings (P8)
   'logo_too_large': AppStrings.errLogoTooLarge,
+  // Updates (P10)
+  'update_download_failed': AppStrings.errUpdateDownload,
+  'update_checksum': AppStrings.errUpdateChecksum,
+  'update_unsupported': AppStrings.errUpdateUnsupported,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

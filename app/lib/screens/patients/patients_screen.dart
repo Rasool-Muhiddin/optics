@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../models/patients.dart';
 import '../../widgets/common.dart';
 import 'patient_form_dialog.dart';
@@ -52,6 +53,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       children: [
         PageHeader(
           title: AppStrings.patientsTitle,
+          cacheTables: const [CacheTables.patients],
           actions: [
             FilledButton.icon(
               key: const Key('add-patient'),

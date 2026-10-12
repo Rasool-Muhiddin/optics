@@ -115,6 +115,7 @@ class AnonymousIsRejectedEverywhereTests(LabAPITestCase):
 
     PUBLIC = {
         "/api/v1/health/", "/api/v1/desktop/activate/", "/api/v1/desktop/login/", "/api/v1/desktop/doctor-login/",
+        "/api/v1/desktop/latest-version/",
     }
 
     def _routes(self, resolver=None, prefix=""):

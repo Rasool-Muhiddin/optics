@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/doctors_repository.dart';
 import '../../models/doctors.dart';
 import '../../services/auth_controller.dart';
@@ -25,7 +26,10 @@ class ReferralsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PageHeader(title: AppStrings.referralsTitle),
+          PageHeader(
+            title: AppStrings.referralsTitle,
+            cacheTables: [CacheTables.referrals, CacheTables.labDoctorLinks],
+          ),
           TabBar(
             tabs: [
               Tab(key: Key('tab-inbox'), text: AppStrings.referralInbox),

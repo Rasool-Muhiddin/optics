@@ -7,6 +7,8 @@ import '../../core/strings/app_strings.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
 import '../../widgets/connection_status_banner.dart';
+import '../../widgets/update_banner.dart';
+import '../../widgets/sync_status_tile.dart';
 
 /// Doctor mode layout: its own sidebar (referrals, labs) — no lab sections at all.
 class DoctorShell extends ConsumerWidget {
@@ -73,6 +75,7 @@ class DoctorShell extends ConsumerWidget {
                     ),
                   ),
                   const Divider(height: 1),
+                  const SyncStatusTile(),
                   ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.medical_services_outlined)),
                     title: Text(session.user.displayName, overflow: TextOverflow.ellipsis),
@@ -97,6 +100,7 @@ class DoctorShell extends ConsumerWidget {
             child: Column(
               children: [
                 const ConnectionStatusBanner(),
+                const UpdateBanner(),
                 Expanded(child: child),
               ],
             ),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/sales_repository.dart';
 import '../../models/sales.dart';
 import '../../widgets/common.dart';
@@ -35,7 +36,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PageHeader(title: AppStrings.invoices),
+        const PageHeader(title: AppStrings.invoices, cacheTables: [CacheTables.invoices]),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Wrap(

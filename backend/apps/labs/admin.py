@@ -16,7 +16,7 @@ class LabUserInline(admin.TabularInline):
     model = LabUser
     extra = 0
     autocomplete_fields = ["user"]
-    fields = ["user", "role", "can_view_costs", "can_manage_inventory", "is_active"]
+    fields = ["user", "role", "phone", "can_view_costs", "can_manage_inventory", "is_active"]
 
 
 class DeviceInline(admin.TabularInline):

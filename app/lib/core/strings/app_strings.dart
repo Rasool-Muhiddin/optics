@@ -737,4 +737,67 @@ class AppStrings {
   static const String maxDiscountHint = 'الخصم الأعلى من هذه النسبة يحتاج المالك.';
   static const String settingsSaved = 'تم حفظ الإعدادات.';
   static const String errLogoTooLarge = 'حجم الشعار أكبر من 1 ميغابايت.';
+
+  // Users & devices
+  static const String usersTitle = 'المستخدمون والأجهزة';
+  static const String usersTab = 'المستخدمون';
+  static const String devicesTab = 'الأجهزة';
+  static const String addUser = 'إضافة موظف';
+  static const String editUser = 'تعديل المستخدم';
+  static const String firstName = 'الاسم';
+  static const String lastName = 'اللقب';
+  static const String role = 'الصلاحية';
+  static const String newPassword = 'كلمة مرور جديدة (اتركها فارغة للإبقاء)';
+  static const String canViewCostsLabel = 'يرى التكاليف والأرباح';
+  static const String canManageInventoryLabel = 'يدير المخزون (الأصناف وإدخالات المخزون)';
+  static const String ownerHasAll = 'المالك يملك كل الصلاحيات.';
+  static const String deactivateUser = 'إيقاف المستخدم';
+  static const String activateUser = 'تفعيل المستخدم';
+  static const String deactivateUserConfirm = 'سيتم إيقاف المستخدم وإنهاء جلساته المفتوحة. متابعة؟';
+  static const String usersUsage = 'المستخدمون النشطون';
+  static const String devicesUsage = 'الأجهزة المفعّلة';
+  static const String unlimited = 'غير محدود';
+  static const String limitReachedUsers =
+      'وصلت إلى الحد الأقصى للمستخدمين في اشتراكك. أوقف مستخدماً أو تواصل مع تيرا لترقية الاشتراك.';
+  static const String limitReachedDevices =
+      'وصلت إلى الحد الأقصى للأجهزة في اشتراكك. ألغِ تفعيل جهاز أو تواصل مع تيرا لترقية الاشتراك.';
+  static const String deviceName = 'اسم الجهاز';
+  static const String lastLogin = 'آخر دخول';
+  static const String appVersionLabel = 'إصدار البرنامج';
+  static const String revokeDevice = 'إلغاء تفعيل الجهاز';
+  static const String reactivateDevice = 'إعادة تفعيل';
+  static const String revokeDeviceConfirm =
+      'سيتم إلغاء تفعيل هذا الجهاز وإخراج كل من يستخدمه فوراً. يحتاج إلى رمز التفعيل من جديد. متابعة؟';
+  static const String thisDevice = 'هذا الجهاز';
+  static const String noUsers = 'لا يوجد مستخدمون.';
+  static const String noDevices = 'لا توجد أجهزة.';
+  static const String passwordMin = 'كلمة المرور قصيرة جداً (8 أحرف على الأقل)';
+  static const String errWeakPassword =
+      'كلمة المرور ضعيفة: استخدم 8 أحرف على الأقل مع أرقام وحروف ولا تجعلها مشابهة لاسم المستخدم.';
+
+  // Offline cache (P9)
+  static const String offlineCopy = 'بدون اتصال — تعرض نسخة محفوظة (قراءة وطباعة فقط)';
+  static const String lastSynced = 'آخر تحديث';
+  static const String neverSynced = 'لا توجد نسخة محفوظة لهذه الشاشة على هذا الجهاز بعد';
+  static const String syncNow = 'مزامنة الآن';
+  static const String syncing = 'جارٍ المزامنة…';
+  static const String lastFullSync = 'آخر مزامنة';
+  static const String notSyncedYet = 'لم تتم المزامنة بعد';
+  static const String syncDone = 'تمت مزامنة البيانات للعمل دون اتصال.';
+  static const String syncPartial = 'تمت المزامنة مع تعذر تحديث بعض الأقسام.';
+  static const String offlineSaleBlocked =
+      'البيع يحتاج الاتصال بالخادم (الأسعار والمخزون والترقيم من الخادم).';
+
+  // Updates (P10)
+  static const String updateAvailable = 'يتوفر إصدار جديد من البرنامج';
+  static const String updateMandatory = 'يجب تحديث البرنامج للاستمرار';
+  static const String updateNow = 'تحديث الآن';
+  static const String updateTitle = 'تحديث البرنامج إلى الإصدار';
+  static const String updateHint =
+      'سيتم تنزيل ملف التثبيت والتحقق منه ثم إغلاق البرنامج وتثبيت الإصدار الجديد وإعادة فتحه تلقائياً.';
+  static const String later = 'لاحقاً';
+  static const String errUpdateDownload = 'تعذّر تنزيل التحديث. تحقق من الاتصال وحاول مجدداً.';
+  static const String errUpdateChecksum =
+      'ملف التحديث تالف أو غير موثوق (فشل التحقق). لم يتم تثبيته.';
+  static const String errUpdateUnsupported = 'التحديث التلقائي متاح على ويندوز فقط.';
 }

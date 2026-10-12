@@ -13,6 +13,7 @@ import 'package:optics_app/data/repositories/reports_repository.dart';
 import 'package:optics_app/screens/settings/settings_screen.dart';
 import 'package:optics_app/services/auth_storage.dart';
 import 'package:optics_app/services/connectivity_service.dart';
+import 'package:optics_app/services/offline_sync_service.dart';
 
 import '../helpers.dart';
 
@@ -92,6 +93,7 @@ Future<void> pumpWithSaver(
         httpClientProvider.overrideWithValue(MockClient(server.handle)),
         connectivityServiceProvider.overrideWithValue(fakeConnectivity(serverUp: true)),
         cacheDatabaseProvider.overrideWithValue(cache),
+        autoSyncEnabledProvider.overrideWithValue(false),
         fileSaverProvider.overrideWithValue((String name, Uint8List bytes) async {
           saved.add('$name:${String.fromCharCodes(bytes)}');
           return '/downloads/$name';

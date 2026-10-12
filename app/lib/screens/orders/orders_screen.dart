@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/purchasing_repository.dart';
 import '../../models/purchasing.dart';
 import '../../services/auth_controller.dart';
@@ -68,6 +69,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       children: [
         PageHeader(
           title: AppStrings.ordersTitle,
+          cacheTables: const [CacheTables.supplierOrders, CacheTables.suppliers],
           actions: [
             OutlinedButton.icon(
               key: const Key('manage-suppliers'),

@@ -83,6 +83,7 @@ class LabUser(LabScopedModel):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="lab_membership"
     )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STAFF)
+    phone = models.CharField(max_length=30, blank=True)
     can_view_costs = models.BooleanField(
         default=False, help_text="Staff only: may see purchase prices and profit. Owners always can."
     )

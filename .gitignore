@@ -16,3 +16,6 @@ backend/media/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Release outputs
+installer/Output/
