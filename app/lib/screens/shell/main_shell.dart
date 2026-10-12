@@ -6,6 +6,7 @@ import '../../core/strings/app_strings.dart';
 import '../../models/session.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/connection_status_banner.dart';
+import '../../widgets/update_banner.dart';
 import '../../widgets/sync_status_tile.dart';
 import 'nav_items.dart';
 
@@ -29,6 +30,7 @@ class MainShell extends ConsumerWidget {
             child: Column(
               children: [
                 const ConnectionStatusBanner(),
+                const UpdateBanner(),
                 Expanded(child: child),
               ],
             ),

@@ -259,7 +259,7 @@ class DoctorIsolationTests(DoctorBase):
 
     def test_doctor_token_is_refused_by_every_lab_endpoint(self):
         public = {"/api/v1/health/", "/api/v1/desktop/activate/", "/api/v1/desktop/login/",
-                  "/api/v1/desktop/doctor-login/"}
+                  "/api/v1/desktop/doctor-login/", "/api/v1/desktop/latest-version/"}
         checked = 0
         for path in sorted(set(self._lab_routes()) - public):
             response = self.client.get(path)

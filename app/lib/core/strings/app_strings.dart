@@ -787,4 +787,17 @@ class AppStrings {
   static const String syncPartial = 'تمت المزامنة مع تعذر تحديث بعض الأقسام.';
   static const String offlineSaleBlocked =
       'البيع يحتاج الاتصال بالخادم (الأسعار والمخزون والترقيم من الخادم).';
+
+  // Updates (P10)
+  static const String updateAvailable = 'يتوفر إصدار جديد من البرنامج';
+  static const String updateMandatory = 'يجب تحديث البرنامج للاستمرار';
+  static const String updateNow = 'تحديث الآن';
+  static const String updateTitle = 'تحديث البرنامج إلى الإصدار';
+  static const String updateHint =
+      'سيتم تنزيل ملف التثبيت والتحقق منه ثم إغلاق البرنامج وتثبيت الإصدار الجديد وإعادة فتحه تلقائياً.';
+  static const String later = 'لاحقاً';
+  static const String errUpdateDownload = 'تعذّر تنزيل التحديث. تحقق من الاتصال وحاول مجدداً.';
+  static const String errUpdateChecksum =
+      'ملف التحديث تالف أو غير موثوق (فشل التحقق). لم يتم تثبيته.';
+  static const String errUpdateUnsupported = 'التحديث التلقائي متاح على ويندوز فقط.';
 }

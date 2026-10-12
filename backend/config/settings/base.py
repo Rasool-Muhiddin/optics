@@ -136,7 +136,10 @@ REST_FRAMEWORK = {
     ],
     # Activation/login are public: throttle them per real client IP
     # (`apps.core.throttling.ClientIPScopedRateThrottle`, see TRUSTED_PROXIES).
-    "DEFAULT_THROTTLE_RATES": {"desktop_auth": env("AUTH_THROTTLE_RATE", default="30/min")},
+    "DEFAULT_THROTTLE_RATES": {
+        "desktop_auth": env("AUTH_THROTTLE_RATE", default="30/min"),
+        "desktop_update": env("UPDATE_THROTTLE_RATE", default="120/min"),
+    },
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     "COERCE_DECIMAL_TO_STRING": True,
     "TEST_REQUEST_DEFAULT_FORMAT": "json",

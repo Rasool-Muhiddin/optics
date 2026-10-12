@@ -54,3 +54,8 @@ class UnauthorizedException extends ApiException {
 class NotCachedException extends AppException {
   const NotCachedException() : super('not_cached');
 }
+
+/// Desktop self-update failure (`update_download_failed`, `update_checksum`, `update_unsupported`).
+class UpdateException extends AppException {
+  const UpdateException(super.code, [super.detail]);
+}

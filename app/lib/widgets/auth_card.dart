@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/strings/app_strings.dart';
 import 'connection_status_banner.dart';
+import 'update_banner.dart';
 
 /// Centered card layout shared by the activation and login screens.
 class AuthCard extends StatelessWidget {
@@ -18,6 +19,7 @@ class AuthCard extends StatelessWidget {
       body: Column(
         children: [
           const ConnectionStatusBanner(),
+          const UpdateBanner(),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
