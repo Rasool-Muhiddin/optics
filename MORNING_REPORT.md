@@ -1,198 +1,203 @@
-# Morning report — P1 fixes + P2, P3, P4, P5
+# Morning report — pre-P6 changes + P6, P7, P8
 
-Branch: `claude/happy-ramanujan-gckbr7` (pushed after every phase; no PR opened).
+Branch: `claude/festive-turing-7uajlt` (pushed after every phase). PR to `main` opened at the end.
 Flutter used in the cloud session: **3.44.8 / Dart 3.12.2** (exactly the pinned version).
 
 | Commit | Phase |
 |---|---|
-| `5099fc3` | P1 fixes: real client IP for throttling + P10 encrypted-token item |
-| `928e91b` | P2 Catalog & inventory (+ a P1 permission bug fix, see below) |
-| `3b21e0d` | P3 Patients, exams, prescriptions |
-| `800eca5` | P4 POS & sales |
-| `7d83f98` | P5 Customer jobs |
+| `bc2cc8f` | Changes to existing work: Rx stored/printed as entered + `can_manage_inventory` |
+| `137b98e` | P6 Supplier orders |
+| `dfe24a7` | P7 Doctor linking |
+| `dd34637` | P8 Dashboard, reports, export + lab settings screen |
 
 ## Test counts
 
 | | Start of session | End |
 |---|---|---|
-| Backend (`pytest`, also runs with `manage.py test`) | 80 | **194 passed** |
-| Flutter (`flutter test`) | 47 | **77 passed** |
-| `flutter analyze` | clean | **clean** |
-| `makemigrations --check` | — | **No changes** |
-| `ruff --select F,E9` (unused imports / syntax; not a repo requirement) | — | clean |
+| Backend (`pytest`, also runs with `manage.py test`) | 194 | **252 passed** |
+| Flutter (`flutter test`) | 77 | **96 passed** |
+| `flutter analyze` / `dart analyze` | clean | **clean** |
+| `makemigrations --check` | No changes | **No changes** |
+| `ruff --select F,E9` (unused imports / syntax; not a repo requirement) | clean | clean |
 
-I also ran an end-to-end smoke test against `runserver` on a **fresh SQLite DB** (all migrations from zero):
-activate → login → create frame + stock lens → generate the power grid → purchase entry → patient
-→ exam with a plus-cyl Rx (stored transposed) → credit checkout with a down payment → job linked to
-the Rx and invoice → status change → credit-customers list and jobs summary. Every step returned the
-expected result.
+I also ran an end-to-end smoke test on a **fresh SQLite DB** (all migrations from zero). It created a
+lab and a doctor with the management commands, then ran the main flows of all three phases through the API.
+Every step returned the expected result:
+
+- **Patient and sale:** activate → login → frame + rx lens → a stock order from a supplier, received →
+  patient with a **plus-cyl** exam Rx (it came back as entered) → credit sale → job.
+- **Rx order for the job:** placing it moved the job to "lens ordered". Receiving it changed the invoice
+  cost from the reference 40,000 to the real 35,000.
+- **Doctor:** doctor login with the lab's link code → the lab accepts the link → the doctor sends a
+  referral → the lab accepts it, which creates the patient file. The doctor token gets 403 on invoices.
+- **Reports:** dashboard, profit report, supplier balances and CSV export.
 
 ---
 
 ## What was done, per phase
 
-### P1 fixes
-- **(a) Real client IP for the auth throttle.** `apps/core/client_ip.py` + `ClientIPScopedRateThrottle`.
-  The forwarding headers count only when the direct peer is listed in `TRUSTED_PROXIES`. That setting
-  is empty in dev, and production defaults to loopback + the Cloudflare ranges in
-  `config/settings/proxies.py`.
-  - `CF-Connecting-IP` is used only when the hop that reached nginx is itself a Cloudflare address.
-    Otherwise `X-Forwarded-For` is read right to left, skipping trusted hops.
-  - Tests cover spoofing, IPv6, garbage headers, and two customers behind the same proxy getting
-    separate throttle buckets.
-- **(b)** P10 roadmap item added: move the token and device key from `optics_auth.json` to encrypted
-  storage (DPAPI on Windows, Keychain/libsecret elsewhere), with a one-time migration.
-- **Bug found and fixed (security, from P1).** `IsLabOwner`, `IsLabOwnerOrReadOnly` and
-  `requires_feature` ignored the parent check returning False.
-  - Effect: **anonymous GET requests passed**. They got empty lists, and `GET /lab/` crashed with a 500.
-  - All three now return 401 for anonymous requests.
-  - A new test walks every `/api/v1/` route and asserts 401 for anonymous GET, POST and PATCH.
+### Changes to existing work (before P6)
+- **Rx exactly as entered.** Plus-cyl stays plus-cyl in the database, the API, the form, the Rx summary
+  and every printout (prescription, exam report, job ticket).
+  - `Prescription.save()` also keeps a **normalized minus-cyl copy** (`od_mc_*` / `os_mc_*`). It is
+    internal only: not in the API, never printed.
+  - Old rows were already stored minus-cyl, so the migration just copies them.
+  - The copy is used by a new **stock matching** endpoint,
+    `catalog/products/{id}/match/?prescription=`. The job form has an "اختيار القوى المطابقة للوصفة"
+    button that fills OD/OS with the matching stock powers.
+  - Validation is unchanged. The ± transpose helper is still there, but now it is only an explicit choice.
+- **`LabUser.can_manage_inventory`.** Staff with it can:
+  - create and edit categories, brands, products and lens powers
+  - generate power grids
+  - record stock entries (purchase, adjustment, damage, returns)
 
-### P2 Catalog & inventory
-- **Data model:** categories (tree), brands, and products by kind. Each kind has its own details,
-  validated in JSON `attributes`.
-- **Lens stock:** lens power variants hold their own stock.
-- **Ledger:** the stock movement ledger is immutable. Updates are atomic (row lock), and stock can
-  never go negative.
-- **Costing:** weighted-average cost.
-- **API extras:**
-  - Power-grid endpoint, plus a generator for a whole SPH×CYL range.
-  - Barcode/SKU lookup.
-  - Manual stock entry with many lines in one transaction.
-- **Costs hidden from staff:** staff without `can_view_costs` never receive purchase prices or costs.
-  The fields are removed from the serializers, and ordering by cost is blocked. A test scans every
-  catalog and inventory response for cost keys.
-- **Flutter:**
-  - Inventory list with filters (kind, category, brand, low stock, search). The cost column appears
-    only for users who may see costs.
-  - Add/edit form per kind. Categories and brands manager.
-  - Product page with the **lens power grid** (stock colour-coded). It has an ADD selector, a
-    "grid entry mode" for entering received quantities across many powers in one go, and per-power
-    edit and stock entry.
-  - Stock ledger on the product page.
+  Costs stay hidden unless they also have `can_view_costs`. They *can type* a purchase unit cost, which the
+  weighted average needs, but they never get costs back. Owners keep full access. The flag is in the
+  session, in `lab/users/` and in Django Admin, and the Flutter inventory screens follow it.
 
-### P3 Patients, exams, prescriptions
-- **Patients:** age or birth date (an entered age is stored as an estimated birth date), status, and
-  archiving.
-- **Exams:** exams carry VA and IOP per eye. A prescription can be nested in an exam (saved in one
-  transaction) or created on its own.
-- **Rx validation follows §5 exactly.** Plus-cylinder input is **transposed to minus-cyl on save**.
-  There is a transpose endpoint, and a ± button in the form.
-- **Void, never delete:** exams and prescriptions are voided with a reason, by the owner or the
-  author.
-- **Validation responses** now also return `error_codes`, so Flutter shows field errors in Arabic.
+### P6 Supplier orders
+- **Data model:**
+  - Suppliers (unique name, no delete).
+  - Supplier orders numbered per lab, typed **stock / rx_for_job / other**.
+  - Statuses: pending (draft, not sent) → ordered → partially received / received, or cancelled.
+  - Payment status: unpaid / partial / paid.
+  - Order lines: a product, a lens power, or free text, with an eye (OD/OS) for rx orders.
+- **Receiving** (all lines or per line, in one transaction):
+  - Stock items get `purchase` movements, which moves the **weighted average**.
+  - Rx lenses and services are only marked received.
+  - The product's reference purchase price becomes the last received cost.
+- **Payments:** pay one order, or **pay a supplier** (spread over the oldest orders first). Owner-only void.
+- **Supplier balance** = the sum of the order balances. A cancelled order is only owed for what was
+  received.
+- **Rx orders for a job:**
+  - Placing one moves the job to "lens ordered".
+  - When it is received, its **real cost replaces the reference purchase price** on the job's invoice.
+    Profit is then real, and `InvoiceLine.cost_source` shows `supplier`.
+  - The job page lists its supplier orders.
+- **Ageing:** each order has `age_days` and `is_late`. Filters: open, late, minimum age, status, type,
+  supplier. A summary gives counts, ageing buckets 0–7 / 8–14 / 15–30 / 31+ days, and the total owed.
 - **Flutter:**
-  - Patient list and profile with exams, prescriptions and jobs tabs.
-  - OD/OS Rx entry table that mirrors the server rules.
-  - **Printing:** prescription on A5 and exam report on A4, built with the `pdf` and `printing`
-    packages. Printing works from the cache while offline, and the lab logo is cached on disk.
+  - "طلبات الموردين" screen: open orders first, filters, summary chips (tap an age bucket to filter),
+    late orders in red.
+  - Order page: lines with received/remaining, a receive dialog, send, cancel, and payments.
+  - Order form, and a suppliers dialog (add/edit, balance, pay).
+  - "طلب عدسة من المورد" on the job page creates an rx order pre-filled from the job's Rx.
 
-### P4 POS & sales
-- **Checkout is one atomic endpoint:** invoice number → lines → `sale` stock movements → payment.
-  The server prices everything; client prices, totals and numbers are ignored.
-- **`checkout/preview/`** returns the server's totals, so the POS never does money arithmetic on the
-  client.
-- **Invoice numbers** are sequential per lab, and a failed checkout does not use one up.
-- **Discount limit** (`Lab.max_discount_percent`, default 10%): above it, staff get
-  `discount_requires_owner`.
-- **Credit (آجل):** down payment, later payments, and a credit customers list. You can receive one
-  payment for a customer and it is spread over their oldest invoices first.
-- **Owner-only actions:** cancel an invoice (stock returns at the sold cost and payments are voided)
-  and void a payment.
-- **Costs and profit on invoices** are hidden from staff without the cost permission.
+### P7 Doctor linking
+- **Doctor accounts** (no lab), created by Tera in Admin or with `manage.py create_doctor`.
+  - Doctors log in from the desktop **without activating the device**.
+  - Doctor tokens are refused by every lab endpoint.
+- **Links by code:** each doctor and each lab has an 8-character link code. Either side requests a link
+  with the other side's code, and the other side accepts or rejects. Either side can revoke.
+- **Referrals:**
+  - A referral carries a patient snapshot, the exam and the Rx (same validation, kept as entered).
+  - The lab inbox can receive, **accept** (creates a new patient file or links an existing one, plus an
+    EyeExam and a Prescription, in one transaction), reject with a reason, or complete.
+- **The doctor sees only** their links and their own referrals with status. A test walks **every** lab
+  route with a doctor token and checks that no prices, invoices or patient names leak, and that other
+  labs' data never shows up.
+- **Gated by `doctor_linking`** on the lab side. Doctors cannot link with or send to labs without it.
 - **Flutter:**
-  - POS screen: search plus barcode-scanner Enter, and the lens power grid to pick powers.
-  - Customer: walk-in or patient picker. Cash/credit, line and invoice discounts, server totals and
-    stock warnings.
-  - Invoices list and detail (payments, cancel, void).
-  - Credit customers screen.
-  - **Invoice printing on A4, A5 and 80 mm thermal.**
-  - "Sell" button on the patient profile.
+  - "أنا طبيب" login link on the activation and login screens.
+  - **Doctor mode** with its own sidebar: my referrals + a new-referral form with the OD/OS Rx form,
+    and linked labs with my code.
+  - Lab side "إحالات الأطباء" (shown only with the plan feature): inbox, linked-doctors tab (owner:
+    lab code, request, accept/reject/revoke), and a referral page.
 
-### P5 Customer jobs
-- **Job record:** server job numbers. Each job links to the patient, an Rx (must be that patient's)
-  and an invoice (same patient, not cancelled).
-- **Frame:** from the lab, **the customer's own frame**, or no frame.
-- **Lens:** lens product with optional stock powers per eye.
-- **Status lifecycle:** every move is validated and written to `JobStatusLog` (who, when, note).
-- **Overdue** = promised date passed while the job is pending, lens ordered or in the workshop.
-- **Flutter:**
-  - Kanban **jobs board**. Overdue cards get a red border and badge, and each card has a "move to
-    next" button.
-  - Job form with pickers, and a job detail page with history.
-  - **Job ticket printing on A5 and 80 mm.**
-  - "New job" button and a jobs tab on the patient profile.
+### P8 Dashboard & reports + lab settings
+- **Dashboard** (home screen, all members):
+  - today's sales and money collected, this month's sales
+  - profit — only for users with the cost permission
+  - credit balance
+  - open / overdue / ready jobs
+  - low stock count
+  - open / late supplier orders
+  - open referrals
+  - a 7-day bar chart
+
+  Each card links to its section, and it is cached for offline viewing.
+- **Reports** (owner + staff with `can_view_costs`):
+  - sales (+ by payment method, top products)
+  - profit (per period and by product kind)
+  - credit balances with ageing
+  - low stock / all stock with stock value
+  - overdue jobs
+  - supplier balances
+
+  Sales and profit have a date range with day/month grouping.
+- **CSV export** of any report: Excel-friendly with Arabic headers. It is gated on the server by
+  **`report_export`**, and the button is disabled without it.
+- **Lab settings screen** (owner):
+  - name, phone, address
+  - print header/footer
+  - staff discount limit
+  - **logo upload/removal** (PNG/JPG ≤ 1 MB)
+
+  After saving, the session reloads so printouts use the new header and logo.
 
 ---
 
 ## Decisions you should review
-These are all recorded in `CLAUDE.md` under "Decisions recorded in P2/P3/P4/P5". The ones most likely
-to need your call:
+All of these are recorded in `CLAUDE.md` ("Decisions recorded before P6", "in P6", "in P7", "in P8").
+The ones most likely to need your call:
 
-1. **Catalog writes are owner-only.** Products, prices, categories and power grids can only be
-   edited by the owner. Staff can read everything (costs hidden).
-2. **Manual stock entries are owner-only.** This covers purchase, adjustment, damage and returns.
-   Staff cannot record damage. You might want to allow staff with `can_view_costs`.
-3. **No negative stock.** A sale fails with `insufficient_stock` instead of letting stock go negative.
-4. **Average cost is stored with 2 decimals** (fine for IQD).
-   - Only purchases, customer returns and positive adjustments *that state a cost* move the average.
-   - Opening stock = an adjustment with a unit cost.
-5. **ADD = 0 means "no addition"** on lens variants (not null), so the uniqueness rule works on every
-   database.
-6. **Plus-cyl prescriptions are transposed to minus-cyl automatically on save**, so a plus-cyl Rx is
-   stored and printed transposed. Per §5's "store minus-cyl" rule. Confirm the labs are fine seeing
-   the transposed form on printouts.
-7. **An eye may be left empty** (monocular Rx). At least one eye needs SPH. The Rx nested in an exam
-   must be sent complete when edited.
-8. **Who can void exams and prescriptions:** the owner or the author. Voiding an exam also voids its
-   Rx.
-9. **Credit sales require a patient file**, so every debt belongs to someone. Cash sales are always
-   paid in full.
-10. **Discount limit** = total discount (line + invoice) as a % of the subtotal, compared with
-    `Lab.max_discount_percent` (default **10%**). The owner can change it through `PATCH /lab/`;
-    there is no settings screen yet, but it is also in Django Admin.
-11. **Cancelling an invoice is all-or-nothing** (owner only). Stock comes back and payments are
-    voided. There are **no partial returns or refunds** yet.
-12. **Cost snapshot for non-stock items** (rx lens, services) on invoices uses the product's reference
-    `purchase_price`. So profit on made-to-order lenses is only as good as that price until P6 links
-    real supplier costs.
-13. **Jobs do not move stock.** Stock leaves at checkout. Ordering an rx lens from a supplier for a job
-    is P6.
-14. **Job lifecycle rules.** Skipping forward is allowed, and so are some steps back:
-    - re-order: in workshop → lens ordered
-    - rework: ready → in workshop
-    - lens ordered → pending
-
-    Delivered and cancelled are final. A **ready** job is not counted as overdue.
-15. **New sidebar sections** "الفواتير" (invoices) and "الزبائن بالآجل" (credit customers) sit under
-    POS.
-16. **Missing barcode / other lab's patient** now answer **404** (was 400 with code `not_found`).
-17. **Cloudflare IP ranges are hard-coded** in `config/settings/proxies.py`. Refresh them before
-    deploying (https://www.cloudflare.com/ips/). Set `TRUST_CLOUDFLARE=False` if production is ever
-    not behind Cloudflare.
+1. **Old prescriptions stay transposed.** Rows saved before this change were already converted to
+   minus-cyl, and the original plus-cyl input cannot be recovered. Only new or edited Rx are kept as
+   entered.
+2. **Inventory managers without the cost permission may type a purchase cost**, but never see it again.
+   The alternative was to forbid purchases for them.
+3. **New supplier orders default to "ordered"** ("تم إرسال الطلب" ticked). Untick it to keep a draft
+   ("pending"). Paying a draft is refused.
+4. **No supplier opening balance field.** Enter an old debt as an "other" order with a free-text line.
+5. **Cancelling an order** keeps what was received (in stock and owed). It is refused while more was paid
+   than received: void the extra payment first.
+6. **Paying suppliers needs both permissions** (manage inventory + view costs); the owner has both.
+   Voiding a supplier payment is owner-only.
+7. **Editing an order's lines needs the cost permission.** Lines are replaced as a whole, so someone who
+   cannot see the costs would wipe them.
+8. **Rx lens real cost.** On receipt, the received value of the job's rx orders for that lens is spread
+   over the invoice lines selling it, replacing the reference price. If nothing has been received yet (or
+   the order is cancelled), the reference price is used.
+9. **The job auto-moves pending → lens ordered** when an rx order is placed. Receiving does *not* move it
+   to the workshop; staff do that.
+10. **Doctors log in without device activation**, so no device limit applies to them. They can use any
+    PC with the app.
+11. **Labs and doctors find each other only with link codes.** There is no searchable directory. The lab
+    code is owner-only and can be regenerated; the old code stops working.
+12. **Lab-side link management is owner-only.** Any member can work the referral inbox.
+13. **Referrals cannot be edited after sending.** A doctor who made a mistake sends a new one, and the lab
+    rejects the old one with a reason.
+14. **On accept, the exam's examiner is "د. <doctor name>"**, and `created_by` is the lab user who
+    accepted.
+15. **Reports are for the owner and staff with `can_view_costs`.** Plain staff only see the dashboard,
+    without profit. Staff still have the credit, low-stock and overdue filters on their own screens.
+16. **Profit by product kind is before invoice-level discounts** (those are not split across lines). The
+    per-period totals do include them.
+17. **CSV headers are in Arabic, generated by the server.** The CSV is a user document; the JSON API keeps
+    stable keys.
+18. **New dependency `file_selector`** (official Flutter plugin) for choosing the logo. Generated plugin
+    registrants were updated for Windows/Linux/macOS.
+19. **Currency is not on the settings screen.** It is still editable through the API / Admin.
 
 ## Unfinished / limitations / not verified
-- **Nothing was run on Windows.** There was no visual check of any screen, no `flutter build
-  windows`, and no real printing. Widget tests use the Ahem test font, so Arabic text lengths and
-  layout must be checked by eye.
-- **The `printing` plugin is new.** On Windows it should build as-is. A Linux build downloads pdfium
-  at CMake time (needs network once).
-- The **PDF font fallback** depends on Helvetica. The bundled Noto Naskh Arabic has **no Latin
-  glyphs** (OD/OS, SPH…), so check that mixed Arabic/Latin lines render correctly on real paper.
-- **Thermal 80 mm** layout was not tried on a real printer. Paper is `PdfPageFormat.roll80`, which
-  is a continuous roll.
-- **Offline cache:** lists and details are cached for every new domain, but offline search is basic
-  (done in Dart). Completion and offline banners per screen are P9. Selling, saving and status changes
-  are blocked offline by design.
-- There is **no lab settings screen** in Flutter yet (discount limit, print header/footer, logo).
-  Settings are edited via the API or Django Admin.
-- **Not built (outside P2–P5 scope):**
-  - invoice returns / partial refunds
-  - editing an invoice after checkout
-  - supplier orders (P6)
-  - reports (P8)
-- No real concurrency test (SQLite in tests). Stock and number locking rely on `select_for_update`,
-  which is a no-op on SQLite and real on Postgres.
+- **Nothing was run on Windows.** There was no visual check of any new screen, no `flutter build windows`
+  (including the new `file_selector` plugin), no real printing, and no real CSV opened in Excel.
+- **There is no "Users" screen yet** (it still shows "coming soon"). `can_manage_inventory` and
+  `can_view_costs` are set in Django Admin or through `lab/users/`.
+- **Logo files in production:** Django serves media only with `DEBUG`. Production needs nginx to serve
+  `/media/` (P10).
+- **Offline:**
+  - New lists and details are cached: supplier orders, suppliers, referrals, doctor-mode lists, the
+    dashboard.
+  - Reports are online only (they show the "not cached" message offline).
+  - Full offline coverage and banners are P9 (not started, as asked).
+- **Not built (outside scope):**
+  - returns to supplier from an order (manual `return_out` stock entries still work)
+  - editing referrals
+  - doctor profile editing in the app (Admin only)
+  - report printing to PDF (CSV export only)
+- **No real concurrency test** (SQLite in tests). Order numbering and receiving rely on
+  `select_for_update`.
 
 ---
 
@@ -202,75 +207,63 @@ Setup:
 ```
 cd backend
 python manage.py migrate
-python manage.py create_lab "مختبر تجربة" owner1 <password>
+python manage.py create_lab "مختبر تجربة" owner1 <password> --plan pro
+python manage.py create_doctor "د. سامر" doctor1 <password>
 python manage.py runserver
 cd ../app
 flutter pub get
 flutter run -d windows
 ```
-Activate with the printed code, log in as the owner, and create a staff user in Admin (one with and
-one without `can_view_costs`).
+In Admin, tick `doctor_linking` and `report_export` on plan "pro". Create a staff user with
+**can_manage_inventory** only, and another with **can_view_costs**.
 
-**P1 fixes**
-- Hard to test locally. On the server, after deploying, check that 30+ bad logins from one IP throttle
-  only that IP. Logs should show real client IPs, not 127.0.0.1.
+**Changes to existing work**
+1. **Rx as entered:** add an exam with OD `-1.00 +0.50 ×90`. Reopen it: it still shows `+0.50 ×90`.
+   Print the prescription, exam report and job ticket: all show `+0.50` and `90°`.
+2. **Matching stock powers:** have a stock lens with power `-0.50 / -0.50`. In a job with that Rx, choose
+   the lens, then "اختيار القوى المطابقة للوصفة". OD is filled with `-0.50 -0.50`.
+3. **Inventory manager (no cost permission):**
+   - They see "add product" and stock entry, but no cost column or purchase price.
+   - A purchase entry with a unit cost works, and the cost is not shown afterwards.
+   - A plain staff user still has no add buttons.
 
-**P2 Inventory**
-1. **Categories and brands:** add a category with a sub-category and a brand ("الأصناف والماركات").
-2. **Frame:** add a frame with size `52-18-140`, purchase price and sale price. Try `52/18`; you should
-   get an error.
-3. **Stock lens:** add a stock lens (index 1.56, coatings), open it, then "توليد القوى" SPH −6..+4,
-   CYL 0..−2. Check that the grid shows **plus SPH at the top** and CYL 0 → −2 from left to right.
-4. **Grid entry:** use "إدخال كميات للشبكة", type quantities in a few cells plus a unit cost, and save.
-   Cells turn green, the ledger shows purchase lines, and the product total updates.
-5. **Single power:** click one power cell → stock entry → damage 1. Quantity drops; the average stays
-   the same.
-6. **Staff view:** log in as staff without cost permission. There is no cost column, no purchase
-   price, no "add" buttons, and no costs in the ledger. Then log in as staff *with* the permission:
-   costs are visible.
-7. **Low stock:** set the reorder level on a frame; the low-stock filter shows it in red.
-8. **Offline:** stop the server. The inventory list still shows from the cache and the banner appears.
-   Saving shows the Arabic offline message.
+**P6 Supplier orders**
+1. **Supplier and stock order:** "طلبات الموردين" → "الموردون" → add a supplier. Create a stock order
+   (frame ×4 + a lens power ×10, with costs).
+2. **Receive and stock:** receive 2 frames → "مستلم جزئياً". In inventory the frame quantity and average
+   cost change. Receive the rest → "مستلم".
+3. **Ageing:** create an order dated 20 days ago with an expected date in the past. It is red/"متأخر",
+   and the "15–30" age chip filters to it.
+4. **Payments:** pay part of an order, then "دفع للمورد" from the suppliers dialog. It spreads over the
+   oldest orders. Owner: void a payment.
+5. **Rx order for a job:**
+   - Sell an rx lens on credit, then create a job for it.
+   - On the job page, use "طلب عدسة من المورد". The lines are pre-filled per eye, and the job moves to
+     "تم طلب العدسة".
+   - Receive the order. The invoice (owner view) cost now shows the supplier cost.
+6. **Inventory manager without costs:** they can order and receive but see no money and cannot pay.
 
-**P3 Patients**
-1. **New patient:** create one with an age only. Reopen it and check the age shows correctly.
-2. **New exam with Rx:**
-   - Type CYL without AXIS; you should see "المحور مطلوب".
-   - Type SPH `-2.10`; you should get an invalid-power error.
-   - Enter OD `-1.00 +0.50 ×90` and save. It is stored as `-0.50 -0.50 ×180`.
-3. **± button:** it flips the cylinder sign in the form.
-4. **Print prescription (A5) and exam report (A4).** Check:
-   - Arabic text is shaped and right-to-left
-   - the OD/OS table is left-to-right
-   - lab name/phone/logo appear in the header
-   - Latin labels (SPH, CYL, OD, PD) are not blank boxes
-5. **Standalone prescription:** add one ("وصفة جديدة"), then void it with a reason (owner).
-6. **Offline printing:** stop the server, open the patient, and print again from the cache.
+**P7 Doctor linking**
+1. **Doctor login:** on the activation (or login) screen, "أنا طبيب" → log in as doctor1. You get the
+   doctor sidebar (إحالاتي / المختبرات المرتبطة) and no lab sections.
+2. **Link the lab and the doctor:**
+   - As the owner: "إحالات الأطباء" → "الأطباء المرتبطون" shows the lab code.
+   - As the doctor: enter the lab code → the request is pending.
+   - As the owner: accept it.
+3. **Referral:** the doctor sends one with a plus-cyl Rx. In the lab inbox: open it → "قبول وإنشاء ملف" →
+   new file. "فتح ملف المراجع" shows the exam with examiner "د. …" and the Rx as entered. Then reject
+   another referral with a reason. The doctor sees the statuses and the reason.
+4. **Feature flag:** untick `doctor_linking` on the plan. The lab section disappears, and the doctor
+   cannot send.
 
-**P4 POS**
-1. **Cart:** scan or type a frame barcode + Enter → it is added. Search a stock lens → the power grid
-   opens → pick a power. Raise the quantity.
-2. **Totals:** they update from the server. A quantity above stock shows "الكمية غير متوفرة", and
-   checkout is refused with the Arabic message.
-3. **Discount limit (staff):** give a 15% invoice discount; you see the warning, and checkout is
-   refused. As the owner, it is allowed.
-4. **Cash sale:** check out, then print **thermal 80 mm**, **A5** and **A4**. Check the number
-   increments (1, 2, 3…).
-5. **Credit sale:** with no patient, you get the "requires patient" error. Pick a patient and add a
-   down payment. Then in "الزبائن بالآجل", receive a payment larger than the oldest invoice: it spreads
-   to the next one.
-6. **Owner cancels an invoice:** stock is back in inventory, payments are crossed out, and the status
-   is "ملغاة".
-7. **Sell from the profile:** the patient profile → "بيع" opens POS with that patient selected.
-
-**P5 Jobs**
-1. **New job:** from the patient profile → "طلب نظارة جديد". Choose the Rx, the invoice, "إطار
-   الزبون" with a description, a lens + OD/OS powers from the grid, and a promised date.
-2. **Overdue:** create one with a promised date in the past. It shows a red border and the "متأخر"
-   badge on the board. Moving it to "جاهز للتسليم" removes the overdue badge.
-3. **Statuses:** move through the statuses with "نقل إلى…" and the full status dialog (add a note).
-   The history on the detail page lists every change with user and time. Delivered jobs cannot be
-   edited.
-4. **Job ticket:** print it (A5 and 80 mm). It shows the Rx table, PD, frame, lens powers and the
-   remaining invoice balance.
-5. **Offline:** stop the server. The board still opens from the cache and overdue is still computed.
+**P8 Dashboard, reports, settings**
+1. **Dashboard:** the home screen shows the KPI cards (profit only for owner / cost staff) and the 7-day
+   chart. Cards open their sections.
+2. **Reports:** go through each report. Sales/profit date range and day/month. "عرض الكل" for stock and
+   suppliers.
+3. **Export CSV:** a file appears in Downloads. Open it in Excel and check the Arabic headers. Untick
+   `report_export`: the button is disabled.
+4. **Permissions:** a plain staff user has no "التقارير" item. A staff user with `can_view_costs` has it.
+5. **Lab settings (owner):** change the name, header lines, footer and discount limit, then save. The
+   sidebar name updates. Choose a PNG logo, then print an invoice: the new header and logo are there.
+   Remove the logo. A file over 1 MB shows the Arabic error.
