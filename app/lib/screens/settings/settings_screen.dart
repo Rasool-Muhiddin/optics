@@ -102,6 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         PageHeader(
           title: AppStrings.settingsTitle,
+          offlineHint: AppStrings.errOfflineWrite,
           actions: [
             FilledButton.icon(
               key: const Key('settings-save'),

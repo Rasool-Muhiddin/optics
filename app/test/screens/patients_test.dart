@@ -17,6 +17,8 @@ import 'package:optics_app/services/printing/patient_pdfs.dart';
 import 'package:optics_app/services/printing/pdf_kit.dart';
 import 'package:optics_app/services/printing/print_service.dart';
 
+import 'package:optics_app/services/offline_sync_service.dart';
+
 import '../helpers.dart';
 
 Map<String, dynamic> patientJson() => {
@@ -126,6 +128,7 @@ Future<List<(String, Uint8List)>> pumpPatients(WidgetTester tester, FakeAuthServ
         httpClientProvider.overrideWithValue(MockClient(server.handle)),
         connectivityServiceProvider.overrideWithValue(fakeConnectivity(serverUp: true)),
         cacheDatabaseProvider.overrideWithValue(cache),
+        autoSyncEnabledProvider.overrideWithValue(false),
         printServiceProvider.overrideWithValue(
           PrintService(
             lab: const LabInfo(id: 7, name: 'مختبر النور'),

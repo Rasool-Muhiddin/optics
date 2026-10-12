@@ -8,12 +8,13 @@ import 'package:pdf/pdf.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/patients_repository.dart';
+import '../../models/jobs.dart';
 import '../../models/patients.dart';
 import '../../services/printing/patient_pdfs.dart';
 import '../../services/printing/print_service.dart';
 import '../../widgets/common.dart';
-import '../../models/jobs.dart';
 import '../jobs/job_form_dialog.dart';
 import '../jobs/jobs_board_screen.dart' show JobCard;
 import '../jobs/jobs_providers.dart';
@@ -67,6 +68,11 @@ class PatientDetailScreen extends ConsumerWidget {
           children: [
             PageHeader(
               title: patient.fullName,
+              cacheTables: const [
+                CacheTables.patients,
+                CacheTables.exams,
+                CacheTables.prescriptions,
+              ],
               leading: IconButton(
                 tooltip: AppStrings.back,
                 icon: const Icon(Icons.arrow_forward),

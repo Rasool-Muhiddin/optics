@@ -7,6 +7,7 @@ import '../../core/errors/app_exception.dart';
 import '../../core/errors/error_messages.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/repositories/sales_repository.dart';
 import '../../models/catalog.dart';
@@ -129,6 +130,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       children: [
         PageHeader(
           title: AppStrings.posTitle,
+          cacheTables: const [CacheTables.products],
+          offlineHint: AppStrings.offlineSaleBlocked,
           actions: [
             OutlinedButton.icon(
               key: const Key('pos-clear'),

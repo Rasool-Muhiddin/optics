@@ -553,6 +553,31 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   Django password-validator codes (`password_too_short`…) map to one Arabic message.
 - Flutter cache v9 `lab_users, devices`. No section shows "coming soon" any more.
 
+### Decisions recorded in P9
+- **Full sync** (`services/offline_sync_service.dart`): `OfflineSyncService.sync(sources)` pulls each
+  `SyncSource` (table + endpoint, `page_size` 500, bounded `maxPages`) into its JSON cache table; one failing
+  source (403, plan feature…) never stops the others (`SyncResult.failed`); afterwards the credit customers and the
+  dashboard refresh through their repositories; the time is stored in `cache_meta.last_full_sync`. Lab sources:
+  products, categories, brands, lens variants, recent stock movements, patients (non-archived), exams,
+  prescriptions, **invoices with lines** (`GET sales/invoices/?with_lines=true` — new: full invoices in the list, so
+  every synced invoice opens and prints offline), jobs, suppliers, supplier orders; + referrals/doctor links with
+  plan `doctor_linking`; + lab users/devices for owners. Doctor mode syncs its links and referrals only.
+- **When**: `SyncController` (Riverpod `Notifier`) syncs when the shell first shows, after login, and whenever the
+  server becomes reachable again — at most every 15 minutes (`minInterval`); "مزامنة الآن" in the sidebar
+  (`SyncStatusTile`, both shells) forces one and shows the last full sync time. Tests disable auto sync with
+  `autoSyncEnabledProvider` (overridden `false` in `pumpOpticsApp`) so fake servers only see the requests under test.
+- **Per-screen offline notice**: `PageHeader(cacheTables: [...], offlineHint:)` renders `OfflineNotice` while the
+  server is unreachable: "saved copy — last updated <time>" (max `last_synced_at` of those tables,
+  `CacheDatabase.lastSyncedAt`) or "nothing saved on this device yet"; every screen declares its tables (POS adds
+  "selling needs the server", settings the offline-write message, home the dashboard table). The global red
+  banner stays.
+- **Reports offline**: the last result of each exact query is cached (`report_results`, id = FNV-1a hash of name +
+  sorted params, `reportCacheId`). Plan usage (`lab/usage/`) and the lab link code stay online-only (limits and
+  secrets must be live). Offline search runs in Dart on every cached list (patients, products, invoices, credit
+  customers, jobs, orders, suppliers, referrals). Printing reads only cached models + the on-disk logo, so every
+  existing print (invoice A4/A5/80 mm, prescription, exam report, job ticket) works offline for synced data.
+- Cache v10 adds `report_results` (v9 = `lab_users, devices`).
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
@@ -589,7 +614,7 @@ Keep each session to one roadmap item; commit with clear messages.
       Flutter: doctor mode (separate sidebar), lab inbox for referrals. Gated by plan flag.
 - [x] **P8 Dashboard & reports**: sales, profit, credit balances, stock low/levels, jobs overdue,
       supplier balances; export gated by plan.
-- [ ] **P9 Offline read cache** completion across all domains + offline banners.
+- [x] **P9 Offline read cache** completion across all domains + offline banners.
 - [ ] **P10 Release**: Inno Setup installer, update endpoint, production deploy, production build.
       Before release: move token/device-key storage from plain `optics_auth.json` to encrypted storage
       (Windows DPAPI via `CryptProtectData`, or equivalent: Keychain on macOS, libsecret on Linux), with a

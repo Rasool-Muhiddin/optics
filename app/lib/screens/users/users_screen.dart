@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/error_messages.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/users_repository.dart';
 import '../../models/users.dart';
 import '../../services/auth_controller.dart';
@@ -42,6 +43,7 @@ class UsersScreen extends ConsumerWidget {
         children: [
           PageHeader(
             title: AppStrings.usersTitle,
+            cacheTables: const [CacheTables.labUsers, CacheTables.devices],
             actions: [
               FilledButton.icon(
                 key: const Key('add-user'),

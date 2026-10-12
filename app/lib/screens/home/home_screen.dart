@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/reports_repository.dart';
 import '../../models/reports.dart';
 import '../../services/auth_controller.dart';
@@ -48,6 +49,7 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
+          const OfflineNotice(tables: [CacheTables.dashboard]),
           if (state is LoggedIn && state.restoredOffline)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),

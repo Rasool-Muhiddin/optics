@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../models/catalog.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
@@ -72,6 +73,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       children: [
         PageHeader(
           title: AppStrings.inventoryTitle,
+          cacheTables: const [CacheTables.products, CacheTables.categories, CacheTables.brands],
           actions: [
             if (canManage)
               OutlinedButton.icon(

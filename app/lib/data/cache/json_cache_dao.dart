@@ -37,4 +37,5 @@ class CacheTables {
   static const String dashboard = 'dashboard';
   static const String labUsers = 'lab_users';
   static const String devices = 'devices';
+  static const String reportResults = 'report_results';
 }

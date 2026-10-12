@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/error_messages.dart';
+import '../core/formatters/formatters.dart';
 import '../core/strings/app_strings.dart';
+import '../data/cache/cache_database.dart';
+import '../services/connectivity_service.dart';
 
 /// Loading / error (Arabic, with retry) / data for an [AsyncValue].
 class AsyncView<T> extends StatelessWidget {
@@ -55,22 +58,90 @@ class ErrorPanel extends StatelessWidget {
 }
 
 /// Screen title row with actions (inside the main layout, no AppBar).
+///
+/// [cacheTables] = the cache tables this screen reads: while the server is unreachable a
+/// notice under the title says the data is a saved copy and when it was last refreshed.
 class PageHeader extends StatelessWidget {
-  const PageHeader({super.key, required this.title, this.actions = const [], this.leading});
+  const PageHeader({
+    super.key,
+    required this.title,
+    this.actions = const [],
+    this.leading,
+    this.cacheTables = const [],
+    this.offlineHint,
+  });
 
   final String title;
   final List<Widget> actions;
   final Widget? leading;
+  final List<String> cacheTables;
+
+  /// Extra line in the offline notice (e.g. "selling needs the server").
+  final String? offlineHint;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              ?leading,
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.headlineSmall)),
+              Wrap(spacing: 8, runSpacing: 8, children: actions),
+            ],
+          ),
+          if (cacheTables.isNotEmpty || offlineHint != null)
+            OfflineNotice(tables: cacheTables, hint: offlineHint),
+        ],
+      ),
+    );
+  }
+}
+
+/// Max `last_synced_at` of a set of cache tables (key = comma-joined table names).
+final lastSyncedProvider = FutureProvider.autoDispose.family<DateTime?, String>(
+  (ref, tables) =>
+      ref.watch(cacheDatabaseProvider).lastSyncedAt(tables.split(',').where((t) => t.isNotEmpty)),
+);
+
+/// Offline-only strip: "saved copy — last updated …" (or "nothing saved yet").
+class OfflineNotice extends ConsumerWidget {
+  const OfflineNotice({super.key, required this.tables, this.hint});
+
+  final List<String> tables;
+  final String? hint;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(connectionStatusProvider).value;
+    if (status != ConnectionStatus.offline) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final last = tables.isEmpty ? null : ref.watch(lastSyncedProvider(tables.join(','))).value;
+    final lines = [
+      if (tables.isNotEmpty)
+        last == null
+            ? AppStrings.neverSynced
+            : '${AppStrings.offlineCopy} — ${AppStrings.lastSynced}: ${Formatters.dateTime(last)}',
+      ?hint,
+    ];
+    return Container(
+      key: const Key('offline-notice'),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         children: [
-          ?leading,
-          Expanded(child: Text(title, style: Theme.of(context).textTheme.headlineSmall)),
-          Wrap(spacing: 8, runSpacing: 8, children: actions),
+          Icon(Icons.history, size: 18, color: scheme.onTertiaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(lines.join('\n'), style: TextStyle(color: scheme.onTertiaryContainer)),
+          ),
         ],
       ),
     );

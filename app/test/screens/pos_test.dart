@@ -19,6 +19,8 @@ import 'package:optics_app/services/printing/invoice_pdf.dart';
 import 'package:optics_app/services/printing/pdf_kit.dart';
 import 'package:optics_app/services/printing/print_service.dart';
 
+import 'package:optics_app/services/offline_sync_service.dart';
+
 import '../helpers.dart';
 import 'inventory_test.dart' show productJson, variantJson;
 
@@ -122,6 +124,7 @@ Future<List<(String, Uint8List)>> pumpPos(WidgetTester tester, FakeAuthServer se
         httpClientProvider.overrideWithValue(MockClient(server.handle)),
         connectivityServiceProvider.overrideWithValue(fakeConnectivity(serverUp: true)),
         cacheDatabaseProvider.overrideWithValue(await openTestCache()),
+        autoSyncEnabledProvider.overrideWithValue(false),
         printServiceProvider.overrideWithValue(
           PrintService(
             lab: const LabInfo(id: 7, name: 'مختبر النور'),

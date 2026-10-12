@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/sales_repository.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
@@ -59,6 +60,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
           children: [
             PageHeader(
               title: '${AppStrings.invoice} #${inv.number}',
+              cacheTables: const [CacheTables.invoices],
               leading: IconButton(
                 tooltip: AppStrings.back,
                 icon: const Icon(Icons.arrow_forward),

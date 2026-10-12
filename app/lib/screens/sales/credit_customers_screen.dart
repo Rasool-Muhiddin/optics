@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/sales_repository.dart';
 import '../../widgets/common.dart';
 import 'invoice_actions.dart';
@@ -38,7 +39,7 @@ class _CreditCustomersScreenState extends ConsumerState<CreditCustomersScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PageHeader(title: AppStrings.navCredit),
+        const PageHeader(title: AppStrings.navCredit, cacheTables: [CacheTables.creditCustomers]),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Align(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/doctors_repository.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
@@ -19,7 +20,10 @@ class DoctorLabsScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PageHeader(title: AppStrings.navDoctorLabs),
+        const PageHeader(
+          title: AppStrings.navDoctorLabs,
+          cacheTables: [CacheTables.doctorSideLinks],
+        ),
         Expanded(
           child: AsyncView(
             value: ref.watch(doctorLinksProvider),

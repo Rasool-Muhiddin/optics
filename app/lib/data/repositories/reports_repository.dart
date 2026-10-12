@@ -31,6 +31,17 @@ Future<String> saveToDownloads(String filename, Uint8List bytes) async {
   return file.path;
 }
 
+/// Stable cache key of a report query (FNV-1a 32-bit; Dart's `hashCode` is not stable).
+int reportCacheId(String name, Map<String, dynamic> query) {
+  final keys = query.keys.toList()..sort();
+  final text = '$name?${[for (final k in keys) '$k=${query[k]}'].join('&')}';
+  var hash = 0x811c9dc5;
+  for (final unit in text.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+  }
+  return hash;
+}
+
 final fileSaverProvider = Provider<FileSaver>((ref) => saveToDownloads);
 
 /// Dashboard (cached for offline viewing), reports (online), CSV export, lab settings.
@@ -40,10 +51,12 @@ class ReportsRepository extends BaseRepository {
     required this.api,
     required CacheDatabase cache,
     required this.saveFile,
-  }) : dashboardDao = JsonCacheDao(cache, CacheTables.dashboard);
+  }) : dashboardDao = JsonCacheDao(cache, CacheTables.dashboard),
+       reportsDao = JsonCacheDao(cache, CacheTables.reportResults);
 
   final ReportsApiService api;
   final JsonCacheDao dashboardDao;
+  final JsonCacheDao reportsDao;
   final FileSaver saveFile;
 
   Future<Dashboard> dashboard() => read(
@@ -61,11 +74,24 @@ class ReportsRepository extends BaseRepository {
     },
   );
 
-  /// Reports need live data (no offline copy).
-  Future<ReportTable> report(String name, Map<String, dynamic> query) => read(
-    remote: () async => ReportTable.fromJson(await api.report(name, query)),
-    cached: () async => throw const NotCachedException(),
-  );
+  /// Live when online; offline, the last result fetched for the very same query.
+  Future<ReportTable> report(String name, Map<String, dynamic> query) {
+    final id = reportCacheId(name, query);
+    return read(
+      remote: () async {
+        final json = await api.report(name, query);
+        await reportsDao.upsertAll([
+          {...json, 'id': id},
+        ]);
+        return ReportTable.fromJson(json);
+      },
+      cached: () async {
+        final json = await reportsDao.getById(id);
+        if (json == null) throw const NotCachedException();
+        return ReportTable.fromJson(json);
+      },
+    );
+  }
 
   /// Downloads the CSV export (plan `report_export`) and saves it; returns the file path.
   Future<String> exportCsv(String name, Map<String, dynamic> query) => write(() async {

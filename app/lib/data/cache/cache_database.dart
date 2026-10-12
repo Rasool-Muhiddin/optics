@@ -75,6 +75,8 @@ class CacheDatabase {
         await db.execute(CacheDao.createTableSql(table));
       }
     },
+    // v10 (P9): last result of each report query (id = stable hash of the query).
+    (db) => db.execute(CacheDao.createTableSql('report_results')),
   ];
 
   static int get schemaVersion => migrations.length;
@@ -108,6 +110,29 @@ class CacheDatabase {
   static Future<String> _defaultPath() async {
     final dir = await getApplicationSupportDirectory();
     return p.join(dir.path, AppConfig.cacheDbFileName);
+  }
+
+  /// Bookkeeping value from `cache_meta` (e.g. the last full sync time).
+  Future<String?> meta(String key) async {
+    final rows = await db.query('cache_meta', where: 'key = ?', whereArgs: [key], limit: 1);
+    return rows.isEmpty ? null : rows.first['value'] as String?;
+  }
+
+  Future<void> setMeta(String key, String value) => db.insert('cache_meta', {
+    'key': key,
+    'value': value,
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+  /// Most recent `last_synced_at` over [tables] (null when none of them has rows).
+  Future<DateTime?> lastSyncedAt(Iterable<String> tables) async {
+    DateTime? latest;
+    for (final table in tables) {
+      final rows = await db.rawQuery('SELECT MAX(last_synced_at) AS t FROM $table');
+      final value = rows.first['t'] as String?;
+      final t = value == null ? null : DateTime.parse(value);
+      if (t != null && (latest == null || t.isAfter(latest))) latest = t;
+    }
+    return latest;
   }
 
   /// Clears every cached row (e.g. on logout or lab switch).

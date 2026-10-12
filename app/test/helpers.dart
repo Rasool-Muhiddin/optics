@@ -11,6 +11,7 @@ import 'package:optics_app/data/api/health_api_service.dart';
 import 'package:optics_app/data/cache/cache_database.dart';
 import 'package:optics_app/services/auth_storage.dart';
 import 'package:optics_app/services/connectivity_service.dart';
+import 'package:optics_app/services/offline_sync_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// ApiClient whose server is a function.
@@ -151,6 +152,7 @@ Future<void> pumpOpticsApp(
   required AuthStorage storage,
   ConnectivityService? connectivity,
   CacheDatabase? cache,
+  bool autoSync = false,
 }) async {
   tester.view.physicalSize = const Size(1400, 900);
   tester.view.devicePixelRatio = 1;
@@ -164,6 +166,7 @@ Future<void> pumpOpticsApp(
           connectivity ?? fakeConnectivity(serverUp: !server.down),
         ),
         cacheDatabaseProvider.overrideWithValue(cache ?? await openTestCache()),
+        autoSyncEnabledProvider.overrideWithValue(autoSync),
       ],
       child: const OpticsApp(),
     ),

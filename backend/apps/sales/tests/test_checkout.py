@@ -264,3 +264,21 @@ class DiscountLimitSettingTests(SalesBase):
         self.assertEqual(self.client.patch("/api/v1/lab/", {"max_discount_percent": "101"}).status_code, 400)
         self.lab.refresh_from_db()
         self.assertEqual(self.lab.max_discount_percent, Decimal("15"))
+
+
+class InvoiceListWithLinesTests(LabAPITestCase):
+    def test_with_lines_returns_full_invoices(self):
+        from apps.core.testing import make_lab, make_member, make_product, stock_in
+        from apps.labs.models import LabUser
+
+        lab = make_lab()
+        self.login_as(make_member(lab, LabUser.Role.OWNER))
+        frame = make_product(lab)
+        stock_in(frame, 1)
+        self.client.post("/api/v1/sales/checkout/", {"customer_name": "x", "lines": [{"product": frame.id, "qty": 1}]},
+                         format="json")
+        plain = self.client.get("/api/v1/sales/invoices/").json()["results"][0]
+        self.assertNotIn("lines", plain)
+        full = self.client.get("/api/v1/sales/invoices/", {"with_lines": "true"}).json()["results"][0]
+        self.assertEqual(len(full["lines"]), 1)
+        self.assertIn("payments", full)

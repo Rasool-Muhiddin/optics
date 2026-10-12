@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/cache/json_cache_dao.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
@@ -36,6 +37,7 @@ class JobDetailScreen extends ConsumerWidget {
           children: [
             PageHeader(
               title: '${AppStrings.job} #${job.number} — ${job.patientName}',
+              cacheTables: const [CacheTables.jobs],
               leading: IconButton(
                 tooltip: AppStrings.back,
                 icon: const Icon(Icons.arrow_forward),

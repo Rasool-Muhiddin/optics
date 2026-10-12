@@ -6,6 +6,7 @@ import '../../core/strings/app_strings.dart';
 import '../../models/session.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/connection_status_banner.dart';
+import '../../widgets/sync_status_tile.dart';
 import 'nav_items.dart';
 
 /// Main layout: sidebar (on the right, RTL) + the current screen.
@@ -117,6 +118,7 @@ class Sidebar extends ConsumerWidget {
               ),
             ),
             const Divider(height: 1),
+            const SyncStatusTile(),
             ListTile(
               leading: const CircleAvatar(child: Icon(Icons.person)),
               title: Text(session.user.displayName, overflow: TextOverflow.ellipsis),

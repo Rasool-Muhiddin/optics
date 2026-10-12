@@ -6,6 +6,7 @@ import '../../core/formatters/formatters.dart';
 import '../../core/optics/powers.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../models/catalog.dart';
 import '../../services/auth_controller.dart';
@@ -52,6 +53,11 @@ class ProductDetailScreen extends ConsumerWidget {
           children: [
             PageHeader(
               title: product.name,
+              cacheTables: const [
+                CacheTables.products,
+                CacheTables.lensVariants,
+                CacheTables.stockMovements,
+              ],
               leading: IconButton(
                 tooltip: AppStrings.back,
                 icon: const Icon(Icons.arrow_forward),

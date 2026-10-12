@@ -774,4 +774,17 @@ class AppStrings {
   static const String passwordMin = 'كلمة المرور قصيرة جداً (8 أحرف على الأقل)';
   static const String errWeakPassword =
       'كلمة المرور ضعيفة: استخدم 8 أحرف على الأقل مع أرقام وحروف ولا تجعلها مشابهة لاسم المستخدم.';
+
+  // Offline cache (P9)
+  static const String offlineCopy = 'بدون اتصال — تعرض نسخة محفوظة (قراءة وطباعة فقط)';
+  static const String lastSynced = 'آخر تحديث';
+  static const String neverSynced = 'لا توجد نسخة محفوظة لهذه الشاشة على هذا الجهاز بعد';
+  static const String syncNow = 'مزامنة الآن';
+  static const String syncing = 'جارٍ المزامنة…';
+  static const String lastFullSync = 'آخر مزامنة';
+  static const String notSyncedYet = 'لم تتم المزامنة بعد';
+  static const String syncDone = 'تمت مزامنة البيانات للعمل دون اتصال.';
+  static const String syncPartial = 'تمت المزامنة مع تعذر تحديث بعض الأقسام.';
+  static const String offlineSaleBlocked =
+      'البيع يحتاج الاتصال بالخادم (الأسعار والمخزون والترقيم من الخادم).';
 }
