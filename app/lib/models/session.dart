@@ -29,6 +29,12 @@ class Session {
 
   bool get isOwner => membership.isOwner;
 
+  /// Owner, or staff with `can_manage_inventory` (products + stock entries).
+  bool get canManageInventory => membership.isOwner || membership.canManageInventory;
+
+  /// Owner or staff with `can_view_costs`: may open the reports (server enforces).
+  bool get canViewReports => membership.isOwner || membership.canViewCosts;
+
   /// UI hint only — the server enforces plan features.
   bool hasFeature(String flag) => plan.features[flag] ?? false;
 }
@@ -60,18 +66,25 @@ class SessionUser {
 }
 
 class Membership {
-  const Membership({required this.role, required this.isOwner, required this.canViewCosts});
+  const Membership({
+    required this.role,
+    required this.isOwner,
+    required this.canViewCosts,
+    this.canManageInventory = false,
+  });
 
   factory Membership.fromJson(Map<String, dynamic> json) => Membership(
     role: json['role'] as String? ?? 'staff',
     isOwner: json['is_owner'] as bool? ?? false,
     canViewCosts: json['can_view_costs'] as bool? ?? false,
+    canManageInventory: json['can_manage_inventory'] as bool? ?? false,
   );
 
   /// `owner` | `staff` (extendable).
   final String role;
   final bool isOwner;
   final bool canViewCosts;
+  final bool canManageInventory;
 }
 
 class LabInfo {
@@ -84,6 +97,7 @@ class LabInfo {
     this.currency = 'IQD',
     this.printHeader = '',
     this.printFooter = '',
+    this.maxDiscountPercent = '10',
   });
 
   factory LabInfo.fromJson(Map<String, dynamic> json) => LabInfo(
@@ -95,6 +109,7 @@ class LabInfo {
     currency: json['currency'] as String? ?? 'IQD',
     printHeader: json['print_header'] as String? ?? '',
     printFooter: json['print_footer'] as String? ?? '',
+    maxDiscountPercent: json['max_discount_percent']?.toString() ?? '10',
   );
 
   final int id;
@@ -105,6 +120,9 @@ class LabInfo {
   final String currency;
   final String printHeader;
   final String printFooter;
+
+  /// Staff discount limit (% of the invoice), as the server sent it (`"10.00"`).
+  final String maxDiscountPercent;
 }
 
 class PlanInfo {

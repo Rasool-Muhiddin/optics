@@ -5,6 +5,7 @@ import '../../core/errors/error_messages.dart';
 import '../../core/formatters/formatters.dart';
 import '../../core/optics/powers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/repositories/catalog_repository.dart';
 import '../../data/repositories/jobs_repository.dart';
 import '../../data/repositories/sales_repository.dart' show InvoiceQuery;
 import '../../models/catalog.dart';
@@ -306,6 +307,16 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
                 decoration: const InputDecoration(labelText: AppStrings.lensNotes),
               ),
               if (_lensId != null && lensUsesVariants) ...[
+                if (_prescriptionId != null)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      key: const Key('job-match-rx'),
+                      icon: const Icon(Icons.auto_fix_high, size: 18),
+                      label: const Text(AppStrings.matchRxPowers),
+                      onPressed: _matchRx,
+                    ),
+                  ),
                 picked(AppStrings.lensOd, _lensOdLabel, () async {
                   final v = await _pickPower();
                   if (v != null) {
@@ -337,6 +348,29 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
         ],
       ),
     );
+  }
+
+  /// Fills OD/OS with the stock powers matching the linked Rx (plus-cyl Rx included).
+  Future<void> _matchRx() async {
+    final lensId = _lensId, rxId = _prescriptionId;
+    if (lensId == null || rxId == null) return;
+    try {
+      final m = await ref.read(catalogRepositoryProvider).matchRx(lensId, rxId);
+      if (!mounted) return;
+      setState(() {
+        if (m.od != null) {
+          _lensOdId = m.od!.id;
+          _lensOdLabel = _variantLabel(m.od!);
+        }
+        if (m.os != null) {
+          _lensOsId = m.os!.id;
+          _lensOsLabel = _variantLabel(m.os!);
+        }
+      });
+      if (m.od == null || m.os == null) showSnack(context, AppStrings.matchRxPartial);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
   }
 
   Future<LensVariant?> _pickPower() async {

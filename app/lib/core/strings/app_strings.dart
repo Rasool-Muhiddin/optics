@@ -85,6 +85,8 @@ class AppStrings {
   static const String errNoLabMembership = 'هذا الحساب غير مرتبط بأي مختبر.';
   static const String errMembershipInactive = 'تم إيقاف حسابك في المختبر.';
   static const String errOwnerRequired = 'هذا الإجراء متاح لمالك المختبر فقط.';
+  static const String errInventoryPermission =
+      'إدارة المخزون (الأصناف وإدخالات المخزون) متاحة للمالك أو لمن لديه صلاحية إدارة المخزون.';
   static const String errFeatureNotInPlan = 'هذه الميزة غير مشمولة في اشتراكك الحالي.';
   static const String errCannotModifySelf = 'لا يمكنك إيقاف حسابك أو تغيير صلاحيتك بنفسك.';
   static const String errUsernameTaken = 'اسم المستخدم مستخدم مسبقاً.';
@@ -289,7 +291,10 @@ class AppStrings {
   static const String prescribedBy = 'الطبيب / الجهة';
   static const String signature = 'التوقيع';
   static const String transpose = 'تحويل الأسطوانة (±)';
-  static const String transposeHint = 'تحويل الوصفة بين صيغة الأسطوانة الموجبة والسالبة';
+  static const String transposeHint =
+      'تحويل الوصفة بين صيغة الأسطوانة الموجبة والسالبة (تُحفظ الوصفة وتُطبع كما أُدخلت)';
+  static const String matchRxPowers = 'اختيار القوى المطابقة للوصفة';
+  static const String matchRxPartial = 'لا توجد قوة مطابقة في المخزون لإحدى العينين أو كلتيهما.';
   static const String pdDistance = 'PD بعيد';
   static const String pdNear = 'PD قريب';
   static const String pdRight = 'PD يمين';
@@ -482,4 +487,254 @@ class AppStrings {
   static const String errInvoiceMismatch = 'الفاتورة تعود لزبون آخر.';
   static const String errInvalidFrame = 'اختيار الإطار غير صحيح.';
   static const String errInvalidLens = 'اختيار العدسة أو القوة غير صحيح.';
+
+  // Supplier orders (P6)
+  static const String ordersTitle = 'طلبات الموردين';
+  static const String pendingOrders = 'الطلبات المفتوحة';
+  static const String supplier = 'المورد';
+  static const String suppliers = 'الموردون';
+  static const String manageSuppliers = 'إدارة الموردين';
+  static const String addSupplier = 'إضافة مورد';
+  static const String editSupplier = 'تعديل المورد';
+  static const String chooseSupplier = 'اختر المورد';
+  static const String supplierBalance = 'المستحق للمورد';
+  static const String paySupplier = 'دفع للمورد';
+  static const String openOrdersCount = 'طلبات مفتوحة';
+  static const String newOrder = 'طلب جديد من مورد';
+  static const String editOrder = 'تعديل طلب المورد';
+  static const String orderNumber = 'رقم الطلب';
+  static const String orderType = 'نوع الطلب';
+  static const String orderDate = 'تاريخ الطلب';
+  static const String expectedDate = 'تاريخ الوصول المتوقع';
+  static const String supplierRef = 'رقم فاتورة المورد';
+  static const String paymentStatus = 'حالة الدفع';
+  static const String orderLines = 'المواد المطلوبة';
+  static const String addLine = 'إضافة مادة';
+  static const String addProductLine = 'منتج من المخزون';
+  static const String addTextLine = 'مادة بوصف حر';
+  static const String description = 'الوصف';
+  static const String eye = 'العين';
+  static const String received = 'المستلم';
+  static const String remaining = 'المتبقي';
+  static const String receive = 'استلام';
+  static const String receiveAll = 'استلام الكل';
+  static const String receiveOrder = 'استلام الطلب';
+  static const String receiveHint =
+      'أدخل الكميات المستلمة الآن (المواد المخزنية تُضاف إلى المخزون).';
+  static const String markOrdered = 'تم إرسال الطلب';
+  static const String markPending = 'إرجاع إلى غير مُرسل';
+  static const String cancelOrder = 'إلغاء الطلب';
+  static const String cancelOrderConfirm =
+      'سيتم إلغاء ما لم يُستلم من الطلب. ما استُلم يبقى في المخزون ويبقى مستحقاً للمورد.';
+  static const String ageDays = 'العمر (يوم)';
+  static const String daysOld = 'يوم';
+  static const String late = 'متأخر';
+  static const String lateOnly = 'المتأخرة فقط';
+  static const String openOnly = 'المفتوحة فقط';
+  static const String minAge = 'أقدم من (يوم)';
+  static const String ageing = 'أعمار الطلبات المفتوحة';
+  static const String totalOwed = 'إجمالي المستحق للموردين';
+  static const String noOrders = 'لا توجد طلبات.';
+  static const String orderForJob = 'طلب عدسة من المورد';
+  static const String supplierOrdersOfJob = 'طلبات الموردين لهذا الطلب';
+  static const String chooseJob = 'اختر طلب الزبون';
+  static const String linesRequired = 'أضف مادة واحدة على الأقل';
+
+  static const Map<String, String> orderStatuses = {
+    'pending': 'غير مُرسل',
+    'ordered': 'مطلوب',
+    'partially_received': 'مستلم جزئياً',
+    'received': 'مستلم',
+    'cancelled': 'ملغى',
+  };
+
+  static const Map<String, String> orderTypes = {
+    'stock': 'مخزون',
+    'rx_for_job': 'عدسة طبية لطلب زبون',
+    'other': 'أخرى',
+  };
+
+  static const Map<String, String> orderPaymentStatuses = {
+    'unpaid': 'غير مدفوع',
+    'partial': 'مدفوع جزئياً',
+    'paid': 'مدفوع',
+  };
+
+  static const Map<String, String> eyes = {'': '—', 'od': 'اليمنى (OD)', 'os': 'اليسرى (OS)'};
+
+  // Errors (P6)
+  static const String errOrderLocked = 'لا يمكن تعديل طلب تم استلامه أو إلغاؤه.';
+  static const String errOrderClosed = 'الطلب مستلم بالكامل أو ملغى.';
+  static const String errOverReceive = 'لا يمكن استلام كمية أكبر من المطلوبة.';
+  static const String errCancelRefundRequired =
+      'المبلغ المدفوع أكبر من قيمة المستلم. ألغِ الدفعات الزائدة أولاً.';
+  static const String errOrderNotSent = 'أرسل الطلب إلى المورد قبل الدفع.';
+  static const String errCostPermission = 'هذا الإجراء يتطلب صلاحية الاطلاع على التكاليف.';
+  static const String errJobRequired = 'طلب العدسة الطبية يجب أن يرتبط بطلب زبون.';
+  static const String errInvalidJob = 'فقط طلبات العدسات الطبية ترتبط بطلب زبون.';
+
+  // Doctor linking (P7)
+  static const String doctorMode = 'وضع الطبيب';
+  static const String doctorLogin = 'دخول الطبيب';
+  static const String doctorLoginHint = 'حساب الطبيب لا يحتاج إلى تفعيل الجهاز.';
+  static const String iAmDoctor = 'أنا طبيب — دخول حساب طبيب';
+  static const String backToLab = 'العودة إلى دخول المختبر';
+  static const String navDoctorReferrals = 'إحالاتي';
+  static const String navDoctorLabs = 'المختبرات المرتبطة';
+  static const String myLinkCode = 'رمز الربط الخاص بك';
+  static const String myLinkCodeHint =
+      'أعطِ هذا الرمز للمختبر ليرسل طلب ربط، أو أدخل رمز المختبر هنا.';
+  static const String labLinkCode = 'رمز ربط المختبر';
+  static const String labLinkCodeHint =
+      'أعطِ هذا الرمز للأطباء ليرسلوا طلب ربط، أو أدخل رمز الطبيب لإرسال الطلب منك.';
+  static const String regenerateCode = 'رمز جديد';
+  static const String requestLink = 'طلب ربط';
+  static const String enterLabCode = 'رمز المختبر';
+  static const String enterDoctorCode = 'رمز الطبيب';
+  static const String linkedDoctors = 'الأطباء المرتبطون';
+  static const String linkedLabs = 'المختبرات';
+  static const String acceptLink = 'قبول';
+  static const String rejectLink = 'رفض';
+  static const String revokeLink = 'إلغاء الربط';
+  static const String requestedByThem = 'طلب وارد';
+  static const String requestedByUs = 'طلب مُرسل';
+  static const String noLinks = 'لا توجد روابط بعد.';
+  static const String referralsTitle = 'إحالات الأطباء';
+  static const String referralInbox = 'الإحالات الواردة';
+  static const String referral = 'إحالة';
+  static const String newReferral = 'إحالة جديدة';
+  static const String sendReferral = 'إرسال الإحالة';
+  static const String chooseLab = 'المختبر';
+  static const String doctor = 'الطبيب';
+  static const String noReferrals = 'لا توجد إحالات.';
+  static const String referralSent = 'تم إرسال الإحالة.';
+  static const String markReceived = 'تأكيد الاستلام';
+  static const String acceptReferral = 'قبول وإنشاء ملف';
+  static const String acceptIntoNew = 'ملف مراجع جديد';
+  static const String acceptIntoExisting = 'ربط بملف مراجع موجود';
+  static const String rejectReferral = 'رفض الإحالة';
+  static const String completeReferral = 'إنهاء الإحالة';
+  static const String openPatientFile = 'فتح ملف المراجع';
+  static const String doctorNote = 'ملاحظة الطبيب';
+  static const String rejectReason = 'سبب الرفض';
+  static const String openReferralsOnly = 'المفتوحة فقط';
+  static const String noLinkedLabs = 'لا يوجد مختبر مرتبط مقبول. اطلب الربط من شاشة المختبرات.';
+
+  static const Map<String, String> linkStatuses = {
+    'pending': 'بانتظار الرد',
+    'accepted': 'مرتبط',
+    'rejected': 'مرفوض',
+    'revoked': 'ملغى',
+  };
+
+  static const Map<String, String> referralStatuses = {
+    'sent': 'مُرسلة',
+    'received': 'مستلمة',
+    'in_progress': 'قيد العمل',
+    'completed': 'مكتملة',
+    'rejected': 'مرفوضة',
+  };
+
+  // Errors (P7)
+  static const String errNotADoctor = 'هذا الحساب ليس حساب طبيب.';
+  static const String errDoctorInactive = 'حساب الطبيب موقوف. يرجى التواصل مع تيرا.';
+  static const String errInvalidLinkCode = 'رمز الربط غير صحيح.';
+  static const String errAlreadyLinked = 'الربط موجود مسبقاً.';
+  static const String errAlreadyRequested = 'طلب الربط مُرسل مسبقاً وينتظر الرد.';
+  static const String errCannotAnswerOwnRequest = 'لا يمكنك الرد على طلب أرسلته بنفسك.';
+  static const String errNotLinked = 'لست مرتبطاً بهذا المختبر.';
+  static const String errLabUnavailable = 'المختبر غير متاح حالياً.';
+
+  // Dashboard & reports (P8)
+  static const String dashboard = 'لوحة المتابعة';
+  static const String todaySales = 'مبيعات اليوم';
+  static const String todayCollected = 'المقبوض اليوم';
+  static const String monthSales = 'مبيعات الشهر';
+  static const String monthProfit = 'ربح الشهر';
+  static const String creditOutstanding = 'ديون الزبائن';
+  static const String openJobs = 'طلبات زبائن مفتوحة';
+  static const String readyJobs = 'جاهزة للتسليم';
+  static const String lowStockItems = 'أصناف منخفضة';
+  static const String openSupplierOrders = 'طلبات موردين مفتوحة';
+  static const String openReferrals = 'إحالات جديدة';
+  static const String last7Days = 'المبيعات آخر ٧ أيام';
+  static const String invoicesCountShort = 'فاتورة';
+  static const String reportsTitle = 'التقارير';
+  static const String exportCsv = 'تصدير CSV';
+  static const String exportedTo = 'تم حفظ الملف في';
+  static const String exportNotInPlan = 'التصدير غير مشمول في اشتراكك';
+  static const String dateFrom = 'من تاريخ';
+  static const String dateTo = 'إلى تاريخ';
+  static const String groupByDay = 'يومي';
+  static const String groupByMonth = 'شهري';
+  static const String showAll = 'عرض الكل';
+  static const String totals = 'المجاميع';
+  static const String paymentsByMethod = 'المقبوضات حسب طريقة الدفع';
+  static const String topProducts = 'الأكثر مبيعاً';
+  static const String byKind = 'حسب النوع (قبل خصم الفاتورة)';
+  static const String stockValueByKind = 'قيمة المخزون حسب النوع';
+  static const String estimatedCostLines = 'أسطر بكلفة تقديرية (عدسات لم تُستلم من المورد بعد)';
+  static const String countsByStatus = 'العدد حسب الحالة';
+
+  static const Map<String, String> reportNames = {
+    'sales': 'المبيعات',
+    'profit': 'الأرباح',
+    'credit': 'ديون الزبائن',
+    'stock': 'المخزون المنخفض',
+    'jobs': 'الطلبات المتأخرة',
+    'suppliers': 'أرصدة الموردين',
+  };
+
+  /// Column / total keys of the report tables.
+  static const Map<String, String> reportColumns = {
+    'period': 'الفترة',
+    'invoices': 'الفواتير',
+    'subtotal': 'قبل الخصم',
+    'discount': 'الخصم',
+    'total': 'الإجمالي',
+    'balance': 'المتبقي',
+    'revenue': 'المبيعات',
+    'cost': 'الكلفة',
+    'profit': 'الربح',
+    'margin': 'الهامش %',
+    'name': 'الاسم',
+    'phone': 'الهاتف',
+    'oldest': 'أقدم فاتورة',
+    'days': 'الأيام',
+    'customers': 'الزبائن',
+    'kind': 'النوع',
+    'brand': 'الماركة',
+    'quantity': 'الكمية',
+    'reorder_level': 'حد الطلب',
+    'value': 'القيمة',
+    'products': 'الأصناف',
+    'number': 'الرقم',
+    'patient': 'المراجع',
+    'status': 'الحالة',
+    'promised_date': 'موعد التسليم',
+    'days_late': 'أيام التأخير',
+    'overdue': 'المتأخرة',
+    'open_orders': 'طلبات مفتوحة',
+    'suppliers': 'الموردون',
+    'method': 'الطريقة',
+    'count': 'العدد',
+    'amount': 'المبلغ',
+    'qty': 'الكمية',
+    'range': 'العمر (يوم)',
+  };
+  static const String creditAgeing = 'أعمار الديون (حسب أقدم فاتورة)';
+
+  // Lab settings (P8)
+  static const String settingsTitle = 'إعدادات المختبر';
+  static const String labName = 'اسم المختبر';
+  static const String logo = 'الشعار';
+  static const String chooseLogo = 'اختيار شعار';
+  static const String removeLogo = 'حذف الشعار';
+  static const String logoHint = 'صورة PNG أو JPG بحجم 1 ميغابايت كحد أقصى.';
+  static const String printHeader = 'ترويسة الطباعة (أسطر تحت اسم المختبر)';
+  static const String printFooter = 'تذييل الطباعة';
+  static const String maxDiscountPercent = 'أقصى خصم للموظفين (%)';
+  static const String maxDiscountHint = 'الخصم الأعلى من هذه النسبة يحتاج المالك.';
+  static const String settingsSaved = 'تم حفظ الإعدادات.';
+  static const String errLogoTooLarge = 'حجم الشعار أكبر من 1 ميغابايت.';
 }

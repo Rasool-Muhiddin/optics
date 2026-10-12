@@ -59,6 +59,31 @@ class JobStatusLog {
   final DateTime? createdAt;
 }
 
+/// Supplier order placed for a job (summary sent with the job).
+class JobSupplierOrder {
+  const JobSupplierOrder({
+    required this.id,
+    required this.number,
+    required this.status,
+    this.supplierName = '',
+    this.expectedDate,
+  });
+
+  factory JobSupplierOrder.fromJson(Map<String, dynamic> j) => JobSupplierOrder(
+    id: Json.int0(j['id']),
+    number: Json.int0(j['number']),
+    status: Json.str(j['status']),
+    supplierName: Json.str(j['supplier_name']),
+    expectedDate: Json.date(j['expected_date']),
+  );
+
+  final int id;
+  final int number;
+  final String status;
+  final String supplierName;
+  final DateTime? expectedDate;
+}
+
 class Job {
   const Job({
     required this.id,
@@ -88,6 +113,7 @@ class Job {
     this.deliveredAt,
     this.notes = '',
     this.logs = const [],
+    this.supplierOrders = const [],
     this.createdByName = '',
     this.createdAt,
   });
@@ -122,6 +148,7 @@ class Job {
     deliveredAt: Json.date(j['delivered_at']),
     notes: Json.str(j['notes']),
     logs: [for (final l in Json.list(j['status_logs'])) JobStatusLog.fromJson(l)],
+    supplierOrders: [for (final o in Json.list(j['supplier_orders'])) JobSupplierOrder.fromJson(o)],
     createdByName: Json.str(j['created_by_name']),
     createdAt: Json.date(j['created_at']),
   );
@@ -155,6 +182,7 @@ class Job {
   final DateTime? deliveredAt;
   final String notes;
   final List<JobStatusLog> logs;
+  final List<JobSupplierOrder> supplierOrders;
   final String createdByName;
   final DateTime? createdAt;
 

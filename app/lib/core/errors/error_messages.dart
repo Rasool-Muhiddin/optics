@@ -28,6 +28,7 @@ const Map<String, String> _messagesByCode = {
   'no_lab_membership': AppStrings.errNoLabMembership,
   'membership_inactive': AppStrings.errMembershipInactive,
   'owner_required': AppStrings.errOwnerRequired,
+  'inventory_permission_required': AppStrings.errInventoryPermission,
   'feature_not_in_plan': AppStrings.errFeatureNotInPlan,
   'cannot_modify_self': AppStrings.errCannotModifySelf,
   'username_taken': AppStrings.errUsernameTaken,
@@ -77,6 +78,27 @@ const Map<String, String> _messagesByCode = {
   'invoice_mismatch': AppStrings.errInvoiceMismatch,
   'invalid_frame': AppStrings.errInvalidFrame,
   'invalid_lens': AppStrings.errInvalidLens,
+  // Supplier orders (P6)
+  'order_locked': AppStrings.errOrderLocked,
+  'order_closed': AppStrings.errOrderClosed,
+  'over_receive': AppStrings.errOverReceive,
+  'invalid_line': AppStrings.errValidation,
+  'cancel_refund_required': AppStrings.errCancelRefundRequired,
+  'order_not_sent': AppStrings.errOrderNotSent,
+  'cost_permission_required': AppStrings.errCostPermission,
+  'job_required': AppStrings.errJobRequired,
+  'invalid_job': AppStrings.errInvalidJob,
+  // Doctor linking (P7)
+  'not_a_doctor': AppStrings.errNotADoctor,
+  'doctor_inactive': AppStrings.errDoctorInactive,
+  'invalid_link_code': AppStrings.errInvalidLinkCode,
+  'already_linked': AppStrings.errAlreadyLinked,
+  'already_requested': AppStrings.errAlreadyRequested,
+  'cannot_answer_own_request': AppStrings.errCannotAnswerOwnRequest,
+  'not_linked': AppStrings.errNotLinked,
+  'lab_unavailable': AppStrings.errLabUnavailable,
+  // Reports & settings (P8)
+  'logo_too_large': AppStrings.errLogoTooLarge,
 };
 
 /// Arabic, user-facing message for any error thrown by the data layer.

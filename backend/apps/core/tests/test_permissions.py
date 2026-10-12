@@ -113,7 +113,9 @@ class FeatureFlagTests(LabAPITestCase):
 class AnonymousIsRejectedEverywhereTests(LabAPITestCase):
     """Guard: every non-public API route answers 401 to anonymous requests (any method)."""
 
-    PUBLIC = {"/api/v1/health/", "/api/v1/desktop/activate/", "/api/v1/desktop/login/"}
+    PUBLIC = {
+        "/api/v1/health/", "/api/v1/desktop/activate/", "/api/v1/desktop/login/", "/api/v1/desktop/doctor-login/",
+    }
 
     def _routes(self, resolver=None, prefix=""):
         import re

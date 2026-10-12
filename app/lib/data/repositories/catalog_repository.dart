@@ -72,6 +72,13 @@ class CatalogRepository extends BaseRepository {
 
   // --- Lens powers ------------------------------------------------------------------
 
+  /// Stock powers of [productId] fitting a prescription (server uses its minus-cyl copy).
+  Future<({LensVariant? od, LensVariant? os})> matchRx(int productId, int prescriptionId) async {
+    final json = await api.matchRx(productId, prescriptionId);
+    LensVariant? v(Object? j) => j == null ? null : LensVariant.fromJson(Json.map(j));
+    return (od: v(json['od']), os: v(json['os']));
+  }
+
   Future<LensGrid> grid(int productId) => read(
     remote: () async {
       final json = await api.grid(productId);

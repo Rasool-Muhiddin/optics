@@ -50,6 +50,25 @@ class CacheDatabase {
     },
     // v5 (P5): customer jobs.
     (db) => db.execute(CacheDao.createTableSql('jobs')),
+    // v6 (P6): suppliers and supplier orders.
+    (db) async {
+      for (final table in const ['suppliers', 'supplier_orders']) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
+    // v7 (P7): referrals and doctor links (lab side) + doctor mode tables.
+    (db) async {
+      for (final table in const [
+        'referrals',
+        'lab_doctor_links',
+        'doctor_side_links',
+        'doctor_side_referrals',
+      ]) {
+        await db.execute(CacheDao.createTableSql(table));
+      }
+    },
+    // v8 (P8): last dashboard (single row, id 1).
+    (db) => db.execute(CacheDao.createTableSql('dashboard')),
   ];
 
   static int get schemaVersion => migrations.length;

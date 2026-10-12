@@ -5,6 +5,7 @@ import '../../core/errors/error_messages.dart';
 import '../../core/strings/app_strings.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/auth_card.dart';
+import '../doctor/doctor_login_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -109,6 +110,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   : () => ref.read(authControllerProvider.notifier).reactivate(),
               child: const Text(AppStrings.reactivate),
             ),
+            const DoctorLoginLink(),
           ],
         ),
       ),

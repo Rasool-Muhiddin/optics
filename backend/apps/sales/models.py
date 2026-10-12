@@ -104,6 +104,16 @@ class InvoiceLine(LabScopedModel):
     discount = money_field(help_text="Discount amount on the whole line.")
     line_total = money_field()
     unit_cost = money_field(help_text="Weighted-average cost snapshot at sale time.")
+    cost_source = models.CharField(
+        max_length=10,
+        choices=[
+            ("average", "Stock weighted average"),
+            ("reference", "Product reference purchase price"),
+            ("supplier", "Actual supplier order cost (rx lens of a job)"),
+        ],
+        default="average",
+        help_text="Where `unit_cost` came from (P6: rx lenses get the real supplier cost).",
+    )
 
     class Meta:
         ordering = ["id"]

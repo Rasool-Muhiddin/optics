@@ -83,6 +83,9 @@ class AuthStorage {
 
   bool get isActivated => deviceKey != null;
 
+  /// The stored token/session belong to a doctor account (no lab, no activation).
+  bool get isDoctorSession => token != null && session?['role'] == 'doctor';
+
   /// Returns this installation's id, creating it on first use.
   Future<String> ensureDeviceId() async {
     final existing = deviceId;

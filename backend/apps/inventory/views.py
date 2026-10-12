@@ -3,7 +3,7 @@ from django.db import transaction
 from rest_framework import mixins, status, viewsets
 from rest_framework.response import Response
 
-from apps.core.permissions import IsLabOwner, LabAccess
+from apps.core.permissions import CanManageInventory, LabAccess
 from apps.core.viewsets import LabScopedMixin
 
 from .models import StockMovement
@@ -24,7 +24,7 @@ class StockMovementFilter(django_filters.FilterSet):
 class StockMovementViewSet(LabScopedMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """
     `/api/v1/inventory/movements/` — the stock ledger (read: any member, costs hidden from
-    staff without `can_view_costs`). `POST` (owner) records a manual entry: purchase /
+    staff without `can_view_costs`). `POST` (owner, or staff with `can_manage_inventory`) records a manual entry: purchase /
     adjustment / damage / return lines, all applied in one transaction.
     """
 
@@ -35,7 +35,7 @@ class StockMovementViewSet(LabScopedMixin, mixins.ListModelMixin, mixins.Retriev
     ordering_fields = ["created_at", "id"]
 
     def get_permissions(self):
-        return [IsLabOwner()] if self.request.method == "POST" else [LabAccess()]
+        return [CanManageInventory()] if self.request.method == "POST" else [LabAccess()]
 
     def create(self, request):
         entry = StockEntrySerializer(data=request.data, context=self.get_serializer_context())

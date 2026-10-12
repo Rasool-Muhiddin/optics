@@ -52,9 +52,11 @@ Map<String, dynamic> variantJson(int id, double sph, double cyl, int qty) => {
   'is_active': true,
 };
 
-FakeAuthServer inventoryServer({bool owner = true}) {
+FakeAuthServer inventoryServer({bool owner = true, bool manager = false}) {
   final costs = owner;
-  final server = loggedInServer(session: sessionJson(role: owner ? 'owner' : 'staff'));
+  final session = sessionJson(role: owner ? 'owner' : 'staff');
+  (session['membership'] as Map<String, dynamic>)['can_manage_inventory'] = owner || manager;
+  final server = loggedInServer(session: session);
   final lens = productJson(
     id: 2,
     kind: 'stock_lens',
@@ -117,6 +119,14 @@ void main() {
     expect(find.text('Ray-Ban 5154'), findsOneWidget);
     expect(find.text(AppStrings.averageCost), findsNothing);
     expect(find.byKey(const Key('add-product')), findsNothing);
+  });
+
+  testWidgets('inventory-manager staff gets product actions but still no costs', (tester) async {
+    await openInventory(tester, inventoryServer(owner: false, manager: true));
+
+    expect(find.text(AppStrings.averageCost), findsNothing);
+    expect(find.byKey(const Key('add-product')), findsOneWidget);
+    expect(find.byKey(const Key('manage-categories')), findsOneWidget);
   });
 
   testWidgets('lens product shows the power grid and grid entry posts one movement', (

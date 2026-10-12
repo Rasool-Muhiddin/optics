@@ -28,4 +28,11 @@ class CacheTables {
   static const String invoices = 'invoices';
   static const String creditCustomers = 'credit_customers';
   static const String jobs = 'jobs';
+  static const String suppliers = 'suppliers';
+  static const String supplierOrders = 'supplier_orders';
+  static const String referrals = 'referrals';
+  static const String labDoctorLinks = 'lab_doctor_links';
+  static const String doctorSideLinks = 'doctor_side_links';
+  static const String doctorSideReferrals = 'doctor_side_referrals';
+  static const String dashboard = 'dashboard';
 }

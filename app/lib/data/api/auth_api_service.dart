@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/doctors.dart';
 import '../../models/session.dart';
 import 'api_client.dart';
 
@@ -69,6 +70,24 @@ class AuthApiService {
     final token = json.remove('token') as String;
     return LoginResult(token: token, session: Session.fromJson(json));
   }
+
+  /// Doctors log in without a device activation (they are not tied to a lab).
+  Future<({String token, DoctorSession session})> doctorLogin({
+    required String username,
+    required String password,
+  }) async {
+    final json =
+        await _client.post(
+              'desktop/doctor-login/',
+              body: {'username': username, 'password': password},
+            )
+            as Map<String, dynamic>;
+    final token = json.remove('token') as String;
+    return (token: token, session: DoctorSession.fromJson(json));
+  }
+
+  Future<DoctorSession> doctorMe() async =>
+      DoctorSession.fromJson(await _client.get('doctor/me/') as Map<String, dynamic>);
 
   Future<Session> me() async =>
       Session.fromJson(await _client.get('auth/me/') as Map<String, dynamic>);

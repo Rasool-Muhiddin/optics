@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from django.utils import timezone
 
@@ -102,7 +103,14 @@ class ExamTests(PatientBase):
         })
         self.assertEqual(response.status_code, 200, response.content)
         rx = Prescription.objects.get()
-        self.assertEqual((str(rx.od_sph), str(rx.od_cyl), rx.od_axis), ("-2.00", "-0.50", 170))
+        # Stored and returned exactly as entered…
+        self.assertEqual((str(rx.od_sph), str(rx.od_cyl), rx.od_axis), ("-2.50", "0.50", 80))
+        body = response.json()["prescription"]
+        self.assertEqual((body["od_sph"], body["od_cyl"], body["od_axis"]), ("-2.50", "0.50", 80))
+        # …with a normalized minus-cyl copy for internal use only (not in the API).
+        self.assertEqual(rx.minus_cyl("od"), (Decimal("-2.00"), Decimal("-0.50"), 170))
+        self.assertEqual(rx.minus_cyl("os"), (Decimal("-2.00"), Decimal("0.00"), None))
+        self.assertNotIn("od_mc_sph", body)
 
     def test_void_by_author_and_owner_only(self):
         exam_id = self._exam().json()["id"]
@@ -148,6 +156,16 @@ class StandaloneRxTests(PatientBase):
         self.assertEqual(response.status_code, 200)
         rx.refresh_from_db()
         self.assertIsNone(rx.od_axis)
+        self.assertEqual(rx.minus_cyl("od"), (Decimal("-1.00"), Decimal("0.00"), None))
+
+    def test_minus_copy_follows_edits(self):
+        rx = make_rx(make_patient(self.lab), od_sph="+1.00", od_cyl="+1.50", od_axis=30, os_sph=None)
+        self.assertEqual(rx.minus_cyl("od"), (Decimal("2.50"), Decimal("-1.50"), 120))
+        self.assertIsNone(rx.minus_cyl("os"))
+        response = self.client.patch(f"{RX}{rx.id}/", {"od_cyl": "-0.75", "od_axis": 45})
+        self.assertEqual(response.status_code, 200, response.content)
+        rx.refresh_from_db()
+        self.assertEqual(rx.minus_cyl("od"), (Decimal("1.00"), Decimal("-0.75"), 45))
 
     def test_transpose_helper(self):
         response = self.client.post("/api/v1/patients/transpose/", {"sph": "-1.00", "cyl": "+2.00", "axis": 90})

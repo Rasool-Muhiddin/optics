@@ -47,6 +47,7 @@ def session_payload(membership, device=None):
             "role": membership.role,
             "is_owner": membership.is_owner,
             "can_view_costs": membership.sees_costs,
+            "can_manage_inventory": membership.manages_inventory,
         },
         "lab": LabSettingsSerializer(lab).data,
         "plan": {

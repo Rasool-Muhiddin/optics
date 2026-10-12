@@ -6,6 +6,10 @@ import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../models/jobs.dart';
+import '../../models/purchasing.dart';
+import '../../services/auth_controller.dart';
+import '../orders/order_form_dialog.dart';
+import '../orders/orders_providers.dart';
 import '../../widgets/common.dart';
 import 'job_actions.dart';
 import 'job_form_dialog.dart';
@@ -19,6 +23,7 @@ class JobDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canManageInventory = ref.watch(sessionProvider)?.canManageInventory ?? false;
     return AsyncView(
       value: ref.watch(jobProvider(jobId)),
       onRetry: () => ref.invalidate(jobProvider(jobId)),
@@ -48,6 +53,22 @@ class JobDetailScreen extends ConsumerWidget {
                   label: const Text('80mm'),
                   onPressed: () => printJobTicket(context, ref, job, thermal: true),
                 ),
+                if (!job.isFinal && canManageInventory)
+                  OutlinedButton.icon(
+                    key: const Key('job-order-lens'),
+                    icon: const Icon(Icons.local_shipping_outlined),
+                    label: const Text(AppStrings.orderForJob),
+                    onPressed: () async {
+                      final order = await showDialog<SupplierOrder>(
+                        context: context,
+                        builder: (_) => OrderFormDialog(job: job),
+                      );
+                      if (order != null) {
+                        invalidateJobs(ref, job.id);
+                        invalidateOrders(ref);
+                      }
+                    },
+                  ),
                 if (!job.isFinal) ...[
                   OutlinedButton.icon(
                     key: const Key('job-edit'),
@@ -150,6 +171,25 @@ class JobDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                  ],
+                  if (job.supplierOrders.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(AppStrings.supplierOrdersOfJob, style: theme.textTheme.titleMedium),
+                    for (final o in job.supplierOrders)
+                      ListTile(
+                        key: Key('job-order-${o.id}'),
+                        dense: true,
+                        leading: const Icon(Icons.local_shipping_outlined),
+                        title: Text('#${o.number} — ${o.supplierName}'),
+                        subtitle: Text(
+                          [
+                            AppStrings.label(AppStrings.orderStatuses, o.status),
+                            if (o.expectedDate != null)
+                              '${AppStrings.expectedDate}: ${Formatters.date(o.expectedDate)}',
+                          ].join('   •   '),
+                        ),
+                        onTap: () => context.go(AppRoutes.orderDetail(o.id)),
+                      ),
                   ],
                   const SizedBox(height: 12),
                   Text(AppStrings.statusHistory, style: theme.textTheme.titleMedium),

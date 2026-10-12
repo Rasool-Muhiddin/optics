@@ -5,6 +5,11 @@ class AppRoutes {
   static const String splash = '/splash';
   static const String activate = '/activate';
   static const String login = '/login';
+  static const String doctorLogin = '/doctor-login';
+
+  // Doctor mode (own layout).
+  static const String doctorHome = '/doctor';
+  static const String doctorLabs = '/doctor/labs';
 
   // Inside the main layout (sidebar).
   static const String home = '/';
@@ -24,8 +29,13 @@ class AppRoutes {
   static String patientDetail(int id) => '$patients/$id';
   static String invoiceDetail(int id) => '$invoices/$id';
   static String jobDetail(int id) => '$jobs/$id';
+  static String orderDetail(int id) => '$orders/$id';
+  static String referralDetail(int id) => '$referrals/$id';
 
-  static const Set<String> _public = {splash, activate, login};
+  static const Set<String> _public = {splash, activate, login, doctorLogin};
+
+  static bool isDoctorArea(String location) =>
+      location == doctorHome || location.startsWith('$doctorHome/');
 
   static bool isPublic(String location) => _public.contains(location);
 }

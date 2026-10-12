@@ -37,7 +37,7 @@ class JobViewSet(LabScopedNoDeleteViewSet):
 
     queryset = Job.objects.select_related(
         "patient", "prescription", "invoice", "frame", "lens", "lens_od", "lens_os", "created_by"
-    ).prefetch_related("status_logs", "status_logs__changed_by")
+    ).prefetch_related("status_logs", "status_logs__changed_by", "supplier_orders", "supplier_orders__supplier")
     serializer_class = JobSerializer
     filterset_class = JobFilter
     search_fields = ["=number", "patient__full_name", "patient__phone", "notes"]
@@ -46,6 +46,14 @@ class JobViewSet(LabScopedNoDeleteViewSet):
     def perform_create(self, serializer):
         job = services.create_job(lab=self.request.lab, user=self.request.user, data=serializer.validated_data)
         serializer.instance = job
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # A newly linked invoice / lens picks up the real cost of already received rx orders.
+        if {"invoice", "lens"} & set(serializer.validated_data):
+            from apps.purchasing.services import apply_job_lens_cost
+
+            apply_job_lens_cost(serializer.instance)
 
     @action(detail=True, methods=["post"], url_path="status")
     def change_status(self, request, pk=None):
