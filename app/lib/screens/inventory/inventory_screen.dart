@@ -255,7 +255,12 @@ class ProductTable extends StatelessWidget {
         children: [
           if (showHeader)
             row([
-              for (final c in columns) Text(c.$1, style: theme.textTheme.labelLarge),
+              for (final c in columns)
+                Text(
+                  c.$1,
+                  style: theme.textTheme.labelLarge,
+                  textAlign: c.$1 == AppStrings.barcode ? TextAlign.center : null,
+                ),
             ], color: theme.colorScheme.surfaceContainerHighest),
           for (final p in products) ...[
             const Divider(height: 1),
@@ -267,7 +272,12 @@ class ProductTable extends StatelessWidget {
                 Text(p.name, overflow: TextOverflow.ellipsis),
                 Text(AppStrings.productKinds[p.kind.value] ?? p.kind.value),
                 Text(p.brandName, overflow: TextOverflow.ellipsis),
-                Text(p.barcode.isNotEmpty ? p.barcode : p.sku, textDirection: TextDirection.ltr),
+                Text(
+                  p.barcode.isNotEmpty ? p.barcode : p.sku,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 Text(Formatters.money(p.salePrice)),
                 if (seesCosts) Text(Formatters.money(p.averageCost)),
                 p.trackStock

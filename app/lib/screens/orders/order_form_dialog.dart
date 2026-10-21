@@ -72,10 +72,10 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
       widget.order?.type ?? (widget.job != null ? OrderTypes.rxForJob : OrderTypes.stock);
   late int? _jobId = widget.order?.jobId ?? widget.job?.id;
   late String _jobLabel = widget.job != null
-      ? '#${widget.job!.number} ${widget.job!.patientName}'
+      ? jobLabel(widget.job!)
       : (widget.order?.jobNumber == null
             ? ''
-            : '#${widget.order!.jobNumber} ${widget.order!.jobPatientName}');
+            : '#${widget.order!.jobNumber} — ${widget.order!.jobPatientName}');
   late DateTime _orderDate = widget.order?.orderDate ?? DateTime.now();
   late DateTime? _expected = widget.order?.expectedDate;
   bool _sent = true;
@@ -104,7 +104,11 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
       ];
     }
     final job = widget.job;
-    if (job == null) return [];
+    return job == null ? [] : _linesForJob(job);
+  }
+
+  /// One line per eye that has a power, described from the job's prescription.
+  static List<_LineDraft> _linesForJob(Job job) {
     String eyeRx(EyeRx e) => e.isEmpty
         ? ''
         : [
@@ -169,10 +173,41 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
     if (job != null) {
       setState(() {
         _jobId = job.id;
-        _jobLabel = '#${job.number} ${job.patientName}';
+        _jobLabel = jobLabel(job);
+        // The lens lines follow the chosen glasses: replace whatever was there.
+        for (final l in _lines) {
+          l.dispose();
+        }
+        _lines
+          ..clear()
+          ..addAll(_linesForJob(job));
       });
     }
   }
+
+  void _setType(String type) {
+    setState(() {
+      _type = type;
+      if (type != OrderTypes.rxForJob) {
+        _jobId = null;
+        _jobLabel = '';
+        for (final l in _lines) {
+          l.eye = '';
+        }
+      }
+      // Lines that the new type cannot hold are dropped (stock: products only; other: text only).
+      for (final l in _lines.where((l) => !_lineAllowed(l, type))) {
+        l.dispose();
+      }
+      _lines.removeWhere((l) => !_lineAllowed(l, type));
+    });
+  }
+
+  static bool _lineAllowed(_LineDraft l, String type) => switch (type) {
+    OrderTypes.stock => l.productId != null,
+    OrderTypes.other => l.productId == null,
+    _ => true,
+  };
 
   Future<void> _save() async {
     if (_busy || !_formKey.currentState!.validate()) return;
@@ -242,11 +277,43 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
                   ButtonSegment(value: t.key, label: Text(t.value)),
               ],
               selected: {_type},
-              onSelectionChanged: widget.job != null || _editing
-                  ? null
-                  : (v) => setState(() => _type = v.first),
+              onSelectionChanged: widget.job != null || _editing ? null : (v) => _setType(v.first),
             ),
-            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 12),
+              child: Text(
+                AppStrings.orderTypeHints[_type] ?? '',
+                key: const Key('order-type-hint'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            if (_type == OrderTypes.rxForJob)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.job,
+                    helperText: AppStrings.jobForOrderHint,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _jobLabel.isEmpty ? AppStrings.none : _jobLabel,
+                          key: const Key('order-job-label'),
+                        ),
+                      ),
+                      if (widget.job == null && !_editing)
+                        TextButton.icon(
+                          key: const Key('order-pick-job'),
+                          icon: const Icon(Icons.search, size: 18),
+                          onPressed: _pickJob,
+                          label: const Text(AppStrings.chooseJobButton),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             FieldGrid(
               children: [
                 DropdownButtonFormField<int>(
@@ -261,26 +328,10 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
                   validator: (v) => v == null ? AppStrings.required : null,
                   onChanged: (v) => setState(() => _supplierId = v),
                 ),
-                if (_type == OrderTypes.rxForJob)
-                  InputDecorator(
-                    decoration: const InputDecoration(labelText: AppStrings.job),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(_jobLabel.isEmpty ? AppStrings.none : _jobLabel)),
-                        if (widget.job == null && !_editing)
-                          TextButton(
-                            key: const Key('order-pick-job'),
-                            onPressed: _pickJob,
-                            child: const Text(AppStrings.edit),
-                          ),
-                      ],
-                    ),
-                  )
-                else
-                  TextFormField(
-                    controller: _ref,
-                    decoration: const InputDecoration(labelText: AppStrings.supplierRef),
-                  ),
+                TextFormField(
+                  controller: _ref,
+                  decoration: const InputDecoration(labelText: AppStrings.supplierRef),
+                ),
                 InkWell(
                   onTap: () async {
                     final d = await _date(_orderDate);
@@ -308,7 +359,8 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
                 key: const Key('order-sent'),
                 contentPadding: EdgeInsets.zero,
                 value: _sent,
-                title: const Text(AppStrings.markOrdered),
+                title: const Text(AppStrings.orderSentNow),
+                subtitle: const Text(AppStrings.orderDraftHint),
                 onChanged: (v) => setState(() => _sent = v ?? true),
               ),
             const SizedBox(height: 8),
@@ -317,12 +369,13 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
                 Expanded(
                   child: Text(AppStrings.orderLines, style: Theme.of(context).textTheme.titleSmall),
                 ),
-                TextButton.icon(
-                  key: const Key('order-add-product'),
-                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                  label: const Text(AppStrings.addProductLine),
-                  onPressed: _addProductLine,
-                ),
+                if (_type != OrderTypes.other)
+                  TextButton.icon(
+                    key: const Key('order-add-product'),
+                    icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                    label: const Text(AppStrings.addProductLine),
+                    onPressed: _addProductLine,
+                  ),
                 if (_type != OrderTypes.stock)
                   TextButton.icon(
                     key: const Key('order-add-text'),
@@ -419,6 +472,10 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
   }
 }
 
+/// "#12 — customer — lens" for a customer's glasses (job).
+String jobLabel(Job job) =>
+    ['#${job.number}', job.patientName, if (job.lensName.isNotEmpty) job.lensName].join(' — ');
+
 class _LocalError {
   const _LocalError(this.message);
 
@@ -464,8 +521,8 @@ class _JobPickerState extends ConsumerState<_JobPicker> {
                       ListTile(
                         key: Key('pick-job-${j.id}'),
                         dense: true,
-                        title: Text('#${j.number} ${j.patientName}'),
-                        subtitle: Text('${AppStrings.jobStatuses[j.status]}   •   ${j.lensName}'),
+                        title: Text(jobLabel(j)),
+                        subtitle: Text(AppStrings.jobStatuses[j.status] ?? j.status),
                         onTap: () => Navigator.of(context).pop(j),
                       ),
                   ],

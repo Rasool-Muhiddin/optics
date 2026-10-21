@@ -18,33 +18,99 @@ import '../inventory/inventory_providers.dart';
 import '../patients/patients_providers.dart';
 import '../sales/sales_providers.dart';
 
+/// What a just-finished sale pre-fills in a new job ("إنشاء طلب نظارة لهذه الفاتورة").
+class JobDraft {
+  const JobDraft({
+    required this.invoiceId,
+    required this.invoiceLabel,
+    this.patient,
+    this.frame,
+    this.lens,
+    this.lensOd,
+    this.lensOs,
+  });
+
+  /// From the sold items: the first frame, the first lens and up to two of its powers
+  /// (first = right eye, second = left; one power sold twice = both eyes).
+  factory JobDraft.fromSale({
+    required int invoiceId,
+    required String invoiceLabel,
+    Patient? patient,
+    required List<({Product product, LensVariant? variant, int qty})> items,
+  }) {
+    Product? frame, lens;
+    final powers = <LensVariant>[];
+    for (final item in items) {
+      final kind = item.product.kind;
+      if (kind == ProductKind.frame) {
+        frame ??= item.product;
+      } else if (kind == ProductKind.stockLens ||
+          kind == ProductKind.rxLens ||
+          kind == ProductKind.contactLens) {
+        lens ??= item.product;
+        if (item.product.id == lens.id && item.variant != null) {
+          for (var i = 0; i < item.qty; i++) {
+            powers.add(item.variant!);
+          }
+        }
+      }
+    }
+    return JobDraft(
+      invoiceId: invoiceId,
+      invoiceLabel: invoiceLabel,
+      patient: patient,
+      frame: frame,
+      lens: lens,
+      lensOd: powers.isNotEmpty ? powers[0] : null,
+      lensOs: powers.length > 1 ? powers[1] : null,
+    );
+  }
+
+  final int invoiceId;
+  final String invoiceLabel;
+  final Patient? patient;
+  final Product? frame;
+  final Product? lens;
+  final LensVariant? lensOd;
+  final LensVariant? lensOs;
+}
+
 /// New / edit job: patient, prescription, frame (lab / customer's own / none), lens + powers,
-/// linked invoice, promised date. Returns the saved [Job].
+/// linked invoice, promised date. Returns the saved [Job]. With [draft] (after a sale) the
+/// invoice is fixed and the frame/lens/powers come from what was sold.
 class JobFormDialog extends ConsumerStatefulWidget {
-  const JobFormDialog({super.key, this.job, this.patient});
+  const JobFormDialog({super.key, this.job, this.patient, this.draft});
 
   final Job? job;
   final Patient? patient;
+  final JobDraft? draft;
 
   @override
   ConsumerState<JobFormDialog> createState() => _JobFormDialogState();
 }
 
 class _JobFormDialogState extends ConsumerState<JobFormDialog> {
-  late int? _patientId = widget.job?.patientId ?? widget.patient?.id;
-  late String _patientName = widget.job?.patientName ?? widget.patient?.fullName ?? '';
+  late final JobDraft? _draft = widget.job == null ? widget.draft : null;
+  late int? _patientId = widget.job?.patientId ?? widget.patient?.id ?? _draft?.patient?.id;
+  late String _patientName =
+      widget.job?.patientName ?? widget.patient?.fullName ?? _draft?.patient?.fullName ?? '';
   late int? _prescriptionId = widget.job?.prescriptionId;
-  late int? _invoiceId = widget.job?.invoiceId;
-  late String _frameSource = widget.job?.frameSource ?? 'lab';
-  late int? _frameId = widget.job?.frameId;
-  late String _frameName = widget.job?.frameName ?? '';
-  late int? _lensId = widget.job?.lensId;
-  late String _lensName = widget.job?.lensName ?? '';
-  Product? _lensProduct;
-  late int? _lensOdId = widget.job?.lensOdId;
-  late String _lensOdLabel = widget.job?.lensOdLabel ?? '';
-  late int? _lensOsId = widget.job?.lensOsId;
-  late String _lensOsLabel = widget.job?.lensOsLabel ?? '';
+  bool _rxDefaulted = false;
+  late int? _invoiceId = widget.job?.invoiceId ?? _draft?.invoiceId;
+  // A sale without a frame: most likely the customer's own frame.
+  late String _frameSource =
+      widget.job?.frameSource ?? (_draft != null && _draft.frame == null ? 'customer' : 'lab');
+  late int? _frameId = widget.job?.frameId ?? _draft?.frame?.id;
+  late String _frameName = widget.job?.frameName ?? _draft?.frame?.name ?? '';
+  late int? _lensId = widget.job?.lensId ?? _draft?.lens?.id;
+  late String _lensName = widget.job?.lensName ?? _draft?.lens?.name ?? '';
+  late Product? _lensProduct = _draft?.lens;
+  late int? _lensOdId = widget.job?.lensOdId ?? _draft?.lensOd?.id;
+  late String _lensOdLabel =
+      widget.job?.lensOdLabel ?? (_draft?.lensOd == null ? '' : _variantLabel(_draft!.lensOd!));
+  late int? _lensOsId = widget.job?.lensOsId ?? _draft?.lensOs?.id;
+  late String _lensOsLabel =
+      widget.job?.lensOsLabel ?? (_draft?.lensOs == null ? '' : _variantLabel(_draft!.lensOs!));
   late DateTime? _promised =
       widget.job?.promisedDate ?? DateTime.now().add(const Duration(days: 3));
   late final _frameNotes = TextEditingController(text: widget.job?.frameNotes ?? '');
@@ -108,6 +174,13 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
         : (ref.watch(patientPrescriptionsProvider(patientId)).value ?? const <Prescription>[])
               .where((rx) => !rx.isVoid || rx.id == _prescriptionId)
               .toList();
+    // After a sale: start with the patient's latest prescription (once; "none" stays a choice).
+    if (_draft != null && !_rxDefaulted && _prescriptionId == null && prescriptions.isNotEmpty) {
+      _rxDefaulted = true;
+      final valid = prescriptions.where((rx) => !rx.isVoid).toList()
+        ..sort((a, b) => (b.rxDate ?? DateTime(0)).compareTo(a.rxDate ?? DateTime(0)));
+      if (valid.isNotEmpty) _prescriptionId = valid.first.id;
+    }
     final InvoiceQuery invoiceQuery = (
       search: '',
       status: null,
@@ -158,7 +231,7 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
         children: [
           FieldGrid(
             children: [
-              _editing || widget.patient != null
+              _editing || widget.patient != null || _draft?.patient != null
                   ? InputDecorator(
                       decoration: const InputDecoration(labelText: AppStrings.patientName),
                       child: Text(_patientName),
@@ -170,7 +243,9 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
                           _patientId = p.id;
                           _patientName = p.fullName;
                           _prescriptionId = null;
-                          _invoiceId = null;
+                          _rxDefaulted = false;
+                          // The sale's invoice stays (a walk-in invoice has no patient yet).
+                          if (_draft == null) _invoiceId = null;
                         });
                       }
                     }, key: const Key('job-pick-patient')),
@@ -211,21 +286,28 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
                 ],
                 onChanged: (v) => setState(() => _prescriptionId = v),
               ),
-              DropdownButtonFormField<int?>(
-                key: const Key('job-invoice'),
-                isExpanded: true,
-                initialValue: invoices.any((i) => i.id == _invoiceId) ? _invoiceId : null,
-                decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
-                items: [
-                  const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
-                  for (final inv in invoices)
-                    DropdownMenuItem<int?>(
-                      value: inv.id,
-                      child: Text('#${inv.number} — ${Formatters.money(inv.total)}'),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _invoiceId = v),
-              ),
+              if (_draft != null)
+                InputDecorator(
+                  key: const Key('job-invoice-fixed'),
+                  decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
+                  child: Text(_draft.invoiceLabel),
+                )
+              else
+                DropdownButtonFormField<int?>(
+                  key: const Key('job-invoice'),
+                  isExpanded: true,
+                  initialValue: invoices.any((i) => i.id == _invoiceId) ? _invoiceId : null,
+                  decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
+                    for (final inv in invoices)
+                      DropdownMenuItem<int?>(
+                        value: inv.id,
+                        child: Text('#${inv.number} — ${Formatters.money(inv.total)}'),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _invoiceId = v),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -240,6 +322,23 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
             selected: {_frameSource},
             onSelectionChanged: (v) => setState(() => _frameSource = v.first),
           ),
+          if (_frameSource == 'lab' && _invoiceId == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      AppStrings.frameNoInvoiceWarning,
+                      key: const Key('job-frame-no-invoice'),
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           FieldGrid(
             children: [

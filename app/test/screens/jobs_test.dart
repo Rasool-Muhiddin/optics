@@ -9,6 +9,7 @@ import 'package:optics_app/services/printing/pdf_kit.dart';
 
 import '../helpers.dart';
 import 'patients_test.dart' show patientJson, rxJson;
+import 'pos_test.dart' show invoiceJson;
 
 String _day(int offset) =>
     DateTime.now().add(Duration(days: offset)).toIso8601String().substring(0, 10);
@@ -134,9 +135,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('pick-patient-5')));
     await tester.pumpAndSettle();
+    // A lab frame without an invoice is never taken out of stock: warned.
+    expect(find.byKey(const Key('job-frame-no-invoice')), findsOneWidget);
 
     await tester.tap(find.text(AppStrings.frameSources['customer']!));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('job-frame-no-invoice')), findsNothing);
     await tester.enterText(find.byKey(const Key('job-frame-notes')), 'إطار معدني أسود');
     await tester.tap(find.byKey(const Key('dialog-save')));
     await tester.pumpAndSettle();
@@ -147,6 +151,59 @@ void main() {
     expect(body['frame'], isNull);
     expect(body['frame_notes'], 'إطار معدني أسود');
     expect(body['promised_date'], isNotNull);
+  });
+
+  group('delivering with an unpaid balance', () {
+    FakeAuthServer server0() {
+      final server = jobsServer();
+      final ready = {
+        ...jobJson(id: 3, number: 9, status: 'ready'),
+        'invoice': 50,
+        'invoice_number': 12,
+        'invoice_balance': '25000.00',
+      };
+      server.routes['GET jobs/'] = (http.Request r) async =>
+          r.url.queryParameters['status'] == 'delivered'
+          ? jsonResponse(page([]), 200)
+          : jsonResponse(page([ready]), 200);
+      server.routes['POST jobs/3/status/'] = (_) async =>
+          jsonResponse({...ready, 'status': 'delivered'}, 200);
+      server.routes['POST sales/invoices/50/payments/'] = (_) async =>
+          jsonResponse({...invoiceJson(), 'id': 50}, 201);
+      return server;
+    }
+
+    testWidgets('the payment is taken in the same step, then delivered', (tester) async {
+      final server = server0();
+      await openJobs(tester, server);
+      await tester.tap(find.byKey(const Key('job-next-3')));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.unpaidOnDelivery), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('delivery-amount')), '20000');
+      await tester.tap(find.byKey(const Key('pay-and-deliver')));
+      await tester.pumpAndSettle();
+
+      final payment = decodeBody(server.sent('POST', 'sales/invoices/50/payments/').single);
+      expect((payment['amount'], payment['method']), ('20000', 'cash'));
+      expect(decodeBody(server.sent('POST', 'jobs/3/status/').single)['status'], 'delivered');
+    });
+
+    testWidgets('can deliver without paying, or back out', (tester) async {
+      final server = server0();
+      await openJobs(tester, server);
+      await tester.tap(find.byKey(const Key('job-next-3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.cancel));
+      await tester.pumpAndSettle();
+      expect(server.sent('POST', 'jobs/3/status/'), isEmpty);
+
+      await tester.tap(find.byKey(const Key('job-next-3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('deliver-without-payment')));
+      await tester.pumpAndSettle();
+      expect(server.sent('POST', 'sales/invoices/50/payments/'), isEmpty);
+      expect(server.sent('POST', 'jobs/3/status/'), hasLength(1));
+    });
   });
 
   test('overdue is re-evaluated offline for active statuses only', () {

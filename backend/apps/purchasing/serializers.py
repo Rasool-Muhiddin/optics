@@ -113,6 +113,7 @@ class SupplierOrderSerializer(CostFieldsMixin, serializers.ModelSerializer):
     job = LabScopedPrimaryKeyRelatedField(queryset=Job.objects.select_related("lens"), required=False, allow_null=True)
     job_number = serializers.IntegerField(source="job.number", read_only=True, default=None)
     job_patient_name = serializers.CharField(source="job.patient.full_name", read_only=True, default="")
+    job_status = serializers.CharField(source="job.status", read_only=True, default="")
     status = serializers.ChoiceField(
         choices=[SupplierOrder.Status.PENDING, SupplierOrder.Status.ORDERED], required=False
     )
@@ -126,8 +127,8 @@ class SupplierOrderSerializer(CostFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = SupplierOrder
         fields = [
-            "id", "number", "supplier", "supplier_name", "type", "job", "job_number", "job_patient_name", "status",
-            "payment_status", "order_date", "expected_date", "supplier_ref", "notes", "total", "paid", "balance",
+            "id", "number", "supplier", "supplier_name", "type", "job", "job_number", "job_patient_name", "job_status",
+            "status", "payment_status", "order_date", "expected_date", "supplier_ref", "notes", "total", "paid", "balance",
             "age_days", "is_late", "is_open", "received_at", "cancelled_at", "cancel_reason", "lines", "payments",
             "created_by_name", "created_at", "updated_at",
         ]

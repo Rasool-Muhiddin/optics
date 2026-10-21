@@ -62,6 +62,23 @@ def _job_lens_ordered(order, user):
         change_status(job=job, to_status=Job.Status.LENS_ORDERED, user=user, note=f"PO #{order.number}")
 
 
+def _job_lens_arrived(order, user):
+    """
+    A fully received rx order moves its job to `in_workshop` (the lenses arrived; forward only:
+    a job already in the workshop, ready or closed is left alone). Partial receipts (one eye) wait.
+    """
+    from apps.jobs.models import Job
+    from apps.jobs.services import change_status
+
+    job = order.job
+    if (
+        job is not None
+        and order.status == SupplierOrder.Status.RECEIVED
+        and job.status in (Job.Status.PENDING, Job.Status.LENS_ORDERED)
+    ):
+        change_status(job=job, to_status=Job.Status.IN_WORKSHOP, user=user, note=f"PO #{order.number} received")
+
+
 @transaction.atomic
 def create_order(*, lab, user, data):
     lines = data.pop("lines")
@@ -158,6 +175,7 @@ def receive(*, order, user, lines=None, note=""):
     _save_totals(order)
     if order.job_id:
         apply_job_lens_cost(order.job)
+        _job_lens_arrived(order, user)
     return order
 
 

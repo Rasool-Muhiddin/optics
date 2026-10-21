@@ -182,6 +182,54 @@ void main() {
     expect(body['attributes'], {'size': '54-17-140'});
   });
 
+  testWidgets('barcode comes first and a registered code offers to open that product', (
+    tester,
+  ) async {
+    final server = inventoryServer();
+    server.routes['GET catalog/lookup/'] = (http.Request r) async =>
+        r.url.queryParameters['code'] == '6291'
+        ? jsonResponse({'product': productJson(id: 2, name: 'Oakley 8156'), 'variant': null}, 200)
+        : jsonResponse({'detail': 'x', 'code': 'not_found'}, 404);
+    await openInventory(tester, server);
+    await tester.tap(find.byKey(const Key('add-product')));
+    await tester.pumpAndSettle();
+
+    // The scanner can be used at once: the barcode field has the focus.
+    final barcode = find.descendant(
+      of: find.byKey(const Key('product-barcode')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(barcode).focusNode.hasFocus, isTrue);
+    // Kind-dependent section title and the clearer labels.
+    expect(find.text(AppStrings.attributesTitles['frame']!), findsOneWidget);
+    expect(find.text(AppStrings.attributeLabels['gender']!), findsOneWidget);
+    // SKU / track stock / notes stay folded away.
+    expect(find.byKey(const Key('product-sku')), findsNothing);
+
+    await tester.enterText(find.byKey(const Key('product-barcode')), '7777');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('product-duplicate')), findsNothing);
+
+    await tester.enterText(find.byKey(const Key('product-barcode')), '6291');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Oakley 8156'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('product-open-duplicate')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('product-barcode')), findsNothing); // dialog closed
+    expect(server.sent('GET', 'catalog/products/2/'), isNotEmpty); // product opened
+
+    // Stock lenses: the barcode hint points to per-power barcodes.
+    await tester.tap(find.byKey(const Key('nav-/inventory')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-product')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product-kind-stock_lens')));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.variantBarcodeHint), findsOneWidget);
+  });
+
   test('power grid axes put plus SPH first and CYL from 0 down', () {
     final variants = [
       for (final (i, s, c) in [(1, -1.0, 0.0), (2, 0.5, -0.25), (3, 0.0, 0.0)])

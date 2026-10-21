@@ -152,6 +152,15 @@ class JobDetailScreen extends ConsumerWidget {
                             ),
                           if (job.notes.isNotEmpty)
                             InfoTile(label: AppStrings.notes, value: job.notes, width: 420),
+                          if (job.frameSource == 'lab' && job.invoiceId == null && !job.isFinal)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                AppStrings.frameNoInvoiceWarning,
+                                key: const Key('job-frame-no-invoice'),
+                                style: TextStyle(color: theme.colorScheme.error),
+                              ),
+                            ),
                         ],
                       ),
                     ),

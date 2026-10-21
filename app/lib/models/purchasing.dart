@@ -167,6 +167,7 @@ class SupplierOrder {
     this.jobId,
     this.jobNumber,
     this.jobPatientName = '',
+    this.jobStatus = '',
     this.status = OrderStatuses.ordered,
     this.paymentStatus = 'unpaid',
     this.orderDate,
@@ -194,6 +195,7 @@ class SupplierOrder {
     jobId: Json.intOrNull(j['job']),
     jobNumber: Json.intOrNull(j['job_number']),
     jobPatientName: Json.str(j['job_patient_name']),
+    jobStatus: Json.str(j['job_status']),
     status: Json.str(j['status']),
     paymentStatus: Json.str(j['payment_status']),
     orderDate: Json.date(j['order_date']),
@@ -220,6 +222,9 @@ class SupplierOrder {
   final int? jobId;
   final int? jobNumber;
   final String jobPatientName;
+
+  /// Status of the linked customer glasses (job), '' without one.
+  final String jobStatus;
   final String status;
   final String paymentStatus;
   final DateTime? orderDate;

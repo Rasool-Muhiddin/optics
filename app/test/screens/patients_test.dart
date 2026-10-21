@@ -157,6 +157,34 @@ void main() {
     expect(find.text('OD -2.25 -0.50×170 | OS -2.00'), findsOneWidget);
   });
 
+  testWidgets('add patient asks name, phone and age only', (tester) async {
+    final server = patientsServer();
+    server.routes['POST patients/'] = (http.Request r) async =>
+        jsonResponse({...patientJson(), ...decodeBody(r)}, 201);
+    await pumpPatients(tester, server);
+    await tester.tap(find.byKey(const Key('add-patient')));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(Dialog, AppStrings.patientName), findsOneWidget);
+    for (final label in [
+      AppStrings.birthDate,
+      AppStrings.gender,
+      AppStrings.address,
+      AppStrings.notes,
+    ]) {
+      expect(find.widgetWithText(Dialog, label), findsNothing);
+    }
+    await tester.enterText(find.byKey(const Key('patient-name')), 'حسين كاظم');
+    await tester.enterText(find.byKey(const Key('patient-phone')), '07801112233');
+    await tester.enterText(find.byKey(const Key('patient-age')), '41');
+    await tester.tap(find.byKey(const Key('dialog-save')));
+    await tester.pumpAndSettle();
+    expect(decodeBody(server.sent('POST', 'patients/').single), {
+      'full_name': 'حسين كاظم',
+      'phone': '07801112233',
+      'age': 41,
+    });
+  });
+
   testWidgets('new exam sends the nested Rx and shows server field errors', (tester) async {
     final server = patientsServer();
     await pumpPatients(tester, server);

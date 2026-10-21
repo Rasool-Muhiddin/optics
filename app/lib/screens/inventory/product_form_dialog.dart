@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/errors/error_messages.dart';
+import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../models/catalog.dart';
@@ -78,7 +80,22 @@ class AttributeSpec {
   }
 }
 
+/// Icon of each product kind on the kind selector.
+const Map<ProductKind, IconData> productKindIcons = {
+  ProductKind.frame: Icons.crop_16_9,
+  ProductKind.stockLens: Icons.grid_view,
+  ProductKind.rxLens: Icons.precision_manufacturing_outlined,
+  ProductKind.contactLens: Icons.remove_red_eye_outlined,
+  ProductKind.accessory: Icons.shopping_bag_outlined,
+  ProductKind.solution: Icons.water_drop_outlined,
+  ProductKind.service: Icons.handyman_outlined,
+};
+
 /// Create / edit a product of any kind. Returns the saved [Product].
+///
+/// Order: barcode (focused, so a scanner can be used at once; an already registered code is
+/// reported with a button to open that product) → kind → name/brand/group → prices → the
+/// kind's details → collapsed "more options" (SKU, track stock, active, notes).
 class ProductFormDialog extends ConsumerStatefulWidget {
   const ProductFormDialog({super.key, this.product});
 
@@ -99,8 +116,13 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
   final Map<String, TextEditingController> _attr = {};
   final Map<String, String?> _choice = {};
   final Map<String, Set<String>> _multi = {};
+  late bool _moreOpen;
   bool _busy = false;
   Object? _error;
+
+  /// Another product already using the typed barcode (checked on Enter / leaving the field).
+  Product? _duplicate;
+  String _checkedCode = '';
 
   bool get _editing => widget.product != null;
 
@@ -113,6 +135,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
     _categoryId = p?.categoryId;
     _trackStock = p?.trackStock ?? true;
     _isActive = p?.isActive ?? true;
+    _moreOpen = (p?.sku ?? '').isNotEmpty || (p?.notes ?? '').isNotEmpty;
     _c = {
       'name': TextEditingController(text: p?.name ?? ''),
       'sku': TextEditingController(text: p?.sku ?? ''),
@@ -122,6 +145,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
       'reorder_level': TextEditingController(text: '${p?.reorderLevel ?? 0}'),
       'notes': TextEditingController(text: p?.notes ?? ''),
     };
+    _checkedCode = p?.barcode ?? '';
     final attrs = p?.attributes ?? const {};
     for (final specs in AttributeSpec.byKind.values) {
       for (final s in specs) {
@@ -150,6 +174,30 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _checkBarcode() async {
+    final code = _c['barcode']!.text.trim();
+    if (code == _checkedCode) return;
+    _checkedCode = code;
+    if (code.isEmpty) {
+      setState(() => _duplicate = null);
+      return;
+    }
+    Product? found;
+    try {
+      final hit = await ref.read(catalogRepositoryProvider).lookup(code);
+      if (hit.product.id != widget.product?.id) found = hit.product;
+    } catch (_) {
+      // 404 (free code) or offline: nothing to report; the server still enforces uniqueness.
+    }
+    if (mounted && _c['barcode']!.text.trim() == code) setState(() => _duplicate = found);
+  }
+
+  void _openDuplicate(Product product) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.go(AppRoutes.productDetail(product.id));
   }
 
   Map<String, dynamic> _attributes() {
@@ -193,7 +241,15 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
       final saved = await ref.read(catalogRepositoryProvider).saveProduct(widget.product?.id, body);
       if (mounted) Navigator.of(context).pop(saved);
     } catch (e) {
-      if (mounted) setState(() => _error = e);
+      if (mounted) {
+        setState(() {
+          _error = e;
+          // A server error on a field inside the collapsed section must be visible.
+          if (fieldErrorFor(e, 'sku') != null || fieldErrorFor(e, 'notes') != null) {
+            _moreOpen = true;
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -201,10 +257,13 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final seesCosts = ref.watch(sessionProvider)?.membership.canViewCosts ?? false;
     final brands = ref.watch(brandsProvider).value ?? const <Brand>[];
     final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
     final lockedStock = _kind.usesVariants || _kind.isNonStock;
+    final duplicate = _duplicate;
+    final specs = AttributeSpec.byKind[_kind]!;
 
     TextFormField text(
       String key,
@@ -232,19 +291,78 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 1. Barcode first, focused for the scanner.
+            Focus(
+              onFocusChange: (focused) {
+                if (!focused) _checkBarcode();
+              },
+              child: TextFormField(
+                key: const Key('product-barcode'),
+                controller: _c['barcode'],
+                autofocus: !_editing,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: AppStrings.barcode,
+                  prefixIcon: const Icon(Icons.qr_code_scanner),
+                  helperText: _kind.usesVariants
+                      ? AppStrings.variantBarcodeHint
+                      : AppStrings.barcodeHint,
+                  helperMaxLines: 2,
+                  errorText: fieldErrorFor(_error, 'barcode'),
+                ),
+                onFieldSubmitted: (_) => _checkBarcode(),
+              ),
+            ),
+            if (duplicate != null)
+              Container(
+                key: const Key('product-duplicate'),
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: theme.colorScheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${AppStrings.duplicateBarcode} «${duplicate.name}»',
+                        style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                      ),
+                    ),
+                    TextButton(
+                      key: const Key('product-open-duplicate'),
+                      onPressed: () => _openDuplicate(duplicate),
+                      child: const Text(AppStrings.openProduct),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 16),
+            // 2. Kind as icon buttons (fixed once saved).
+            Text(AppStrings.productKind, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final k in ProductKind.values)
+                  ChoiceChip(
+                    key: Key('product-kind-${k.value}'),
+                    avatar: Icon(productKindIcons[k], size: 18),
+                    label: Text(AppStrings.productKinds[k.value]!),
+                    selected: _kind == k,
+                    showCheckmark: false,
+                    onSelected: _editing ? null : (_) => setState(() => _kind = k),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // 3. Name, brand, group.
             FieldGrid(
               children: [
-                DropdownButtonFormField<ProductKind>(
-                  isExpanded: true,
-                  key: const Key('product-kind'),
-                  initialValue: _kind,
-                  decoration: const InputDecoration(labelText: AppStrings.productKind),
-                  items: [
-                    for (final k in ProductKind.values)
-                      DropdownMenuItem(value: k, child: Text(AppStrings.productKinds[k.value]!)),
-                  ],
-                  onChanged: _editing ? null : (k) => setState(() => _kind = k!),
-                ),
                 text('name', AppStrings.productName, validator: Inputs.requiredText),
                 DropdownButtonFormField<int?>(
                   isExpanded: true,
@@ -259,8 +377,9 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                 ),
                 DropdownButtonFormField<int?>(
                   isExpanded: true,
+                  key: const Key('product-category'),
                   initialValue: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.category),
+                  decoration: const InputDecoration(labelText: AppStrings.categoryOptional),
                   items: [
                     const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
                     for (final c in categories.where((c) => c.isActive || c.id == _categoryId))
@@ -268,8 +387,12 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                   ],
                   onChanged: (v) => setState(() => _categoryId = v),
                 ),
-                text('sku', AppStrings.sku, ltr: true),
-                text('barcode', AppStrings.barcode, ltr: true),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 4. Prices and the low-stock alert.
+            FieldGrid(
+              children: [
                 TextFormField(
                   key: const Key('product-sale_price'),
                   controller: _c['sale_price'],
@@ -285,43 +408,28 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                     decoration: const InputDecoration(labelText: AppStrings.purchasePrice),
                     validator: (v) => Inputs.moneyValidator(v, required: false),
                   ),
-                if (!_kind.isNonStock)
+                if (!_kind.isNonStock && _trackStock)
                   TextFormField(
+                    key: const Key('product-reorder_level'),
                     controller: _c['reorder_level'],
                     inputFormatters: Inputs.integer,
                     decoration: const InputDecoration(labelText: AppStrings.reorderLevel),
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 24,
-              children: [
-                if (!lockedStock)
-                  _Switch(
-                    label: AppStrings.trackStock,
-                    value: _trackStock,
-                    onChanged: (v) => setState(() => _trackStock = v),
-                  ),
-                if (_editing)
-                  _Switch(
-                    label: AppStrings.active,
-                    value: _isActive,
-                    onChanged: (v) => setState(() => _isActive = v),
-                  ),
-              ],
-            ),
-            if (AttributeSpec.byKind[_kind]!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(AppStrings.attributes, style: Theme.of(context).textTheme.titleSmall),
+            // 5. The kind's own details.
+            if (specs.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                AppStrings.attributesTitles[_kind.value] ?? AppStrings.attributes,
+                key: const Key('product-attributes-title'),
+                style: theme.textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               FieldGrid(
-                children: [
-                  for (final s in AttributeSpec.byKind[_kind]!.where((s) => !s.multi))
-                    _attributeField(s),
-                ],
+                children: [for (final s in specs.where((s) => !s.multi)) _attributeField(s)],
               ),
-              for (final s in AttributeSpec.byKind[_kind]!.where((s) => s.multi)) ...[
+              for (final s in specs.where((s) => s.multi)) ...[
                 const SizedBox(height: 12),
                 Text(AppStrings.label(AppStrings.attributeLabels, s.key)),
                 const SizedBox(height: 4),
@@ -341,8 +449,36 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
                 ),
               ],
             ],
+            // 6. Collapsed extra options.
             const SizedBox(height: 12),
-            text('notes', AppStrings.notes, maxLines: 2),
+            const Divider(height: 1),
+            ListTile(
+              key: const Key('product-more'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(AppStrings.moreOptions),
+              subtitle: const Text(AppStrings.moreOptionsHint),
+              trailing: Icon(_moreOpen ? Icons.expand_less : Icons.expand_more),
+              onTap: () => setState(() => _moreOpen = !_moreOpen),
+            ),
+            if (_moreOpen) ...[
+              text('sku', AppStrings.sku, ltr: true),
+              const SizedBox(height: 8),
+              if (!lockedStock)
+                _Switch(
+                  label: AppStrings.trackStock,
+                  hint: AppStrings.trackStockHint,
+                  value: _trackStock,
+                  onChanged: (v) => setState(() => _trackStock = v),
+                ),
+              if (_editing)
+                _Switch(
+                  label: AppStrings.active,
+                  value: _isActive,
+                  onChanged: (v) => setState(() => _isActive = v),
+                ),
+              const SizedBox(height: 8),
+              text('notes', AppStrings.notes, maxLines: 2),
+            ],
           ],
         ),
       ),
@@ -389,19 +525,19 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
 }
 
 class _Switch extends StatelessWidget {
-  const _Switch({required this.label, required this.value, required this.onChanged});
+  const _Switch({required this.label, required this.value, required this.onChanged, this.hint});
 
   final String label;
+  final String? hint;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Switch(value: value, onChanged: onChanged),
-      const SizedBox(width: 6),
-      Text(label),
-    ],
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(label),
+    subtitle: hint == null ? null : Text(hint!),
+    value: value,
+    onChanged: onChanged,
   );
 }

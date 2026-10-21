@@ -52,6 +52,7 @@ class PosState {
     this.paymentAmount = '',
     this.paymentMethod = 'cash',
     this.notes = '',
+    this.sale = 0,
   });
 
   final List<CartLine> lines;
@@ -66,6 +67,10 @@ class PosState {
   final String paymentAmount;
   final String paymentMethod;
   final String notes;
+
+  /// Bumped by [PosController.clear]; the POS keys its form sections on it so fields that keep
+  /// their own text (initialValue) start empty for the next sale instead of showing stale input.
+  final int sale;
 
   bool get isEmpty => lines.isEmpty;
 
@@ -91,6 +96,7 @@ class PosState {
     paymentAmount: paymentAmount ?? this.paymentAmount,
     paymentMethod: paymentMethod ?? this.paymentMethod,
     notes: notes ?? this.notes,
+    sale: sale,
   );
 
   /// The checkout request: items, quantities and requested discounts only.
@@ -152,7 +158,7 @@ class PosController extends Notifier<PosState> {
 
   void update(PosState Function(PosState s) change) => state = change(state);
 
-  void clear() => state = const PosState();
+  void clear() => state = PosState(sale: state.sale + 1);
 }
 
 final posControllerProvider = NotifierProvider<PosController, PosState>(PosController.new);

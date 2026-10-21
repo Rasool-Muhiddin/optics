@@ -36,7 +36,7 @@ class AppStrings {
   static const String navPatients = 'المراجعين';
   static const String navInventory = 'المخزون';
   static const String navPos = 'نافذة البيع';
-  static const String navJobs = 'طلبات الزبائن';
+  static const String navJobs = 'نظارات الزبائن';
   static const String navOrders = 'طلبات الموردين';
   static const String navReferrals = 'إحالات الأطباء';
   static const String navReports = 'التقارير';
@@ -86,7 +86,7 @@ class AppStrings {
   static const String errMembershipInactive = 'تم إيقاف حسابك في المختبر.';
   static const String errOwnerRequired = 'هذا الإجراء متاح لمالك المختبر فقط.';
   static const String errInventoryPermission =
-      'إدارة المخزون (الأصناف وإدخالات المخزون) متاحة للمالك أو لمن لديه صلاحية إدارة المخزون.';
+      'إدارة المخزون (المواد وإدخالات المخزون) متاحة للمالك أو لمن لديه صلاحية إدارة المخزون.';
   static const String errFeatureNotInPlan = 'هذه الميزة غير مشمولة في اشتراكك الحالي.';
   static const String errCannotModifySelf = 'لا يمكنك إيقاف حسابك أو تغيير صلاحيتك بنفسك.';
   static const String errUsernameTaken = 'اسم المستخدم مستخدم مسبقاً.';
@@ -131,17 +131,17 @@ class AppStrings {
   static const String productName = 'اسم المادة';
   static const String brand = 'الماركة';
   static const String brands = 'الماركات';
-  static const String category = 'الصنف';
-  static const String categories = 'الأصناف';
-  static const String parentCategory = 'الصنف الأب';
-  static const String categoriesAndBrands = 'الأصناف والماركات';
-  static const String sku = 'الرمز (SKU)';
+  static const String category = 'المجموعة';
+  static const String categories = 'المجموعات';
+  static const String parentCategory = 'المجموعة الأم';
+  static const String categoriesAndBrands = 'المجموعات والماركات';
+  static const String sku = 'الرمز الداخلي (SKU)';
   static const String barcode = 'الباركود';
   static const String salePrice = 'سعر البيع';
   static const String purchasePrice = 'سعر الشراء';
   static const String averageCost = 'متوسط الكلفة';
   static const String quantity = 'الكمية';
-  static const String reorderLevel = 'حد إعادة الطلب';
+  static const String reorderLevel = 'نبّهني عندما تنزل الكمية إلى';
   static const String trackStock = 'تتبع المخزون';
   static const String lowStock = 'مخزون منخفض';
   static const String lowStockOnly = 'المنخفض فقط';
@@ -171,6 +171,27 @@ class AppStrings {
   static const String minusCylOnly = 'الأسطوانة بالسالب فقط (CYL ≤ 0)';
   static const String attributes = 'المواصفات';
   static const String chooseVariant = 'اختر القوة';
+  static const String categoryOptional = 'المجموعة (اختياري)';
+  static const String barcodeHint = 'امسح الباركود بالماسح أو اكتبه (اختياري).';
+  static const String variantBarcodeHint =
+      'لهذا النوع يكون لكل قوة باركود خاص بها يُدخل في جدول القوى بعد الحفظ؛ '
+      'هذا الحقل لباركود عام للمادة (اختياري).';
+  static const String duplicateBarcode = 'هذا الباركود مسجَّل مسبقاً للمادة';
+  static const String openProduct = 'فتح المادة';
+  static const String moreOptions = 'خيارات إضافية';
+  static const String moreOptionsHint = 'الرمز الداخلي، تتبع المخزون، الحالة، الملاحظات';
+  static const String trackStockHint =
+      'عند الإيقاف تُباع المادة بلا كمية ولا تنبيهات نقص (مثل مادة تُشترى عند الطلب).';
+
+  /// Title of the kind-specific details section in the product form.
+  static const Map<String, String> attributesTitles = {
+    'frame': 'مواصفات الإطار',
+    'stock_lens': 'مواصفات العدسة',
+    'rx_lens': 'مواصفات العدسة',
+    'contact_lens': 'مواصفات العدسة اللاصقة',
+    'accessory': 'مواصفات الإكسسوار',
+    'solution': 'مواصفات المحلول',
+  };
 
   static const Map<String, String> productKinds = {
     'frame': 'إطار',
@@ -195,10 +216,10 @@ class AppStrings {
     'model': 'الموديل',
     'color': 'اللون',
     'size': 'المقاس (عين-جسر-ذراع)',
-    'material': 'المادة',
-    'gender': 'الفئة',
+    'material': 'مادة الصنع',
+    'gender': 'لمن',
     'shape': 'الشكل',
-    'frame_type': 'نوع الإطار',
+    'frame_type': 'شكل الحافة',
     'index': 'معامل الانكسار',
     'design': 'التصميم',
     'coatings': 'الطلاءات',
@@ -436,11 +457,11 @@ class AppStrings {
   static const String errProductInactive = 'المادة غير فعّالة.';
 
   // Customer jobs (P5)
-  static const String jobsTitle = 'طلبات الزبائن';
+  static const String jobsTitle = 'نظارات الزبائن';
   static const String newJob = 'طلب نظارة جديد';
-  static const String editJob = 'تعديل الطلب';
-  static const String job = 'طلب';
-  static const String jobNumber = 'رقم الطلب';
+  static const String editJob = 'تعديل النظارة';
+  static const String job = 'نظارة الزبون';
+  static const String jobNumber = 'رقم النظارة';
   static const String promisedDate = 'موعد التسليم';
   static const String overdue = 'متأخر';
   static const String overdueOnly = 'المتأخرة فقط';
@@ -456,14 +477,25 @@ class AppStrings {
   static const String moveTo = 'نقل إلى';
   static const String changeStatus = 'تغيير الحالة';
   static const String statusNote = 'ملاحظة';
-  static const String printJobTicket = 'طباعة بطاقة الطلب';
-  static const String jobTicket = 'بطاقة طلب نظارة';
+  static const String printJobTicket = 'طباعة بطاقة النظارة';
+  static const String jobTicket = 'بطاقة نظارة';
   static const String deliveredAt = 'تاريخ التسليم';
-  static const String noJobs = 'لا توجد طلبات';
-  static const String jobsOfPatient = 'الطلبات';
+  static const String noJobs = 'لا توجد نظارات';
+  static const String jobsOfPatient = 'النظارات';
   static const String chooseFrame = 'اختر إطاراً من المخزون';
   static const String chooseLens = 'اختر العدسة';
   static const String customerSignature = 'توقيع الزبون عند الاستلام';
+  static const String createJobForInvoice = 'إنشاء طلب نظارة لهذه الفاتورة';
+  static const String frameNoInvoiceWarning =
+      'الإطار من المختبر ولا توجد فاتورة مرتبطة: لن يُخصم الإطار من المخزون حتى يُباع من نافذة البيع.';
+  static const String unpaidOnDelivery = 'يوجد مبلغ غير مدفوع';
+  static const String unpaidOnDeliveryHint = 'المتبقي على الفاتورة';
+  static const String payAndDeliver = 'استلام الدفعة والتسليم';
+  static const String deliverWithoutPayment = 'تسليم بدون دفع';
+  static const String deliverAnyway = 'تسليم على أي حال';
+  static const String lensArrived = 'وصلت العدسة';
+  static String lensArrivedMoved(int jobNumber) =>
+      'وصلت العدسة — نُقلت نظارة الزبون #$jobNumber إلى «في الورشة».';
 
   static const Map<String, String> jobStatuses = {
     'pending': 'قيد الانتظار',
@@ -481,8 +513,8 @@ class AppStrings {
   };
 
   // Errors (P5)
-  static const String errInvalidTransition = 'لا يمكن نقل الطلب إلى هذه الحالة.';
-  static const String errJobClosed = 'الطلب مُسلَّم أو ملغى ولا يمكن تعديله.';
+  static const String errInvalidTransition = 'لا يمكن نقل النظارة إلى هذه الحالة.';
+  static const String errJobClosed = 'النظارة مُسلَّمة أو ملغاة ولا يمكن تعديلها.';
   static const String errPrescriptionMismatch = 'الوصفة تعود لمراجع آخر.';
   static const String errInvoiceMismatch = 'الفاتورة تعود لزبون آخر.';
   static const String errInvalidFrame = 'اختيار الإطار غير صحيح.';
@@ -536,8 +568,8 @@ class AppStrings {
   static const String totalOwed = 'إجمالي المستحق للموردين';
   static const String noOrders = 'لا توجد طلبات.';
   static const String orderForJob = 'طلب عدسة من المورد';
-  static const String supplierOrdersOfJob = 'طلبات الموردين لهذا الطلب';
-  static const String chooseJob = 'اختر طلب الزبون';
+  static const String supplierOrdersOfJob = 'طلبات الموردين لهذه النظارة';
+  static const String chooseJob = 'اختر نظارة الزبون';
   static const String linesRequired = 'أضف مادة واحدة على الأقل';
 
   static const Map<String, String> orderStatuses = {
@@ -549,10 +581,28 @@ class AppStrings {
   };
 
   static const Map<String, String> orderTypes = {
-    'stock': 'مخزون',
-    'rx_for_job': 'عدسة طبية لطلب زبون',
-    'other': 'أخرى',
+    'stock': 'شراء للمخزن',
+    'rx_for_job': 'عدسة تفصيل لزبون',
+    'other': 'أخرى (مصاريف، دين قديم)',
   };
+
+  /// One line under the order-type selector explaining what the type does.
+  static const Map<String, String> orderTypeHints = {
+    'stock':
+        'بضاعة للمخزن (إطارات، عدسات جاهزة بالقوى، لاصقة، محاليل). '
+        'عند الاستلام تُضاف الكمية إلى المخزون ويُحدَّث متوسط الكلفة.',
+    'rx_for_job':
+        'عدسة تُصنع خصيصاً لوصفة زبون. لا تدخل المخزون؛ عند إرسال الطلب تصبح نظارة الزبون '
+        '«تم طلب العدسة»، وعند الاستلام تنتقل إلى «في الورشة» وتُسجَّل كلفة العدسة في فاتورته.',
+    'other':
+        'أي شيء آخر بوصف حر (أدوات، مصاريف، دين قديم للمورد). '
+        'لا يؤثر على المخزون، فقط على حساب المورد.',
+  };
+  static const String orderSentNow = 'أُرسل للمورد الآن';
+  static const String orderDraftHint = 'إن لم تُحدَّد يُحفظ الطلب كمسودة (غير مُرسل).';
+  static const String jobForOrderHint =
+      'اختر النظارة التي تُطلب لها العدسة؛ تُملأ سطور العينين من وصفتها تلقائياً.';
+  static const String chooseJobButton = 'اختيار';
 
   static const Map<String, String> orderPaymentStatuses = {
     'unpaid': 'غير مدفوع',
@@ -570,8 +620,9 @@ class AppStrings {
       'المبلغ المدفوع أكبر من قيمة المستلم. ألغِ الدفعات الزائدة أولاً.';
   static const String errOrderNotSent = 'أرسل الطلب إلى المورد قبل الدفع.';
   static const String errCostPermission = 'هذا الإجراء يتطلب صلاحية الاطلاع على التكاليف.';
-  static const String errJobRequired = 'طلب العدسة الطبية يجب أن يرتبط بطلب زبون.';
-  static const String errInvalidJob = 'فقط طلبات العدسات الطبية ترتبط بطلب زبون.';
+  static const String errJobRequired =
+      'طلب العدسة التفصيل يجب أن يرتبط بنظارة زبون. اختر النظارة أو غيّر نوع الطلب.';
+  static const String errInvalidJob = 'فقط طلبات العدسات التفصيل ترتبط بنظارة زبون.';
 
   // Doctor linking (P7)
   static const String doctorMode = 'وضع الطبيب';
@@ -652,7 +703,7 @@ class AppStrings {
   static const String monthSales = 'مبيعات الشهر';
   static const String monthProfit = 'ربح الشهر';
   static const String creditOutstanding = 'ديون الزبائن';
-  static const String openJobs = 'طلبات زبائن مفتوحة';
+  static const String openJobs = 'نظارات زبائن مفتوحة';
   static const String readyJobs = 'جاهزة للتسليم';
   static const String lowStockItems = 'أصناف منخفضة';
   static const String openSupplierOrders = 'طلبات موردين مفتوحة';
@@ -681,7 +732,7 @@ class AppStrings {
     'profit': 'الأرباح',
     'credit': 'ديون الزبائن',
     'stock': 'المخزون المنخفض',
-    'jobs': 'الطلبات المتأخرة',
+    'jobs': 'النظارات المتأخرة',
     'suppliers': 'أرصدة الموردين',
   };
 
@@ -707,7 +758,7 @@ class AppStrings {
     'quantity': 'الكمية',
     'reorder_level': 'حد الطلب',
     'value': 'القيمة',
-    'products': 'الأصناف',
+    'products': 'المواد',
     'number': 'الرقم',
     'patient': 'المراجع',
     'status': 'الحالة',
@@ -749,7 +800,7 @@ class AppStrings {
   static const String role = 'الصلاحية';
   static const String newPassword = 'كلمة مرور جديدة (اتركها فارغة للإبقاء)';
   static const String canViewCostsLabel = 'يرى التكاليف والأرباح';
-  static const String canManageInventoryLabel = 'يدير المخزون (الأصناف وإدخالات المخزون)';
+  static const String canManageInventoryLabel = 'يدير المخزون (المواد وإدخالات المخزون)';
   static const String ownerHasAll = 'المالك يملك كل الصلاحيات.';
   static const String deactivateUser = 'إيقاف المستخدم';
   static const String activateUser = 'تفعيل المستخدم';

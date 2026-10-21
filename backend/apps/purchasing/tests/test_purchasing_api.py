@@ -303,6 +303,25 @@ class RxForJobTests(PurchasingBase):
         self.assertEqual(invoice["cost_total"], "53000.00")  # 52000 + frame 1000
         self.assertFalse(StockMovement.objects.filter(product=self.rx_lens).exists())  # made to order
 
+    def test_fully_received_rx_order_moves_job_to_workshop(self):
+        order = self._rx_order().json()
+        od_line = next(l for l in order["lines"] if l["eye"] == "od")
+        # One eye only: the job keeps waiting for the lenses.
+        partial = self.client.post(f"{ORDERS}{order['id']}/receive/",
+                                   {"lines": [{"line": od_line["id"], "qty": 1}]}, format="json").json()
+        self.assertEqual((partial["status"], partial["job_status"]), ("partially_received", "lens_ordered"))
+        received = self.client.post(f"{ORDERS}{order['id']}/receive/", {}).json()
+        self.assertEqual((received["status"], received["job_status"]), ("received", "in_workshop"))
+        log = self.job.status_logs.order_by("-id").first()
+        self.assertEqual((log.from_status, log.to_status), ("lens_ordered", "in_workshop"))
+        self.assertIn(f"PO #{order['number']}", log.note)
+
+    def test_receiving_never_moves_a_job_backwards(self):
+        order = self._rx_order().json()
+        self.client.post(f"/api/v1/jobs/{self.job.id}/status/", {"status": "ready"}, format="json")
+        received = self.client.post(f"{ORDERS}{order['id']}/receive/", {}).json()
+        self.assertEqual(received["job_status"], "ready")
+
     def test_linking_invoice_later_applies_received_cost(self):
         self.job.invoice = None
         self.job.save()

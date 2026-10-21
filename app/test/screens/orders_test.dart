@@ -5,6 +5,7 @@ import 'package:optics_app/core/strings/app_strings.dart';
 import 'package:optics_app/models/purchasing.dart';
 
 import '../helpers.dart';
+import 'jobs_test.dart' show jobJson;
 
 String _day(int offset) =>
     DateTime.now().add(Duration(days: offset)).toIso8601String().substring(0, 10);
@@ -220,6 +221,86 @@ void main() {
     ]);
     // Opens the new order.
     expect(find.textContaining('#3'), findsWidgets);
+  });
+
+  testWidgets('order types: hint per type, other = text lines only, rx = glasses + lines per eye', (
+    tester,
+  ) async {
+    final server = ordersServer();
+    server.routes['GET jobs/'] = (http.Request r) async =>
+        r.url.queryParameters['status'] == 'delivered'
+        ? jsonResponse(page([]), 200)
+        : jsonResponse(page([jobJson(id: 6, number: 7, status: 'pending')]), 200);
+    await openOrders(tester, server);
+    await tester.tap(find.byKey(const Key('new-order')));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.orderTypeHints['stock']!), findsOneWidget);
+    expect(find.byKey(const Key('order-add-text')), findsNothing);
+
+    await tester.tap(find.text(AppStrings.orderTypes['other']!));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.orderTypeHints['other']!), findsOneWidget);
+    expect(find.byKey(const Key('order-add-product')), findsNothing);
+    expect(find.byKey(const Key('order-add-text')), findsOneWidget);
+
+    await tester.tap(find.text(AppStrings.orderTypes['rx_for_job']!));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.orderTypeHints['rx_for_job']!), findsOneWidget);
+    expect(find.text(AppStrings.job), findsOneWidget); // "نظارة الزبون"
+    await tester.tap(find.byKey(const Key('order-pick-job')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick-job-6')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const Key('order-job-label'))).data,
+      '#7 — زينب علي — CR-39 1.56',
+    );
+    // One line per eye, described from the glasses' prescription.
+    expect(find.byKey(const Key('order-line-desc-0')), findsOneWidget);
+    expect(find.byKey(const Key('order-line-desc-1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('order-supplier')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Essilor Baghdad').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('order-sent'))); // keep it as a draft
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dialog-save')));
+    await tester.pumpAndSettle();
+
+    final body = decodeBody(server.sent('POST', 'purchasing/orders/').single);
+    expect(body['type'], 'rx_for_job');
+    expect(body['job'], 6);
+    expect(body['status'], 'pending');
+    final lines = (body['lines'] as List).cast<Map<String, dynamic>>();
+    expect([for (final l in lines) l['eye']], ['od', 'os']);
+    expect(lines.first['description'], contains('SPH -2.25'));
+    expect(lines.first['product'], 2); // the glasses' lens
+  });
+
+  testWidgets('receiving a whole rx order says the lens arrived', (tester) async {
+    final server = ordersServer();
+    Map<String, dynamic> rxOrder(String status, String jobStatus) => {
+      ...orderJson(id: 1),
+      'type': 'rx_for_job',
+      'job': 4,
+      'job_number': 10,
+      'job_patient_name': 'زينب علي',
+      'job_status': jobStatus,
+      'status': status,
+    };
+    server.routes['GET purchasing/orders/1/'] = (_) async =>
+        jsonResponse(rxOrder('ordered', 'lens_ordered'), 200);
+    server.routes['POST purchasing/orders/1/receive/'] = (_) async =>
+        jsonResponse(rxOrder('received', 'in_workshop'), 200);
+    await openOrders(tester, server);
+    await tester.tap(find.byKey(const Key('order-row-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('order-receive')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dialog-save')));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.lensArrivedMoved(10)), findsOneWidget);
   });
 
   test('ageing and lateness are re-evaluated offline', () {

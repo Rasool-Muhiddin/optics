@@ -137,15 +137,18 @@ class PatientDetailScreen extends ConsumerWidget {
                         label: AppStrings.age,
                         value: patient.age == null ? '' : '${patient.age}',
                       ),
-                      InfoTile(
-                        label: AppStrings.gender,
-                        value: AppStrings.genders[patient.gender] ?? '',
-                      ),
+                      // Gender/address are no longer asked in the form; shown for older files and referrals.
+                      if (patient.gender.isNotEmpty)
+                        InfoTile(
+                          label: AppStrings.gender,
+                          value: AppStrings.genders[patient.gender] ?? '',
+                        ),
                       InfoTile(
                         label: AppStrings.status,
                         value: AppStrings.patientStatuses[patient.status] ?? patient.status,
                       ),
-                      InfoTile(label: AppStrings.address, value: patient.address),
+                      if (patient.address.isNotEmpty)
+                        InfoTile(label: AppStrings.address, value: patient.address),
                       if (patient.notes.isNotEmpty)
                         InfoTile(label: AppStrings.notes, value: patient.notes, width: 420),
                     ],

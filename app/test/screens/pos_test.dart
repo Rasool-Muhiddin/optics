@@ -189,6 +189,111 @@ void main() {
     expect(find.text(AppStrings.emptyCart), findsOneWidget);
   });
 
+  testWidgets('walk-in name is sent, and the fields start empty after a sale', (tester) async {
+    final server = posServer();
+    await pumpPos(tester, server);
+    String fieldText(String key) => tester
+        .widget<EditableText>(
+          find.descendant(of: find.byKey(Key(key)), matching: find.byType(EditableText)),
+        )
+        .controller
+        .text;
+
+    Future<Map<String, dynamic>> sell(String name) async {
+      await tester.enterText(find.byKey(const Key('pos-customer-name')), name);
+      await tester.enterText(find.byKey(const Key('pos-search')), '6291');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('pos-checkout')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('checkout-done-close')));
+      await tester.pumpAndSettle();
+      return decodeBody(server.sent('POST', 'sales/checkout/').last);
+    }
+
+    await tester.enterText(find.byKey(const Key('pos-customer-phone')), '07701234567');
+    final first = await sell('علي');
+    expect((first['customer_name'], first['customer_phone']), ('علي', '07701234567'));
+    expect(fieldText('pos-customer-phone'), '');
+    // The cart was cleared: the name field must not keep showing a name that would not be sent.
+    expect(fieldText('pos-customer-name'), '');
+    expect(fieldText('pos-invoice-discount'), '');
+    expect((await sell('حسن'))['customer_name'], 'حسن');
+  });
+
+  testWidgets('a line discount stays with its line when another line is removed', (tester) async {
+    final server = posServer();
+    await pumpPos(tester, server);
+    String fieldText(String key) => tester
+        .widget<EditableText>(
+          find.descendant(of: find.byKey(Key(key)), matching: find.byType(EditableText)),
+        )
+        .controller
+        .text;
+
+    await tester.enterText(find.byKey(const Key('pos-search')), '6291');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('pos-search')), 'CR');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pos-result-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('grid-cell-12')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('cart-discount-0')), '500');
+    await tester.enterText(find.byKey(const Key('cart-discount-1')), '200');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('cart-remove-0')));
+    await tester.pumpAndSettle();
+
+    expect(fieldText('cart-discount-0'), '200');
+    final body = decodeBody(server.sent('POST', 'sales/checkout/preview/').last);
+    expect(body['lines'], [
+      {'variant': 12, 'qty': 1, 'discount': '200'},
+    ]);
+  });
+
+  testWidgets('after a sale, "create glasses order" pre-fills invoice, frame and lens', (
+    tester,
+  ) async {
+    final server = posServer();
+    await pumpPos(tester, server);
+    await tester.enterText(find.byKey(const Key('pos-search')), '6291');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('pos-search')), 'CR');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pos-result-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('grid-cell-12')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('cart-inc-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pos-checkout')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('checkout-create-job')));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.newJob), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('job-invoice-fixed')),
+        matching: find.textContaining('#17'),
+      ),
+      findsOneWidget,
+    );
+    Finder inDialog(String text) =>
+        find.descendant(of: find.byType(Dialog), matching: find.text(text));
+    expect(inDialog('Ray-Ban 5154'), findsOneWidget); // frame from the sale
+    expect(inDialog('CR-39 1.56'), findsOneWidget); // lens from the sale
+    // The power was sold twice: one per eye.
+    expect(inDialog('SPH -1.00 CYL 0.00'), findsNWidgets(2));
+    expect(find.byKey(const Key('job-frame-no-invoice')), findsNothing);
+  });
+
   test('cart JSON carries only items, quantities and requested discounts', () {
     const frame = Product(id: 1, kind: ProductKind.frame, name: 'F');
     final state = const PosState(paymentType: 'credit', paymentAmount: '5000', discountValue: '10')

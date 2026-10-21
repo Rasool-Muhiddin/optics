@@ -2,20 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/errors/error_messages.dart';
 import '../../core/formatters/formatters.dart';
+import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/repositories/sales_repository.dart';
 import '../../models/catalog.dart';
+import '../../models/jobs.dart';
 import '../../models/sales.dart';
 import '../../widgets/common.dart';
 import '../../widgets/patient_picker.dart';
 import '../../widgets/product_pickers.dart';
 import '../inventory/inventory_providers.dart';
+import '../jobs/job_form_dialog.dart';
+import '../jobs/jobs_providers.dart' show invalidateJobs;
 import '../sales/invoice_actions.dart';
 import 'pos_controller.dart';
 
@@ -75,9 +80,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final invoice = await ref
-          .read(salesRepositoryProvider)
-          .checkout(ref.read(posControllerProvider).toJson());
+      final sold = ref.read(posControllerProvider);
+      final invoice = await ref.read(salesRepositoryProvider).checkout(sold.toJson());
       _pos.clear();
       ref.invalidate(productListProvider);
       if (!mounted) return;
@@ -102,6 +106,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             ),
           ),
           actions: [
+            OutlinedButton.icon(
+              key: const Key('checkout-create-job'),
+              icon: const Icon(Icons.assignment_add),
+              label: const Text(AppStrings.createJobForInvoice),
+              onPressed: () {
+                final router = GoRouter.of(context);
+                Navigator.of(context).pop();
+                _createJob(router, invoice, sold);
+              },
+            ),
             FilledButton(
               key: const Key('checkout-done-close'),
               onPressed: () => Navigator.of(context).pop(),
@@ -114,6 +128,25 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       if (mounted) showErrorSnack(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// New glasses job pre-filled from the sale (customer, invoice, frame, lens, powers).
+  Future<void> _createJob(GoRouter router, Invoice invoice, PosState sold) async {
+    final job = await showDialog<Job>(
+      context: context,
+      builder: (_) => JobFormDialog(
+        draft: JobDraft.fromSale(
+          invoiceId: invoice.id,
+          invoiceLabel: '#${invoice.number} — ${Formatters.money(invoice.total)}',
+          patient: sold.patient,
+          items: [for (final l in sold.lines) (product: l.product, variant: l.variant, qty: l.qty)],
+        ),
+      ),
+    );
+    if (job != null) {
+      invalidateJobs(ref, job.id);
+      router.go(AppRoutes.jobDetail(job.id));
     }
   }
 
@@ -214,7 +247,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _CustomerSection(cart: cart),
+                          _CustomerSection(key: ValueKey('customer-${cart.sale}'), cart: cart),
                           const Divider(),
                           Expanded(
                             child: cart.isEmpty
@@ -222,7 +255,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                 : _CartLines(cart: cart, preview: preview.value),
                           ),
                           const Divider(),
-                          _PaymentSection(cart: cart),
+                          _PaymentSection(key: ValueKey('payment-${cart.sale}'), cart: cart),
                           const SizedBox(height: 8),
                           _Totals(preview: preview),
                           const SizedBox(height: 8),
@@ -255,7 +288,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 }
 
 class _CustomerSection extends ConsumerWidget {
-  const _CustomerSection({required this.cart});
+  const _CustomerSection({super.key, required this.cart});
 
   final PosState cart;
 
@@ -279,6 +312,7 @@ class _CustomerSection extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
+          flex: 3,
           child: TextFormField(
             key: const Key('pos-customer-name'),
             initialValue: cart.customerName,
@@ -286,6 +320,18 @@ class _CustomerSection extends ConsumerWidget {
               labelText: '${AppStrings.customerName} (${AppStrings.walkIn})',
             ),
             onChanged: (v) => pos.update((s) => s.copyWith(customerName: v)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: TextFormField(
+            key: const Key('pos-customer-phone'),
+            initialValue: cart.customerPhone,
+            textDirection: TextDirection.ltr,
+            inputFormatters: Inputs.integer,
+            decoration: const InputDecoration(labelText: AppStrings.phone),
+            onChanged: (v) => pos.update((s) => s.copyWith(customerPhone: v)),
           ),
         ),
         const SizedBox(width: 8),
@@ -322,57 +368,66 @@ class _CartLines extends ConsumerWidget {
       itemBuilder: (context, i) {
         final line = cart.lines[i];
         final p = priced?[i];
-        return Padding(
-          key: Key('cart-line-$i'),
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(line.label),
-                    if (p != null)
-                      Text(
-                        '${Formatters.money(p.unitPrice)}'
-                        '${p.shortOfStock ? '   •   ${AppStrings.outOfStock} (${p.available})' : ''}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: p.shortOfStock ? theme.colorScheme.error : null,
+        // Keyed by the item itself (not its position): the discount field keeps its own text,
+        // so after removing a line the next line must not inherit the removed line's field.
+        return KeyedSubtree(
+          key: ValueKey((line.product.id, line.variant?.id)),
+          child: Padding(
+            key: Key('cart-line-$i'),
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(line.label),
+                      if (p != null)
+                        Text(
+                          '${Formatters.money(p.unitPrice)}'
+                          '${p.shortOfStock ? '   •   ${AppStrings.outOfStock} (${p.available})' : ''}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: p.shortOfStock ? theme.colorScheme.error : null,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                onPressed: () => pos.setQty(i, line.qty - 1),
-              ),
-              Text('${line.qty}', key: Key('cart-qty-$i')),
-              IconButton(
-                key: Key('cart-inc-$i'),
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: () => pos.setQty(i, line.qty + 1),
-              ),
-              SizedBox(
-                width: 110,
-                child: TextFormField(
-                  key: Key('cart-discount-$i'),
-                  initialValue: line.discount,
-                  inputFormatters: Inputs.money,
-                  decoration: const InputDecoration(labelText: AppStrings.lineDiscount),
-                  onChanged: (v) => pos.setLineDiscount(i, v),
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () => pos.setQty(i, line.qty - 1),
                 ),
-              ),
-              SizedBox(
-                width: 120,
-                child: Text(
-                  p == null ? '' : Formatters.money(p.lineTotal),
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Text('${line.qty}', key: Key('cart-qty-$i')),
+                IconButton(
+                  key: Key('cart-inc-$i'),
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () => pos.setQty(i, line.qty + 1),
                 ),
-              ),
-              IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => pos.remove(i)),
-            ],
+                SizedBox(
+                  width: 110,
+                  child: TextFormField(
+                    key: Key('cart-discount-$i'),
+                    initialValue: line.discount,
+                    inputFormatters: Inputs.money,
+                    decoration: const InputDecoration(labelText: AppStrings.lineDiscount),
+                    onChanged: (v) => pos.setLineDiscount(i, v),
+                  ),
+                ),
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    p == null ? '' : Formatters.money(p.lineTotal),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  key: Key('cart-remove-$i'),
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => pos.remove(i),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -381,7 +436,7 @@ class _CartLines extends ConsumerWidget {
 }
 
 class _PaymentSection extends ConsumerWidget {
-  const _PaymentSection({required this.cart});
+  const _PaymentSection({super.key, required this.cart});
 
   final PosState cart;
 

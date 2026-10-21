@@ -7,9 +7,11 @@ import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/purchasing_repository.dart';
+import '../../models/jobs.dart' show JobStatuses;
 import '../../models/purchasing.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
+import '../jobs/jobs_providers.dart' show invalidateJobs;
 import '../patients/exam_dialogs.dart' show askVoidReason;
 import '../sales/invoice_actions.dart' show askPayment;
 import 'order_form_dialog.dart';
@@ -67,7 +69,21 @@ class OrderDetailScreen extends ConsumerWidget {
                         context: context,
                         builder: (_) => _ReceiveDialog(order: o),
                       );
-                      if (lines != null) await run(() => repo.receive(o.id, lines: lines));
+                      if (lines == null) return;
+                      await run(() async {
+                        final received = await repo.receive(o.id, lines: lines);
+                        // Rx lens fully received: the server moved the glasses to the workshop.
+                        if (received.jobNumber != null &&
+                            received.status == OrderStatuses.received &&
+                            received.jobStatus == JobStatuses.inWorkshop &&
+                            o.jobStatus != JobStatuses.inWorkshop) {
+                          if (received.jobId != null) invalidateJobs(ref, received.jobId);
+                          if (context.mounted) {
+                            showSnack(context, AppStrings.lensArrivedMoved(received.jobNumber!));
+                          }
+                        }
+                        return received;
+                      });
                     },
                   ),
                 if (canManage && o.status == OrderStatuses.pending)
@@ -185,37 +201,41 @@ class OrderDetailScreen extends ConsumerWidget {
                     children: [
                       Text(AppStrings.orderLines, style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      DataTable(
-                        columns: [
-                          const DataColumn(label: Text(AppStrings.item)),
-                          if (o.type == OrderTypes.rxForJob)
-                            const DataColumn(label: Text(AppStrings.eye)),
-                          const DataColumn(label: Text(AppStrings.quantity), numeric: true),
-                          const DataColumn(label: Text(AppStrings.received), numeric: true),
-                          const DataColumn(label: Text(AppStrings.remaining), numeric: true),
-                          if (seesCosts) ...const [
-                            DataColumn(label: Text(AppStrings.unitCost), numeric: true),
-                            DataColumn(label: Text(AppStrings.lineTotal), numeric: true),
+                      // Rx orders add an eye column: scroll instead of overflowing narrow windows.
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columns: [
+                            const DataColumn(label: Text(AppStrings.item)),
+                            if (o.type == OrderTypes.rxForJob)
+                              const DataColumn(label: Text(AppStrings.eye)),
+                            const DataColumn(label: Text(AppStrings.quantity), numeric: true),
+                            const DataColumn(label: Text(AppStrings.received), numeric: true),
+                            const DataColumn(label: Text(AppStrings.remaining), numeric: true),
+                            if (seesCosts) ...const [
+                              DataColumn(label: Text(AppStrings.unitCost), numeric: true),
+                              DataColumn(label: Text(AppStrings.lineTotal), numeric: true),
+                            ],
                           ],
-                        ],
-                        rows: [
-                          for (final l in o.lines)
-                            DataRow(
-                              key: ValueKey('order-line-${l.id}'),
-                              cells: [
-                                DataCell(Text(l.label)),
-                                if (o.type == OrderTypes.rxForJob)
-                                  DataCell(Text(AppStrings.label(AppStrings.eyes, l.eye))),
-                                DataCell(Text('${l.qty}')),
-                                DataCell(Text('${l.qtyReceived}')),
-                                DataCell(Text('${l.qtyRemaining}')),
-                                if (seesCosts) ...[
-                                  DataCell(Text(Formatters.money(l.unitCost))),
-                                  DataCell(Text(Formatters.money(l.lineTotal))),
+                          rows: [
+                            for (final l in o.lines)
+                              DataRow(
+                                key: ValueKey('order-line-${l.id}'),
+                                cells: [
+                                  DataCell(Text(l.label)),
+                                  if (o.type == OrderTypes.rxForJob)
+                                    DataCell(Text(AppStrings.label(AppStrings.eyes, l.eye))),
+                                  DataCell(Text('${l.qty}')),
+                                  DataCell(Text('${l.qtyReceived}')),
+                                  DataCell(Text('${l.qtyRemaining}')),
+                                  if (seesCosts) ...[
+                                    DataCell(Text(Formatters.money(l.unitCost))),
+                                    DataCell(Text(Formatters.money(l.lineTotal))),
+                                  ],
                                 ],
-                              ],
-                            ),
-                        ],
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

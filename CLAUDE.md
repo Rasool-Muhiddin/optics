@@ -619,6 +619,37 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   local); `deploy/.env.production.example`. Cloudflare SSL mode is per zone: use a Configuration Rule for this host
   instead of changing the zone (pharmacy).
 
+### Decisions recorded after P10 (owner UX review)
+- **Patient form** asks name, phone and age only. `birth_date`, `gender`, `address`, `notes` stay in the model/API
+  (optional, no migration): doctors' referrals send gender and old files keep their values (the form does not
+  send them, so editing never erases them); the profile shows gender/address only when set.
+- **POS**: walk-in phone field (`customer_phone`); `PosState.sale` is bumped by `clear()` and keys the customer /
+  payment sections, so fields that keep their own text (`initialValue`) start empty after a sale (the stale name
+  field used to send `''` → invoices showed "زبون عابر"); cart rows are keyed by product/variant, not index.
+  After checkout, "إنشاء طلب نظارة لهذه الفاتورة" opens the job form with a `JobDraft` (invoice fixed, patient,
+  first frame, first lens and up to two sold powers = OD/OS, latest Rx of the patient).
+- **Naming**: jobs are "نظارات الزبائن" everywhere (a job = "نظارة الزبون"); supplier orders "طلبات الموردين";
+  categories are "المجموعات". Order types: "شراء للمخزن" / "عدسة تفصيل لزبون" / "أخرى (مصاريف، دين قديم)".
+- **Supplier order form**: a hint line per type; stock = product lines only, other = free-text lines only, rx =
+  glasses picker (number — customer — lens) that fills one line per eye from the glasses' Rx; "أُرسل للمورد الآن"
+  (unchecked = draft `pending`).
+- **Lens arrival**: a fully received `rx_for_job` order moves its job `pending | lens_ordered → in_workshop`
+  (`purchasing.services._job_lens_arrived`, logged "PO #n received"; partial receipts wait, never backwards).
+  Orders expose `job_status`; the order screen shows "وصلت العدسة…" after such a receipt.
+- **Delivery checks** (Flutter, `moveJob`): an unpaid invoice balance opens a dialog to take the payment
+  (`sales/invoices/{id}/payments/`) then deliver, deliver without paying, or cancel; a lab frame with no invoice
+  asks for confirmation. The job form and detail warn when the frame is from the lab and there is no invoice
+  (stock leaves only at checkout).
+- **Product form**: barcode first (autofocus, Enter/leaving the field looks the code up → "مسجَّل مسبقاً" + open
+  button), kind as icon chips, name/brand/"المجموعة (اختياري)", prices + "نبّهني عندما تنزل الكمية إلى", the kind's
+  details ("مواصفات الإطار"… with "لمن" / "شكل الحافة" / "مادة الصنع"), then collapsed "خيارات إضافية" (SKU, track
+  stock, active, notes). Stock/contact lenses show a hint that each power has its own barcode in the power grid.
+- **Demo data**: `python manage.py seed_demo [--noinput]` **flushes the whole database** and loads
+  "مختبر عوينات الجامعة" (owner `ali`, also a Django Admin superuser; staff `zahraa`, `mustafa`; doctors `dr_ahmed`,
+  `dr_sara`, `dr_haider`; all with password `aasddff`). Scenarios are generators interleaved by date under a
+  patched clock and go through the real services, so numbers follow dates and stock/balances match the ledger
+  (`labs/tests/test_seed_demo.py`). Refused when DEBUG is off unless `--allow-production`.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,
