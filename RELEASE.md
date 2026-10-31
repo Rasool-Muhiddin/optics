@@ -2,9 +2,24 @@
 
 On the Windows build PC (the owner's PC):
 
-**Requirements**: Flutter **3.44.8**, Visual Studio 2022 with "Desktop development with C++",
-Inno Setup 6.3+ (it includes `Languages\Arabic.isl`; for an older Inno Setup download `Arabic.isl`
-from https://jrsoftware.org/files/istrans/ into its `Languages` folder).
+**Requirements**: Flutter **3.44.8**, Visual Studio 2022 or newer with "Desktop development with C++"
+(the owner's PC: Visual Studio Community 2026), Inno Setup 6.3+ or 7 (the owner's PC: 7.0.2; both include
+`Languages\Arabic.isl`; for an older Inno Setup download `Arabic.isl` from https://jrsoftware.org/files/istrans/
+into its `Languages` folder). The build script finds `ISCC.exe` of Inno Setup 7 or 6 by itself; pass
+`-Iscc <path>` for another location.
+
+**Check a build** (optional): the compiled app must contain only the production URL:
+```powershell
+Select-String -Path app\build\windows\x64\runner\Release\data\app.so -Pattern 'https?://[\w.:-]*(optics|127\.0\.0\.1|localhost)[\w./:-]*' -AllMatches -Encoding Default |
+  ForEach-Object { $_.Matches.Value } | Sort-Object -Unique
+# → https://optics-api.tera-software1.com/api/v1   (never 127.0.0.1 or localhost)
+```
+
+**Code signing**: releases are not signed yet, so Windows SmartScreen shows "Windows protected your PC /
+Unknown publisher" when the installer is downloaded with a browser (More info → Run anyway). In-app updates
+are downloaded by the app itself and normally don't get that SmartScreen prompt; the administrator (UAC)
+prompt still shows "Unknown publisher". To sign later, add Inno Setup's `SignTool=` to `installer\optics.iss`
+(it signs the installer and the uninstaller) and sign `optics_app.exe` before packaging.
 
 ## One command
 

@@ -6,13 +6,14 @@
     .\installer\build_release.ps1 -Version 1.0.1 -BuildNumber 2 -ApiBaseUrl https://optics-api.tera-software1.com/api/v1
 
   Needs: Flutter 3.44.8 on PATH, Visual Studio 2022 "Desktop development with C++",
-  Inno Setup 6 (iscc.exe). Output: installer\Output\optics-setup-<Version>.exe + its SHA-256.
+  Inno Setup 6.3+ or 7 (ISCC.exe, found automatically). Output: installer\Output\optics-setup-<Version>.exe + its SHA-256.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Version,
   [Parameter(Mandatory = $true)][int]$BuildNumber,
   [string]$ApiBaseUrl = "https://optics-api.tera-software1.com/api/v1",
-  [string]$Iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+  # Empty = first one found: Inno Setup 7 or 6, in Program Files or Program Files (x86).
+  [string]$Iscc = ""
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -24,7 +25,16 @@ if ($ApiBaseUrl -notmatch '^https://[A-Za-z0-9.-]+(:\d+)?/api/v1/?$') {
 }
 if ($ApiBaseUrl -match '127\.0\.0\.1|localhost') { throw "ApiBaseUrl points to this PC: $ApiBaseUrl" }
 Write-Host "API base URL: $ApiBaseUrl"
-if (-not (Test-Path $Iscc)) { throw "Inno Setup compiler not found at $Iscc" }
+if (-not $Iscc) {
+  $Iscc = @(
+    "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
+    "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+  ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+if (-not $Iscc -or -not (Test-Path $Iscc)) { throw "Inno Setup compiler (ISCC.exe) not found; pass -Iscc <path>" }
+Write-Host "Inno Setup: $Iscc"
 
 Push-Location (Join-Path $root "app")
 try {
