@@ -4,7 +4,7 @@
 # Needs (from /srv/optics/.env.production): DATABASE_URL, R2_ACCOUNT_ID, R2_BUCKET,
 # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (R2 API token), optionally BACKUP_DIR,
 # BACKUP_KEEP_DAYS. Tools: pg_dump (postgresql-client), aws (awscli).
-# Restore: aws s3 cp s3://$R2_BUCKET/db/<file> . --endpoint-url ... && pg_restore -d <db> --clean <file>
+# Restore: deploy/backup/optics-restore.sh (see DEPLOY.md "Restoring a backup").
 set -euo pipefail
 
 : "${DATABASE_URL:?DATABASE_URL is not set}"
@@ -15,6 +15,9 @@ KEEP_DAYS="${BACKUP_KEEP_DAYS:-7}"
 MEDIA_DIR="${MEDIA_ROOT:-/srv/optics/media}"
 ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 export AWS_DEFAULT_REGION=auto
+# Recent awscli versions add CRC checksums R2 may reject; only send them when required.
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$BACKUP_DIR"

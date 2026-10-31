@@ -467,3 +467,25 @@ Moved verbatim from CLAUDE.md. Append new "Decisions recorded …" sections here
   `AppDataTable` (sticky header, zebra rows, numeric columns end-aligned, client-side sort of loaded rows only,
   `TableFooter` row count / load more). `FormDialog` takes an optional `icon`.
 
+
+### Decisions recorded for deploy-ready (after P10)
+
+- **Scripts, not hand steps**: `deploy/setup-server.sh` (first install, idempotent: checks before each step, never
+  regenerates existing secrets, never upgrades existing packages, only *reloads* nginx after `nginx -t`) and
+  `deploy/update.sh` (`sudo optics-update`: pull → pip → backup if migrations are pending → migrate →
+  collectstatic → `check --deploy` → restart → health check). Shared helpers in `deploy/lib.sh`. Layout under
+  `/srv/optics` is fixed; choices (`DOMAIN`, `TLS_MODE=cloudflare|letsencrypt`, `BEHIND_CLOUDFLARE`,
+  `DB_MODE=local|external`, `REPO_URL`, `BRANCH`) are saved in `/srv/optics/deploy.conf`.
+- **nginx file is a template** (`__DOMAIN__`, `__SSL_CERT__`, `__SSL_KEY__`), rendered by the scripts. Adds gzip
+  for JSON, `server_tokens off`, security headers on static/media, denies html/svg/scripts under `/media/`.
+- **gunicorn settings** in `deploy/gunicorn.conf.py` (`GUNICORN_WORKERS`, default 3; worker recycling).
+- **Throttle cache**: production uses a `FileBasedCache` in `/srv/optics/cache` so DRF throttles count across
+  gunicorn workers (per-process LocMem multiplied the allowed rate by the worker count).
+- **Error alerts**: optional Sentry (`SENTRY_DSN`); `send_default_pii=False`, `max_request_body_size="never"`,
+  `include_local_variables=False`, so patient data never leaves the server.
+- **Pinned dependencies**: `requirements.txt` uses exact `==` pins (direct + transitive). awscli lives in its own
+  venv (`/srv/optics/tools-venv`) so it never changes the app's packages.
+- **Restore**: `deploy/backup/optics-restore.sh` (`sudo optics-restore`): default is a test restore into a scratch
+  DB; `--live` asks for confirmation, saves a pre-restore dump, restores in one transaction; `--media` syncs files.
+- **Release guard**: `installer/build_release.ps1` refuses an `ApiBaseUrl` that is not `https://…/api/v1` or
+  points to localhost.

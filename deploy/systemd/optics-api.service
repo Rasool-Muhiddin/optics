@@ -1,5 +1,6 @@
 # /etc/systemd/system/optics-api.service — gunicorn for the Optics API.
 # Separate user, folder, socket and service name from the pharmacy backend.
+# Installed by deploy/setup-server.sh; settings in deploy/gunicorn.conf.py.
 [Unit]
 Description=Optics Lab API (gunicorn)
 After=network.target postgresql.service
@@ -15,19 +16,14 @@ Environment=DJANGO_SETTINGS_MODULE=config.settings.production
 RuntimeDirectory=optics
 RuntimeDirectoryMode=0750
 ExecStart=/srv/optics/venv/bin/gunicorn config.wsgi:application \
-    --bind unix:/run/optics/gunicorn.sock \
-    --umask 007 \
-    --workers 3 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile -
+    --config /srv/optics/app/deploy/gunicorn.conf.py
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/srv/optics/media
+ReadWritePaths=/srv/optics/media /srv/optics/cache
 
 [Install]
 WantedBy=multi-user.target

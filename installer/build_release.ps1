@@ -18,6 +18,12 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3" }
+# A release must never ship pointing at a dev server or plain HTTP (tokens would travel unencrypted).
+if ($ApiBaseUrl -notmatch '^https://[A-Za-z0-9.-]+(:\d+)?/api/v1/?$') {
+  throw "ApiBaseUrl must look like https://<api-domain>/api/v1 (got '$ApiBaseUrl')"
+}
+if ($ApiBaseUrl -match '127\.0\.0\.1|localhost') { throw "ApiBaseUrl points to this PC: $ApiBaseUrl" }
+Write-Host "API base URL: $ApiBaseUrl"
 if (-not (Test-Path $Iscc)) { throw "Inno Setup compiler not found at $Iscc" }
 
 Push-Location (Join-Path $root "app")
