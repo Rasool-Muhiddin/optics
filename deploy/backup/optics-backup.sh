@@ -6,6 +6,7 @@
 # BACKUP_KEEP_DAYS. Tools: pg_dump (postgresql-client), aws (awscli).
 # Restore: deploy/backup/optics-restore.sh (see DEPLOY.md "Restoring a backup").
 set -euo pipefail
+umask 077   # dumps hold patient data: readable by the optics user only
 
 : "${DATABASE_URL:?DATABASE_URL is not set}"
 : "${R2_ACCOUNT_ID:?R2_ACCOUNT_ID is not set}"

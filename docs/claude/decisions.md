@@ -492,6 +492,8 @@ Moved verbatim from CLAUDE.md. Append new "Decisions recorded …" sections here
 - **Public repo → HTTPS clone**: `REPO_URL` defaults to `https://github.com/Rasool-Muhiddin/optics.git`; the setup
   checks anonymous read (`ls-remote`, prompts disabled) and needs no deploy key. An SSH URL is first tried as its HTTPS
   twin; the deploy-key pause only happens for a private repository.
+- **Backup time**: `optics-backup.timer` runs at `00:15 UTC` (03:15 Baghdad) with an explicit zone; `install_units`
+  restarts an active timer when its file changes so a new schedule applies. Dumps are written with `umask 077`.
 - **Shared-server safety**: apt runs with `NEEDRESTART_SUSPEND=1` (Ubuntu 24.04 would otherwise auto-restart other
   apps' services); preflight stops if ports 80/443 belong to anything but the system nginx, or 5432 to a PostgreSQL
   not installed by apt. DEPLOY.md asks for a server snapshot first.

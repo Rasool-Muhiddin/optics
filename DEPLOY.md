@@ -200,7 +200,7 @@ https://www.cloudflare.com/ips/ (used to find the real client IP for throttling)
 
 ## Backups and restoring
 
-- **What**: the whole database (`pg_dump`, every night at 03:15) and the uploaded files (logos,
+- **What**: the whole database (`pg_dump`, every night at 00:15 UTC = 03:15 Baghdad) and the uploaded files (logos,
   installers) → R2 bucket. The last 7 dumps also stay in `/srv/optics/backups`.
 - **See backups**: `sudo optics-restore --list`
 - **Test a backup** (safe, any time): `sudo optics-restore`. It restores the newest backup into a

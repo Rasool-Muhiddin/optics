@@ -78,13 +78,19 @@ ensure_layout() {
 
 # Copy the systemd units and command helpers from the checkout (idempotent).
 install_units() {
-  local changed=0 f
+  local changed=0 timer_changed=0 f
   for f in optics-api.service optics-backup.service optics-backup.timer; do
     if ! cmp -s "$APP_DIR/deploy/systemd/$f" "/etc/systemd/system/$f"; then
       install -m 644 "$APP_DIR/deploy/systemd/$f" "/etc/systemd/system/$f"; changed=1
+      [ "$f" = optics-backup.timer ] && timer_changed=1
     fi
   done
   [ "$changed" -eq 1 ] && systemctl daemon-reload
+  # A new schedule takes effect only when an active timer is restarted (only re-arms the timer;
+  # it never runs a backup by itself).
+  if [ "$timer_changed" -eq 1 ] && systemctl is-active --quiet optics-backup.timer; then
+    systemctl restart optics-backup.timer
+  fi
   ln -sf "$APP_DIR/deploy/backup/optics-restore.sh" /usr/local/bin/optics-restore
   ln -sf "$APP_DIR/deploy/update.sh" /usr/local/bin/optics-update
   cat > /usr/local/bin/optics-manage <<'SH'

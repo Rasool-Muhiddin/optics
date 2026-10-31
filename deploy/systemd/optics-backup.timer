@@ -1,9 +1,10 @@
-# /etc/systemd/system/optics-backup.timer — daily at 03:15 (Asia/Baghdad if the server uses it).
+# /etc/systemd/system/optics-backup.timer — daily at 00:15 UTC = 03:15 Baghdad (UTC+3).
+# The zone is explicit, so the time does not depend on the server's timezone setting.
 [Unit]
 Description=Daily Optics Lab backup
 
 [Timer]
-OnCalendar=*-*-* 03:15:00
+OnCalendar=*-*-* 00:15:00 UTC
 RandomizedDelaySec=10m
 Persistent=true
 
