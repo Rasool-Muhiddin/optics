@@ -66,85 +66,117 @@ class _InboxState extends ConsumerState<_Inbox> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 280,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '${AppStrings.patientName} / ${AppStrings.doctor}',
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 280,
+              child: TextField(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: '${AppStrings.patientName} / ${AppStrings.doctor}',
+                ),
+                onChanged: (text) {
+                  _debounce?.cancel();
+                  _debounce = Timer(
+                    const Duration(milliseconds: 300),
+                    () => setState(() => _q = (search: text, status: _q.status)),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<String?>(
+                key: const Key('referrals-status'),
+                isExpanded: true,
+                initialValue: _q.status,
+                decoration: const InputDecoration(labelText: AppStrings.status),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: ReferralStatuses.open.join(','),
+                    child: const Text(AppStrings.openReferralsOnly),
                   ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(
-                      const Duration(milliseconds: 300),
-                      () => setState(() => _q = (search: text, status: _q.status)),
-                    );
-                  },
-                ),
+                  const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
+                  for (final s in AppStrings.referralStatuses.entries)
+                    DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
+                ],
+                onChanged: (v) => setState(() => _q = (search: _q.search, status: v)),
               ),
-              SizedBox(
-                width: 200,
-                child: DropdownButtonFormField<String?>(
-                  key: const Key('referrals-status'),
-                  isExpanded: true,
-                  initialValue: _q.status,
-                  decoration: const InputDecoration(labelText: AppStrings.status),
-                  items: [
-                    DropdownMenuItem<String?>(
-                      value: ReferralStatuses.open.join(','),
-                      child: const Text(AppStrings.openReferralsOnly),
-                    ),
-                    const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
-                    for (final s in AppStrings.referralStatuses.entries)
-                      DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
-                  ],
-                  onChanged: (v) => setState(() => _q = (search: _q.search, status: v)),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
-          child: AsyncView(
-            value: ref.watch(referralInboxProvider(_q)),
-            onRetry: () => ref.invalidate(referralInboxProvider(_q)),
-            builder: (refs) => refs.isEmpty
-                ? const Center(child: Text(AppStrings.noReferrals))
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    children: [
-                      for (final r in refs)
-                        Card(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          child: ListTile(
-                            key: Key('referral-row-${r.id}'),
-                            leading: Icon(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
+            child: AsyncView(
+              value: ref.watch(referralInboxProvider(_q)),
+              skeleton: true,
+              onRetry: () => ref.invalidate(referralInboxProvider(_q)),
+              builder: (refs) => refs.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.medical_services_outlined,
+                      title: AppStrings.noReferrals,
+                    )
+                  : AppDataTable<Referral>(
+                      columns: const [
+                        TableCol(AppStrings.patientName, flex: 3),
+                        TableCol(AppStrings.doctor, flex: 3),
+                        TableCol(AppStrings.diagnosis, flex: 3),
+                        TableCol(AppStrings.date, flex: 2),
+                        TableCol(AppStrings.status, flex: 2, center: true),
+                      ],
+                      items: refs,
+                      rowKey: (r) => Key('referral-row-${r.id}'),
+                      onTap: (r) => context.go(AppRoutes.referralDetail(r.id)),
+                      accent: (r) => r.isOpen ? Theme.of(context).colorScheme.primary : null,
+                      sortKeys: {
+                        0: (r) => r.patientName,
+                        1: (r) => r.doctorName,
+                        3: (r) => r.createdAt?.millisecondsSinceEpoch ?? 0,
+                      },
+                      footer: TableFooter(count: refs.length),
+                      cells: (r) => [
+                        Row(
+                          children: [
+                            Icon(
                               r.isOpen ? Icons.mark_email_unread_outlined : Icons.drafts_outlined,
+                              size: 18,
+                              color: r.isOpen
+                                  ? Theme.of(context).colorScheme.primary
+                                  : AppColors.of(context).textMuted,
                             ),
-                            title: Text('${r.patientName} — ${r.doctorName}'),
-                            subtitle: Text(
-                              [
-                                Formatters.dateTime(r.createdAt),
-                                if (r.diagnosis.isNotEmpty) r.diagnosis,
-                              ].join('   •   '),
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                r.patientName,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: r.isOpen ? FontWeight.w700 : FontWeight.w500,
+                                ),
+                              ),
                             ),
-                            trailing: Text(
-                              AppStrings.label(AppStrings.referralStatuses, r.status),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            onTap: () => context.go(AppRoutes.referralDetail(r.id)),
-                          ),
+                          ],
                         ),
-                    ],
-                  ),
+                        Text(r.doctorName, overflow: TextOverflow.ellipsis),
+                        Text(
+                          r.diagnosis.isEmpty ? AppStrings.none : r.diagnosis,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        NumText(Formatters.dateTime(r.createdAt)),
+                        StatusBadge(
+                          label: AppStrings.label(AppStrings.referralStatuses, r.status),
+                          tone: StatusTones.referral(r.status),
+                          dense: true,
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ],

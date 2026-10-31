@@ -57,51 +57,51 @@ class _JobsBoardScreenState extends ConsumerState<JobsBoardScreen> {
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '${AppStrings.jobNumber} / ${AppStrings.name} / ${AppStrings.phone}',
-                  ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(
-                      const Duration(milliseconds: 300),
-                      () => setState(
-                        () => _q = (search: text, patientId: null, overdueOnly: _q.overdueOnly),
-                      ),
-                    );
-                  },
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 300,
+              child: TextField(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: '${AppStrings.jobNumber} / ${AppStrings.name} / ${AppStrings.phone}',
                 ),
+                onChanged: (text) {
+                  _debounce?.cancel();
+                  _debounce = Timer(
+                    const Duration(milliseconds: 300),
+                    () => setState(
+                      () => _q = (search: text, patientId: null, overdueOnly: _q.overdueOnly),
+                    ),
+                  );
+                },
               ),
-              FilterChip(
-                key: const Key('jobs-overdue-only'),
-                label: const Text(AppStrings.overdueOnly),
-                selected: _q.overdueOnly,
-                onSelected: (v) =>
-                    setState(() => _q = (search: _q.search, patientId: null, overdueOnly: v)),
-              ),
-            ],
-          ),
+            ),
+            FilterChip(
+              key: const Key('jobs-overdue-only'),
+              label: const Text(AppStrings.overdueOnly),
+              selected: _q.overdueOnly,
+              onSelected: (v) =>
+                  setState(() => _q = (search: _q.search, patientId: null, overdueOnly: v)),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
           child: AsyncView(
             value: value,
+            skeleton: true,
             onRetry: () => ref.invalidate(jobBoardProvider(_q)),
             builder: (jobs) {
               final today = DateTime.now();
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  0,
+                  AppSpacing.page,
+                  AppSpacing.page,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -137,25 +137,53 @@ class _Column extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
+    final tone = StatusTones.job(status);
+    final c = colors.tone(tone, theme.colorScheme);
     return Container(
       key: Key('job-column-$status'),
-      width: 270,
-      margin: const EdgeInsetsDirectional.only(end: 12),
-      padding: const EdgeInsets.all(8),
+      width: 284,
+      margin: const EdgeInsetsDirectional.only(end: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
+        color: colors.surfaceMuted,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(4),
-            child: Text(
-              '${AppStrings.jobStatuses[status]} (${jobs.length})',
-              style: theme.textTheme.titleSmall,
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.sm,
+              AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: c.fg, width: 3)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${AppStrings.jobStatuses[status]} (${jobs.length})',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: c.fg, shape: BoxShape.circle),
+                ),
+              ],
             ),
           ),
+          if (jobs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: Icon(Icons.inbox_outlined, color: colors.textMuted.withValues(alpha: 0.5)),
+            ),
           for (final job in jobs) JobCard(job: job),
         ],
       ),
@@ -171,70 +199,118 @@ class JobCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
     final overdue = job.overdueOn(DateTime.now());
     final next = JobStatuses.next[job.status];
-    return Card(
+    return Container(
       key: Key('job-card-${job.id}'),
-      margin: const EdgeInsets.only(top: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: overdue ? BorderSide(color: theme.colorScheme.error, width: 2) : BorderSide.none,
+      margin: const EdgeInsets.only(top: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(
+          color: overdue ? colors.danger : colors.border,
+          width: overdue ? 1.5 : 1,
+        ),
+        boxShadow: colors.cardShadow,
       ),
-      child: InkWell(
-        onTap: () => context.go(AppRoutes.jobDetail(job.id)),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Text('#${job.number}', style: theme.textTheme.titleSmall),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(job.patientName, overflow: TextOverflow.ellipsis)),
-                  if (overdue)
-                    Container(
-                      key: Key('job-overdue-${job.id}'),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      color: theme.colorScheme.errorContainer,
-                      child: Text(AppStrings.overdue, style: theme.textTheme.labelSmall),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: AppRadius.mdAll,
+          onTap: () => context.go(AppRoutes.jobDetail(job.id)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.xs,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    NumText('#${job.number}', bold: true, color: theme.colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        job.patientName,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
                     ),
-                ],
-              ),
-              if (job.promisedDate != null)
-                Text(
-                  '${AppStrings.promisedDate}: ${Formatters.date(job.promisedDate)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: overdue ? theme.colorScheme.error : null,
-                  ),
+                    if (overdue)
+                      StatusBadge(
+                        key: Key('job-overdue-${job.id}'),
+                        label: AppStrings.overdue,
+                        tone: Tone.danger,
+                        icon: Icons.schedule,
+                        dense: true,
+                      ),
+                  ],
                 ),
-              if (job.lensName.isNotEmpty) Text(job.lensName, style: theme.textTheme.bodySmall),
-              if (job.frameSource == 'customer')
-                Text(AppStrings.frameSources['customer']!, style: theme.textTheme.bodySmall),
-              Wrap(
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  IconButton(
-                    tooltip: AppStrings.printJobTicket,
-                    icon: const Icon(Icons.print_outlined, size: 18),
-                    onPressed: () => printJobTicket(context, ref, job),
+                const SizedBox(height: AppSpacing.xs),
+                if (job.promisedDate != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.event_outlined,
+                        size: 14,
+                        color: overdue ? colors.danger : colors.textMuted,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          '${AppStrings.promisedDate}: ${Formatters.date(job.promisedDate)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: overdue ? colors.danger : null,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  if (!job.isFinal)
+                if (job.lensName.isNotEmpty)
+                  Text(
+                    job.lensName,
+                    style: theme.textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (job.frameSource == 'customer')
+                  Text(AppStrings.frameSources['customer']!, style: theme.textTheme.bodySmall),
+                const SizedBox(height: AppSpacing.xs),
+                const Divider(),
+                Row(
+                  children: [
                     IconButton(
-                      tooltip: AppStrings.changeStatus,
-                      icon: const Icon(Icons.more_horiz, size: 18),
-                      onPressed: () => chooseJobStatus(context, ref, job),
+                      tooltip: AppStrings.printJobTicket,
+                      icon: const Icon(Icons.print_outlined, size: 18),
+                      onPressed: () => printJobTicket(context, ref, job),
                     ),
-                  if (next != null)
-                    TextButton(
-                      key: Key('job-next-${job.id}'),
-                      onPressed: () => moveJob(context, ref, job, next),
-                      child: Text('${AppStrings.moveTo} ${AppStrings.jobStatuses[next]}'),
-                    ),
-                ],
-              ),
-            ],
+                    if (!job.isFinal)
+                      IconButton(
+                        tooltip: AppStrings.changeStatus,
+                        icon: const Icon(Icons.more_horiz, size: 18),
+                        onPressed: () => chooseJobStatus(context, ref, job),
+                      ),
+                    const Spacer(),
+                    if (next != null)
+                      Flexible(
+                        flex: 4,
+                        child: TextButton.icon(
+                          key: Key('job-next-${job.id}'),
+                          onPressed: () => moveJob(context, ref, job, next),
+                          icon: const Icon(Icons.arrow_back, size: 16),
+                          label: Text(
+                            '${AppStrings.moveTo} ${AppStrings.jobStatuses[next]}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

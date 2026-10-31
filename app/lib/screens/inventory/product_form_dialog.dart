@@ -282,6 +282,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
 
     return FormDialog(
       title: _editing ? AppStrings.editProduct : AppStrings.addProduct,
+      icon: Icons.inventory_2_outlined,
       width: 680,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),

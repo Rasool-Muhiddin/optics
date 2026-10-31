@@ -45,7 +45,6 @@ class OrderDetailScreen extends ConsumerWidget {
       value: ref.watch(supplierOrderProvider(orderId)),
       onRetry: () => ref.invalidate(supplierOrderProvider(orderId)),
       builder: (o) {
-        final theme = Theme.of(context);
         final late = o.lateOn(DateTime.now());
         return ListView(
           padding: const EdgeInsets.only(bottom: 24),
@@ -133,18 +132,31 @@ class OrderDetailScreen extends ConsumerWidget {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: late
-                      ? BorderSide(color: theme.colorScheme.error, width: 2)
-                      : BorderSide.none,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
+              child: SectionCard(
+                title: '${AppStrings.orderNumber} #${o.number} — ${o.supplierName}',
+                icon: Icons.local_shipping_outlined,
+                borderColor: late ? AppColors.of(context).danger : null,
+                actions: [
+                  if (late)
+                    const StatusBadge(
+                      label: AppStrings.late,
+                      tone: Tone.danger,
+                      icon: Icons.schedule,
+                    ),
+                  StatusBadge(
+                    label: AppStrings.label(AppStrings.orderPaymentStatuses, o.paymentStatus),
+                    tone: StatusTones.payment(o.paymentStatus),
+                  ),
+                  StatusBadge(
+                    label: AppStrings.label(AppStrings.orderStatuses, o.status),
+                    tone: StatusTones.order(o.status),
+                  ),
+                ],
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.zero,
                   child: Wrap(
-                    spacing: 16,
+                    spacing: AppSpacing.lg,
                     children: [
                       InfoTile(
                         label: AppStrings.status,
@@ -192,19 +204,26 @@ class OrderDetailScreen extends ConsumerWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Card(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                AppSpacing.lg,
+                AppSpacing.page,
+                0,
+              ),
+              child: SectionCard(
+                title: AppStrings.orderLines,
+                icon: Icons.list_alt_outlined,
+                padding: EdgeInsets.zero,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.zero,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(AppStrings.orderLines, style: theme.textTheme.titleMedium),
-                      const SizedBox(height: 8),
                       // Rx orders add an eye column: scroll instead of overflowing narrow windows.
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
+                          dataTextStyle: AppText.numeric(context),
                           columns: [
                             const DataColumn(label: Text(AppStrings.item)),
                             if (o.type == OrderTypes.rxForJob)
@@ -244,18 +263,27 @@ class OrderDetailScreen extends ConsumerWidget {
             ),
             if (seesCosts && o.payments.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: Card(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.lg,
+                  AppSpacing.page,
+                  0,
+                ),
+                child: SectionCard(
+                  title: AppStrings.payments,
+                  icon: Icons.payments_outlined,
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(AppStrings.payments, style: theme.textTheme.titleMedium),
-                      ),
                       for (final p in o.payments)
                         ListTile(
                           dense: true,
+                          leading: IconTile(
+                            icon: p.isVoid ? Icons.block : Icons.check,
+                            tone: p.isVoid ? Tone.neutral : Tone.success,
+                            size: 32,
+                          ),
                           title: Text(
                             Formatters.money(p.amount),
                             style: p.isVoid
@@ -320,6 +348,7 @@ class _ReceiveDialogState extends State<_ReceiveDialog> {
     final lines = widget.order.lines.where((l) => l.qtyRemaining > 0).toList();
     return FormDialog(
       title: AppStrings.receiveOrder,
+      icon: Icons.move_to_inbox_outlined,
       width: 560,
       saveLabel: AppStrings.receive,
       onSave: () {

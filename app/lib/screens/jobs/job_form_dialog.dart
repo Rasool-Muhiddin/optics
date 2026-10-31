@@ -218,6 +218,7 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
 
     return FormDialog(
       title: _editing ? '${AppStrings.editJob} #${widget.job!.number}' : AppStrings.newJob,
+      icon: Icons.work_outline,
       width: 760,
       busy: _busy,
       error: _error is _LocalError

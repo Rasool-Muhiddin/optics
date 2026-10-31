@@ -113,12 +113,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
-            child: Card(
+            child: SectionCard(
+              title: AppStrings.sectionLabInfo,
+              icon: Icons.store_outlined,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.zero,
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -158,65 +160,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const Key('settings-header'),
-                        controller: _header,
-                        maxLines: 3,
-                        decoration: const InputDecoration(labelText: AppStrings.printHeader),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const Key('settings-footer'),
-                        controller: _footer,
-                        maxLines: 2,
-                        decoration: const InputDecoration(labelText: AppStrings.printFooter),
-                      ),
-                      const SizedBox(height: 16),
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: AppStrings.logo,
-                          helperText: AppStrings.logoHint,
-                        ),
-                        child: Row(
+                      const SizedBox(height: AppSpacing.xl),
+                      FormSection(
+                        title: AppStrings.sectionPrinting,
+                        icon: Icons.print_outlined,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              child: Text(
-                                logo == null || logo.isEmpty
-                                    ? AppStrings.none
-                                    : logo.split('/').last,
-                                textDirection: TextDirection.ltr,
-                                overflow: TextOverflow.ellipsis,
+                            TextFormField(
+                              key: const Key('settings-header'),
+                              controller: _header,
+                              maxLines: 3,
+                              decoration: const InputDecoration(labelText: AppStrings.printHeader),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            TextFormField(
+                              key: const Key('settings-footer'),
+                              controller: _footer,
+                              maxLines: 2,
+                              decoration: const InputDecoration(labelText: AppStrings.printFooter),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: AppStrings.logo,
+                                helperText: AppStrings.logoHint,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      logo == null || logo.isEmpty
+                                          ? AppStrings.none
+                                          : logo.split('/').last,
+                                      textDirection: TextDirection.ltr,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    key: const Key('settings-logo'),
+                                    icon: const Icon(Icons.image_outlined),
+                                    label: const Text(AppStrings.chooseLogo),
+                                    onPressed: _busy ? null : _chooseLogo,
+                                  ),
+                                  if (logo != null && logo.isNotEmpty)
+                                    TextButton(
+                                      key: const Key('settings-remove-logo'),
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _run(
+                                              () => ref
+                                                  .read(reportsRepositoryProvider)
+                                                  .saveLabSettings({'remove_logo': true}),
+                                            ),
+                                      child: const Text(AppStrings.removeLogo),
+                                    ),
+                                ],
                               ),
                             ),
-                            TextButton.icon(
-                              key: const Key('settings-logo'),
-                              icon: const Icon(Icons.image_outlined),
-                              label: const Text(AppStrings.chooseLogo),
-                              onPressed: _busy ? null : _chooseLogo,
-                            ),
-                            if (logo != null && logo.isNotEmpty)
-                              TextButton(
-                                key: const Key('settings-remove-logo'),
-                                onPressed: _busy
-                                    ? null
-                                    : () => _run(
-                                        () => ref.read(reportsRepositoryProvider).saveLabSettings({
-                                          'remove_logo': true,
-                                        }),
-                                      ),
-                                child: const Text(AppStrings.removeLogo),
-                              ),
                           ],
                         ),
                       ),
                       if (error != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 12),
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
                           child: Text(
                             errorMessageFor(error),
                             key: const Key('settings-error'),
-                            style: TextStyle(color: Theme.of(context).colorScheme.error),
+                            style: TextStyle(color: AppColors.of(context).danger),
                           ),
                         ),
                     ],

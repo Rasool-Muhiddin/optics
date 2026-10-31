@@ -36,81 +36,109 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PageHeader(title: AppStrings.invoices, cacheTables: [CacheTables.invoices]),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 280,
-                child: TextField(
-                  key: const Key('invoices-search'),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '${AppStrings.invoiceNumber} / ${AppStrings.customer}',
-                  ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(
-                      const Duration(milliseconds: 300),
-                      () => setState(
-                        () => _q = (
-                          search: text,
-                          status: _q.status,
-                          onlyBalance: _q.onlyBalance,
-                          patientId: null,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(
-                width: 200,
-                child: DropdownButtonFormField<String?>(
-                  isExpanded: true,
-                  initialValue: _q.status,
-                  decoration: const InputDecoration(labelText: AppStrings.status),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
-                    for (final s in AppStrings.invoiceStatuses.entries)
-                      DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
-                  ],
-                  onChanged: (v) => setState(
-                    () => _q = (
-                      search: _q.search,
-                      status: v,
-                      onlyBalance: _q.onlyBalance,
-                      patientId: null,
-                    ),
-                  ),
-                ),
-              ),
-              FilterChip(
-                label: const Text(AppStrings.onlyWithBalance),
-                selected: _q.onlyBalance,
-                onSelected: (v) => setState(
-                  () =>
-                      _q = (search: _q.search, status: _q.status, onlyBalance: v, patientId: null),
-                ),
-              ),
-            ],
-          ),
+        PageHeader(
+          title: AppStrings.invoices,
+          cacheTables: const [CacheTables.invoices],
+          actions: [
+            FilledButton.icon(
+              icon: const Icon(Icons.point_of_sale, size: 18),
+              label: const Text(AppStrings.navPos),
+              onPressed: () => context.go(AppRoutes.pos),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: AsyncView(
-            value: ref.watch(invoiceListProvider(_q)),
-            onRetry: () => ref.invalidate(invoiceListProvider(_q)),
-            builder: (page) => page.items.isEmpty
-                ? const Center(child: Text(AppStrings.noData))
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    children: [for (final inv in page.items) InvoiceTile(invoice: inv)],
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 280,
+              child: TextField(
+                key: const Key('invoices-search'),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: '${AppStrings.invoiceNumber} / ${AppStrings.customer}',
+                ),
+                onChanged: (text) {
+                  _debounce?.cancel();
+                  _debounce = Timer(
+                    const Duration(milliseconds: 300),
+                    () => setState(
+                      () => _q = (
+                        search: text,
+                        status: _q.status,
+                        onlyBalance: _q.onlyBalance,
+                        patientId: null,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: _q.status,
+                decoration: const InputDecoration(labelText: AppStrings.status),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
+                  for (final s in AppStrings.invoiceStatuses.entries)
+                    DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
+                ],
+                onChanged: (v) => setState(
+                  () => _q = (
+                    search: _q.search,
+                    status: v,
+                    onlyBalance: _q.onlyBalance,
+                    patientId: null,
                   ),
+                ),
+              ),
+            ),
+            FilterChip(
+              label: const Text(AppStrings.onlyWithBalance),
+              selected: _q.onlyBalance,
+              onSelected: (v) => setState(
+                () => _q = (search: _q.search, status: _q.status, onlyBalance: v, patientId: null),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
+            child: AsyncView(
+              value: ref.watch(invoiceListProvider(_q)),
+              skeleton: true,
+              onRetry: () => ref.invalidate(invoiceListProvider(_q)),
+              builder: (page) => page.items.isEmpty
+                  ? EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      message: _q.search.isNotEmpty || _q.status != null || _q.onlyBalance
+                          ? AppStrings.emptyFilteredHint
+                          : null,
+                    )
+                  : AppDataTable<Invoice>(
+                      columns: invoiceColumns,
+                      items: page.items,
+                      rowKey: (inv) => Key('invoice-row-${inv.id}'),
+                      onTap: (inv) => context.go(AppRoutes.invoiceDetail(inv.id)),
+                      muted: (inv) => inv.isCancelled,
+                      sortKeys: {
+                        0: (inv) => inv.number,
+                        2: (inv) => inv.createdAt?.millisecondsSinceEpoch ?? 0,
+                        4: (inv) => double.tryParse(inv.total) ?? 0,
+                        5: (inv) => inv.hasBalance ? (double.tryParse(inv.balance) ?? 0) : 0,
+                      },
+                      footer: TableFooter(count: page.items.length),
+                      cells: (inv) => invoiceCells(context, inv),
+                    ),
+            ),
           ),
         ),
       ],
@@ -118,49 +146,51 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   }
 }
 
+/// Invoice table columns (shared by the invoices list and the credit customer rows).
+const List<TableCol> invoiceColumns = [
+  TableCol(AppStrings.invoiceNumber, flex: 1),
+  TableCol(AppStrings.customer, flex: 4),
+  TableCol(AppStrings.date, flex: 2),
+  TableCol(AppStrings.cashier, flex: 2),
+  TableCol(AppStrings.total, flex: 2, numeric: true),
+  TableCol(AppStrings.balance, flex: 2, numeric: true),
+  TableCol(AppStrings.status, flex: 2, center: true),
+];
+
+List<Widget> invoiceCells(BuildContext context, Invoice inv) => [
+  NumText('#${inv.number}', bold: true),
+  TwoLineCell(
+    title: inv.customerLabel.isEmpty ? AppStrings.walkIn : inv.customerLabel,
+    subtitle: AppStrings.paymentTypes[inv.paymentType] ?? inv.paymentType,
+  ),
+  NumText(Formatters.dateTime(inv.createdAt)),
+  Text(inv.cashierName, overflow: TextOverflow.ellipsis),
+  MoneyText(inv.total, bold: true),
+  inv.hasBalance ? MoneyText(inv.balance, tone: Tone.danger) : const Text(AppStrings.none),
+  StatusBadge(
+    label: AppStrings.invoiceStatuses[inv.status] ?? inv.status,
+    tone: StatusTones.invoice(inv.status),
+    dense: true,
+  ),
+];
+
+/// One invoice as a table row (used where invoices are listed inside another card).
 class InvoiceTile extends StatelessWidget {
-  const InvoiceTile({super.key, required this.invoice});
+  const InvoiceTile({super.key, required this.invoice, this.index = 0});
 
   final Invoice invoice;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final inv = invoice;
-    final color = switch (inv.status) {
-      'cancelled' => theme.colorScheme.surfaceContainerHigh,
-      'paid' => Colors.green.shade50,
-      _ => Colors.amber.shade50,
-    };
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: ListTile(
-        key: Key('invoice-row-${inv.id}'),
-        leading: CircleAvatar(child: Text('${inv.number}', style: const TextStyle(fontSize: 12))),
-        title: Text(inv.customerLabel.isEmpty ? AppStrings.walkIn : inv.customerLabel),
-        subtitle: Text(
-          '${Formatters.dateTime(inv.createdAt)}   •   '
-          '${AppStrings.paymentTypes[inv.paymentType] ?? inv.paymentType}   •   ${inv.cashierName}',
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(Formatters.money(inv.total), style: const TextStyle(fontWeight: FontWeight.bold)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              color: color,
-              child: Text(
-                inv.hasBalance
-                    ? '${AppStrings.balance}: ${Formatters.money(inv.balance)}'
-                    : AppStrings.invoiceStatuses[inv.status] ?? inv.status,
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-          ],
-        ),
-        onTap: () => context.go(AppRoutes.invoiceDetail(inv.id)),
-      ),
+    return DataRowView(
+      key: Key('invoice-row-${inv.id}'),
+      columns: invoiceColumns,
+      index: index,
+      muted: inv.isCancelled,
+      cells: invoiceCells(context, inv),
+      onTap: () => context.go(AppRoutes.invoiceDetail(inv.id)),
     );
   }
 }

@@ -112,17 +112,23 @@ class RxTableView extends StatelessWidget {
     final rows = PatientPdfs.rxRows(rx);
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowHeight: 32,
-          dataRowMinHeight: 32,
-          dataRowMaxHeight: 36,
-          columns: [for (final h in rows.first) DataColumn(label: Text(h))],
-          rows: [
-            for (final row in rows.skip(1))
-              DataRow(cells: [for (final c in row) DataCell(Text(c))]),
-          ],
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: TableFrame(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              dataTextStyle: AppText.numeric(context),
+              headingRowHeight: 32,
+              dataRowMinHeight: 32,
+              dataRowMaxHeight: 36,
+              columns: [for (final h in rows.first) DataColumn(label: Text(h))],
+              rows: [
+                for (final row in rows.skip(1))
+                  DataRow(cells: [for (final c in row) DataCell(Text(c))]),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -225,6 +225,7 @@ class _StatusDialogState extends State<_StatusDialog> {
   Widget build(BuildContext context) {
     return FormDialog(
       title: '${AppStrings.changeStatus} — #${widget.job.number}',
+      icon: Icons.sync_alt,
       width: 380,
       onSave: () => Navigator.of(context).pop((status: _status, note: _note.text.trim())),
       child: Column(

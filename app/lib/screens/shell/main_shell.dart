@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/formatters/formatters.dart';
 import '../../core/strings/app_strings.dart';
 import '../../models/session.dart';
 import '../../services/auth_controller.dart';
-import '../../widgets/connection_status_banner.dart';
-import '../../widgets/update_banner.dart';
-import '../../widgets/sync_status_tile.dart';
+import '../../widgets/common.dart';
+import '../../widgets/shell_parts.dart';
 import 'nav_items.dart';
 
-/// Main layout: sidebar (on the right, RTL) + the current screen.
+/// Main layout: sidebar (on the right, RTL) + top bar + the current screen.
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.location, required this.child});
 
@@ -21,46 +21,86 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionProvider);
     if (session == null) return const SizedBox.shrink();
-    return Scaffold(
-      body: Row(
-        children: [
-          Sidebar(session: session, location: location),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
-                const ConnectionStatusBanner(),
-                const UpdateBanner(),
-                Expanded(child: child),
-              ],
-            ),
+    final items = navItems.where((i) => i.visibleTo(session)).toList();
+    final current = navItemFor(location) ?? navSectionFor(location);
+    final destinations = Sidebar.destinationsFor(items);
+    final expires = session.plan.expiresOn;
+
+    return ShellScaffold(
+      sidebarBuilder: (collapsed) =>
+          Sidebar(session: session, location: location, collapsed: collapsed),
+      topBar: ShellTopBar(
+        title: current?.label ?? AppStrings.home,
+        icon: current?.icon,
+        search: QuickJumpField(destinations: destinations, onSelect: (d) => context.go(d.path)),
+        trailing: [
+          const SizedBox(width: AppSpacing.xs),
+          UserMenuButton(
+            name: session.user.displayName,
+            role: Sidebar.roleLabel(session.membership),
+            details: [
+              session.lab.name,
+              expires == null
+                  ? session.plan.name
+                  : '${session.plan.name} — ${AppStrings.homePlanExpires} ${Formatters.date(expires)}',
+            ],
+            onLogout: () => Sidebar.logout(context, ref),
+          ),
+          IconButton(
+            key: const Key('logout-button'),
+            tooltip: AppStrings.logout,
+            icon: const Icon(Icons.logout, size: 20),
+            onPressed: () => Sidebar.logout(context, ref),
           ),
         ],
       ),
+      child: child,
     );
   }
 }
 
 class Sidebar extends ConsumerWidget {
-  const Sidebar({super.key, required this.session, required this.location});
+  const Sidebar({super.key, required this.session, required this.location, this.collapsed = false});
 
   final Session session;
   final String location;
+  final bool collapsed;
 
   static String roleLabel(Membership m) => m.isOwner ? AppStrings.roleOwner : AppStrings.roleStaff;
 
-  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+  static const Map<NavGroup, String> _groupLabels = {
+    NavGroup.main: AppStrings.navGroupMain,
+    NavGroup.stock: AppStrings.navGroupStock,
+    NavGroup.admin: AppStrings.navGroupAdmin,
+  };
+
+  /// Visible items grouped (main → stock → admin), keeping their order inside a group.
+  static List<ShellDestination> destinationsFor(List<NavItem> items) => [
+    for (final g in NavGroup.values)
+      for (final i in items.where((i) => i.group == g))
+        ShellDestination(
+          path: i.path,
+          label: i.label,
+          icon: i.icon,
+          group: g == NavGroup.main ? null : _groupLabels[g],
+        ),
+  ];
+
+  static Future<void> logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        content: const Text(AppStrings.logoutConfirm),
+        icon: const IconTile(icon: Icons.logout, tone: Tone.danger, size: 44),
+        content: const Text(AppStrings.logoutConfirm, textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             key: const Key('logout-confirm'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.of(context).danger),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text(AppStrings.logout),
           ),
@@ -72,69 +112,19 @@ class Sidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final items = navItems.where((i) => i.visibleTo(session)).toList();
-
-    return SizedBox(
-      width: 240,
-      child: Material(
-        color: scheme.surface,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              color: scheme.primary,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    session.lab.name,
-                    key: const Key('sidebar-lab-name'),
-                    style: theme.textTheme.titleMedium?.copyWith(color: scheme.onPrimary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    AppStrings.appTitle,
-                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.onPrimary),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  for (final item in items)
-                    ListTile(
-                      key: Key('nav-${item.path}'),
-                      leading: Icon(item.icon),
-                      title: Text(item.label),
-                      selected: item.path == location || navSectionFor(location) == item,
-                      selectedTileColor: scheme.primaryContainer,
-                      dense: true,
-                      onTap: () => context.go(item.path),
-                    ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            const SyncStatusTile(),
-            ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.person)),
-              title: Text(session.user.displayName, overflow: TextOverflow.ellipsis),
-              subtitle: Text(roleLabel(session.membership)),
-              trailing: IconButton(
-                key: const Key('logout-button'),
-                tooltip: AppStrings.logout,
-                icon: const Icon(Icons.logout),
-                onPressed: () => _logout(context, ref),
-              ),
-            ),
-          ],
-        ),
+    final section = navSectionFor(location);
+    return ShellSidebar(
+      collapsed: collapsed,
+      header: SidebarBrand(
+        collapsed: collapsed,
+        title: session.lab.name,
+        titleKey: const Key('sidebar-lab-name'),
+        subtitle: AppStrings.appTitle,
       ),
+      destinations: destinationsFor(items),
+      isSelected: (d) => d.path == location || section?.path == d.path,
+      onSelect: (d) => context.go(d.path),
     );
   }
 }

@@ -44,9 +44,16 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     }
   }
 
+  static const _columns = [
+    TableCol(AppStrings.name, flex: 4),
+    TableCol(AppStrings.phone, flex: 2),
+    TableCol(AppStrings.age, flex: 1, numeric: true),
+    TableCol(AppStrings.lastExam, flex: 2, numeric: true),
+    TableCol(AppStrings.status, flex: 2),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final value = ref.watch(patientListProvider(_query));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -63,88 +70,103 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              SizedBox(
-                width: 320,
-                child: TextField(
-                  key: const Key('patients-search'),
-                  controller: _search,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: '${AppStrings.search} (${AppStrings.name} / ${AppStrings.phone})',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(
-                      const Duration(milliseconds: 350),
-                      () => setState(() => _query = (search: text, status: _query.status)),
-                    );
-                  },
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 320,
+              child: TextField(
+                key: const Key('patients-search'),
+                controller: _search,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: '${AppStrings.search} (${AppStrings.name} / ${AppStrings.phone})',
+                  prefixIcon: Icon(Icons.search),
                 ),
-              ),
-              SizedBox(
-                width: 200,
-                child: DropdownButtonFormField<String?>(
-                  isExpanded: true,
-                  initialValue: _query.status,
-                  decoration: const InputDecoration(labelText: AppStrings.status),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
-                    for (final s in patientStatuses)
-                      DropdownMenuItem<String?>(
-                        value: s,
-                        child: Text(AppStrings.patientStatuses[s]!),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _query = (search: _query.search, status: v)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: AsyncView(
-            value: value,
-            onRetry: () => ref.invalidate(patientListProvider(_query)),
-            builder: (page) {
-              if (page.items.isEmpty) return const Center(child: Text(AppStrings.noData));
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                itemCount: page.items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 6),
-                itemBuilder: (context, i) {
-                  final p = page.items[i];
-                  return Card(
-                    margin: EdgeInsets.zero,
-                    child: ListTile(
-                      key: Key('patient-row-${p.id}'),
-                      leading: CircleAvatar(child: Text(p.fullName.isEmpty ? '?' : p.fullName[0])),
-                      title: Text(p.fullName),
-                      subtitle: Text(
-                        [
-                          if (p.phone.isNotEmpty) p.phone,
-                          if (p.age != null) '${AppStrings.age}: ${p.age}',
-                          if (p.lastExamDate != null)
-                            '${AppStrings.lastExam}: ${Formatters.date(p.lastExamDate)}',
-                        ].join('   •   '),
-                      ),
-                      trailing: Chip(
-                        label: Text(AppStrings.patientStatuses[p.status] ?? p.status),
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                      ),
-                      onTap: () => context.go(AppRoutes.patientDetail(p.id)),
-                    ),
+                onChanged: (text) {
+                  _debounce?.cancel();
+                  _debounce = Timer(
+                    const Duration(milliseconds: 350),
+                    () => setState(() => _query = (search: text, status: _query.status)),
                   );
                 },
-              );
-            },
+              ),
+            ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: _query.status,
+                decoration: const InputDecoration(labelText: AppStrings.status),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
+                  for (final s in patientStatuses)
+                    DropdownMenuItem<String?>(
+                      value: s,
+                      child: Text(AppStrings.patientStatuses[s]!),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _query = (search: _query.search, status: v)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
+            child: AsyncView(
+              value: value,
+              skeleton: true,
+              onRetry: () => ref.invalidate(patientListProvider(_query)),
+              builder: (page) {
+                if (page.items.isEmpty) {
+                  final filtered = _query.search.isNotEmpty || _query.status != null;
+                  return EmptyState(
+                    icon: Icons.people_outline,
+                    message: filtered ? AppStrings.emptyFilteredHint : null,
+                    action: filtered
+                        ? null
+                        : FilledButton.icon(
+                            icon: const Icon(Icons.person_add_alt),
+                            label: const Text(AppStrings.addPatient),
+                            onPressed: _add,
+                          ),
+                  );
+                }
+                return AppDataTable<Patient>(
+                  columns: _columns,
+                  items: page.items,
+                  rowKey: (p) => Key('patient-row-${p.id}'),
+                  onTap: (p) => context.go(AppRoutes.patientDetail(p.id)),
+                  sortKeys: {
+                    0: (p) => p.fullName,
+                    2: (p) => p.age ?? -1,
+                    3: (p) => p.lastExamDate?.millisecondsSinceEpoch ?? 0,
+                  },
+                  footer: TableFooter(count: page.items.length),
+                  cells: (p) => [
+                    TwoLineCell(
+                      leading: InitialsAvatar(name: p.fullName, size: 34),
+                      title: p.fullName,
+                    ),
+                    p.phone.isEmpty ? const Text(AppStrings.none) : NumText(p.phone),
+                    NumText(p.age == null ? AppStrings.none : '${p.age}'),
+                    NumText(
+                      p.lastExamDate == null ? AppStrings.none : Formatters.date(p.lastExamDate),
+                    ),
+                    StatusBadge(
+                      label: AppStrings.patientStatuses[p.status] ?? p.status,
+                      tone: StatusTones.patient(p.status),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ],

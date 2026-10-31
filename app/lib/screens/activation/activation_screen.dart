@@ -60,7 +60,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
               textAlign: TextAlign.center,
               decoration: const InputDecoration(
                 labelText: AppStrings.activationCode,
-                prefixIcon: Icon(Icons.key),
+                prefixIcon: Icon(Icons.key_outlined),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? AppStrings.activationCodeRequired : null,
@@ -72,7 +72,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
               key: const Key('activate-button'),
               onPressed: _busy ? null : _submit,
               child: _busy
-                  ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator())
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text(AppStrings.activate),
             ),
             const DoctorLoginLink(),

@@ -89,6 +89,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
+          icon: const IconTile(icon: Icons.check_circle_outline, tone: Tone.success, size: 52),
           title: Text('${AppStrings.checkoutDone} — #${invoice.number}'),
           content: SizedBox(
             width: 460,
@@ -96,10 +97,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('${AppStrings.total}: ${Formatters.money(invoice.total)}'),
-                Text('${AppStrings.paid}: ${Formatters.money(invoice.paid)}'),
+                AmountRow(label: AppStrings.total, value: invoice.total, emphasize: true),
+                AmountRow(label: AppStrings.paid, value: invoice.paid, tone: Tone.success),
                 if (invoice.hasBalance)
-                  Text('${AppStrings.balance}: ${Formatters.money(invoice.balance)}'),
+                  AmountRow(label: AppStrings.balance, value: invoice.balance, tone: Tone.danger),
                 const SizedBox(height: 16),
                 InvoicePrintButtons(invoice: invoice),
               ],
@@ -176,17 +177,21 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Search / results
                 Expanded(
                   flex: 3,
-                  child: Card(
-                    margin: EdgeInsets.zero,
+                  child: SurfaceBox(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Column(
                         children: [
                           TextField(
@@ -210,7 +215,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                           const SizedBox(height: 8),
                           Expanded(
                             child: results == null
-                                ? const SizedBox.shrink()
+                                ? Center(
+                                    child: Icon(
+                                      Icons.qr_code_scanner,
+                                      size: 72,
+                                      color: AppColors.of(context).border,
+                                    ),
+                                  )
                                 : AsyncView(
                                     value: results,
                                     builder: (page) => ListView(
@@ -219,12 +230,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                           ListTile(
                                             key: Key('pos-result-${p.id}'),
                                             dense: true,
+                                            leading: const IconTile(
+                                              icon: Icons.add_shopping_cart,
+                                              size: 34,
+                                            ),
                                             title: Text(p.name),
                                             subtitle: Text(
                                               '${AppStrings.productKinds[p.kind.value]}'
                                               '${p.trackStock ? '   •   ${AppStrings.available}: ${p.quantity}' : ''}',
                                             ),
-                                            trailing: Text(Formatters.money(p.salePrice)),
+                                            trailing: MoneyText(p.salePrice, bold: true),
                                             onTap: () => _addProduct(p),
                                           ),
                                       ],
@@ -240,10 +255,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 // Cart
                 Expanded(
                   flex: 4,
-                  child: Card(
-                    margin: EdgeInsets.zero,
+                  child: SurfaceBox(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -251,7 +265,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                           const Divider(),
                           Expanded(
                             child: cart.isEmpty
-                                ? const Center(child: Text(AppStrings.emptyCart))
+                                ? const EmptyState(
+                                    icon: Icons.shopping_cart_outlined,
+                                    title: AppStrings.emptyCart,
+                                    compact: true,
+                                  )
                                 : _CartLines(cart: cart, preview: preview.value),
                           ),
                           const Divider(),
@@ -265,7 +283,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                             icon: _busy
                                 ? const SizedBox.square(
                                     dimension: 18,
-                                    child: CircularProgressIndicator(),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
                                   )
                                 : const Icon(Icons.check),
                             label: const Text(AppStrings.checkout),
@@ -299,7 +317,7 @@ class _CustomerSection extends ConsumerWidget {
     if (patient != null) {
       return ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.person),
+        leading: InitialsAvatar(name: patient.fullName),
         title: Text(patient.fullName, key: const Key('pos-patient')),
         subtitle: Text(patient.phone),
         trailing: IconButton(
@@ -397,7 +415,15 @@ class _CartLines extends ConsumerWidget {
                   icon: const Icon(Icons.remove_circle_outline),
                   onPressed: () => pos.setQty(i, line.qty - 1),
                 ),
-                Text('${line.qty}', key: Key('cart-qty-$i')),
+                SizedBox(
+                  width: 28,
+                  child: Text(
+                    '${line.qty}',
+                    key: Key('cart-qty-$i'),
+                    textAlign: TextAlign.center,
+                    style: AppText.numeric(context, weight: FontWeight.w700),
+                  ),
+                ),
                 IconButton(
                   key: Key('cart-inc-$i'),
                   icon: const Icon(Icons.add_circle_outline),
@@ -415,11 +441,9 @@ class _CartLines extends ConsumerWidget {
                 ),
                 SizedBox(
                   width: 120,
-                  child: Text(
-                    p == null ? '' : Formatters.money(p.lineTotal),
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: p == null
+                      ? const SizedBox.shrink()
+                      : MoneyText(p.lineTotal, bold: true, textAlign: TextAlign.end),
                 ),
                 IconButton(
                   key: Key('cart-remove-$i'),
@@ -514,36 +538,66 @@ class _Totals extends StatelessWidget {
     final theme = Theme.of(context);
     final error = preview.error;
     if (error != null) {
-      return Text(
-        error is OfflineWriteException ? AppStrings.posOfflineHint : errorMessageFor(error),
+      return NoticeBox(
         key: const Key('pos-preview-error'),
-        style: TextStyle(color: theme.colorScheme.error),
+        message: error is OfflineWriteException
+            ? AppStrings.posOfflineHint
+            : errorMessageFor(error),
+        tone: Tone.danger,
+        icon: Icons.error_outline,
       );
     }
     final p = preview.value;
     if (p == null) return const SizedBox.shrink();
-    Widget row(String label, String value, {bool big = false}) => Row(
-      children: [
-        Expanded(child: Text(label, style: big ? theme.textTheme.titleLarge : null)),
-        Text(
-          Formatters.money(value),
-          style: big ? theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold) : null,
-        ),
-      ],
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        row(AppStrings.subtotal, p.subtotal),
-        if ((double.tryParse(p.discountTotal) ?? 0) > 0)
-          row('${AppStrings.discount} (${p.discountPercent}%)', p.discountTotal),
-        if (p.requiresOwner)
-          Text(
-            '${AppStrings.requiresOwnerDiscount} (${p.maxDiscountPercent}%)',
-            style: TextStyle(color: theme.colorScheme.error),
+    Widget row(String label, String value, {bool big = false}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: big
+                  ? theme.textTheme.titleLarge
+                  : theme.textTheme.bodyMedium?.copyWith(color: AppColors.of(context).textMuted),
+            ),
           ),
-        KeyedSubtree(key: const Key('pos-total'), child: row(AppStrings.total, p.total, big: true)),
-      ],
+          MoneyText(
+            value,
+            bold: big,
+            style: big
+                ? theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.primary)
+                : null,
+          ),
+        ],
+      ),
+    );
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.of(context).surfaceMuted,
+        borderRadius: AppRadius.mdAll,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          row(AppStrings.subtotal, p.subtotal),
+          if ((double.tryParse(p.discountTotal) ?? 0) > 0)
+            row('${AppStrings.discount} (${p.discountPercent}%)', p.discountTotal),
+          if (p.requiresOwner)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: NoticeBox(
+                message: '${AppStrings.requiresOwnerDiscount} (${p.maxDiscountPercent}%)',
+                tone: Tone.warning,
+                icon: Icons.lock_outline,
+              ),
+            ),
+          KeyedSubtree(
+            key: const Key('pos-total'),
+            child: row(AppStrings.total, p.total, big: true),
+          ),
+        ],
+      ),
     );
   }
 }

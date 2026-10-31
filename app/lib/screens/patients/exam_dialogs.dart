@@ -110,6 +110,7 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
       decoration: InputDecoration(labelText: label, errorText: fieldCodeMessage(_error, [key])),
     );
     return FormDialog(
+      icon: Icons.visibility_outlined,
       title:
           '${widget.exam == null ? AppStrings.newExam : AppStrings.editExam} — ${widget.patient.fullName}',
       width: 820,
@@ -235,6 +236,7 @@ class _PrescriptionFormDialogState extends ConsumerState<PrescriptionFormDialog>
   @override
   Widget build(BuildContext context) {
     return FormDialog(
+      icon: Icons.description_outlined,
       title:
           '${widget.prescription == null ? AppStrings.newPrescription : AppStrings.editPrescription}'
           ' — ${widget.patient.fullName}',

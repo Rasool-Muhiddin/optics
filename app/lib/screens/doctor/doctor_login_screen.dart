@@ -63,7 +63,7 @@ class _DoctorLoginScreenState extends ConsumerState<DoctorLoginScreen> {
               textDirection: TextDirection.ltr,
               decoration: const InputDecoration(
                 labelText: AppStrings.username,
-                prefixIcon: Icon(Icons.person),
+                prefixIcon: Icon(Icons.person_outline),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? AppStrings.usernameRequired : null,
@@ -76,7 +76,7 @@ class _DoctorLoginScreenState extends ConsumerState<DoctorLoginScreen> {
               textDirection: TextDirection.ltr,
               decoration: const InputDecoration(
                 labelText: AppStrings.password,
-                prefixIcon: Icon(Icons.lock),
+                prefixIcon: Icon(Icons.lock_outline),
               ),
               validator: (v) => (v == null || v.isEmpty) ? AppStrings.passwordRequired : null,
               onFieldSubmitted: (_) => _submit(),
@@ -87,7 +87,10 @@ class _DoctorLoginScreenState extends ConsumerState<DoctorLoginScreen> {
               key: const Key('doctor-login-button'),
               onPressed: _busy ? null : _submit,
               child: _busy
-                  ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator())
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text(AppStrings.login),
             ),
             const SizedBox(height: 8),

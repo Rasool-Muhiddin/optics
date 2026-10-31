@@ -166,6 +166,7 @@ class _SupplierFormState extends ConsumerState<_SupplierForm> {
   Widget build(BuildContext context) {
     return FormDialog(
       title: widget.supplier == null ? AppStrings.addSupplier : AppStrings.editSupplier,
+      icon: Icons.store_outlined,
       width: 440,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),

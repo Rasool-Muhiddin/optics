@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/optics/powers.dart';
 import '../../models/catalog.dart';
+import '../../widgets/ui.dart';
 
 /// SPH rows × CYL columns of a lens product's powers (one ADD at a time).
 ///
@@ -70,13 +71,14 @@ class LensPowerGrid extends StatelessWidget {
           ),
         );
       }
-      final color = !v.isActive
-          ? scheme.surfaceContainerHigh
+      final colors = AppColors.of(context);
+      final (color, fg) = !v.isActive
+          ? (scheme.surfaceContainerHigh, colors.textMuted)
           : v.quantity <= 0
-          ? scheme.errorContainer
+          ? (colors.dangerContainer, colors.danger)
           : v.quantity <= lowThreshold
-          ? Colors.amber.shade100
-          : Colors.green.shade50;
+          ? (colors.warningContainer, colors.warning)
+          : (colors.successContainer, colors.success);
       return InkWell(
         key: Key('grid-cell-${v.id}'),
         onTap: onTap == null ? null : () => onTap!(v),
@@ -85,7 +87,14 @@ class LensPowerGrid extends StatelessWidget {
           height: _cellHeight,
           alignment: Alignment.center,
           color: color,
-          child: Text('${v.quantity}', style: theme.textTheme.bodyMedium),
+          child: Text(
+            '${v.quantity}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w600,
+              fontFeatures: AppText.tabular,
+            ),
+          ),
         ),
       );
     }

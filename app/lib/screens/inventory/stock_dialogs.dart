@@ -87,6 +87,7 @@ class _StockEntryDialogState extends ConsumerState<StockEntryDialog> {
               '${v.add > 0 ? ' ADD ${Powers.format(v.add)}' : ''}';
     return FormDialog(
       title: AppStrings.stockEntry,
+      icon: Icons.swap_vert,
       width: 460,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),
@@ -224,6 +225,7 @@ class _GenerateVariantsDialogState extends ConsumerState<GenerateVariantsDialog>
     );
     return FormDialog(
       title: AppStrings.generateVariants,
+      icon: Icons.grid_on,
       width: 460,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),
@@ -302,6 +304,7 @@ class _VariantEditDialogState extends ConsumerState<VariantEditDialog> {
     final v = widget.variant;
     return FormDialog(
       title: 'SPH ${Powers.format(v.sph)}  CYL ${Powers.format(v.cyl)}',
+      icon: Icons.tune,
       width: 420,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),

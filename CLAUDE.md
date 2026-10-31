@@ -650,6 +650,26 @@ decimal_places=2)`. Default currency IQD (lab setting). Never use float for mone
   patched clock and go through the real services, so numbers follow dates and stock/balances match the ledger
   (`labs/tests/test_seed_demo.py`). Refused when DEBUG is off unless `--allow-production`.
 
+### Decisions recorded for the UI redesign (after P10)
+- **Design system** (UI only — no API, model or business-logic change): tokens in `core/theme/app_tokens.dart`
+  (`AppSpacing`, `AppRadius`, `AppPalette`, `Tone`, `AppColors` ThemeExtension with success/warning/danger/info,
+  border, zebra, sidebar colours; `AppText.tabular` digits). `AppTheme.light()` / `AppTheme.dark()` style every
+  Material component; screens read colours from the theme/`AppColors.of(context)`, never `Colors.green…`.
+- **Font**: UI uses **IBM Plex Sans Arabic** (OFL, Arabic + Latin, weights 400–700, `assets/fonts/`). PDFs keep
+  Noto Naskh Arabic (`pdf_kit.dart`).
+- **Light/dark/system** switch in the top bar, stored per device in `optics_ui.json` (`services/ui_prefs.dart`,
+  `UiPrefs.open()` in `main()`, in-memory in tests) together with the collapsed-sidebar choice.
+- **Shell** (`widgets/shell_parts.dart`, shared by lab and doctor modes): dark sidebar (always rendered with the
+  dark theme) grouped by `NavItem.group`, active indicator, icon rail when collapsed or the window is < 1100 px;
+  top bar = section title, quick-jump search (sections only), connection pill, theme menu, user menu and the
+  `logout-button`.
+- **Shared widgets** (`widgets/ui.dart`, re-exported by `common.dart`): `SectionCard`/`SurfaceBox` (Material
+  surface so ListTile ink shows), `KpiCard`, `StatusBadge` + `StatusTones` (status → tone per domain),
+  `MoneyText`/`AmountRow`/`NumText` (LTR, tabular), `EmptyState`, `SkeletonList` (`AsyncView(skeleton: true)`),
+  `FilterBar`, `NoticeBox`, `FormSection`, and the table kit `TableCol`/`DataTableHeader`/`DataRowView`/
+  `AppDataTable` (sticky header, zebra rows, numeric columns end-aligned, client-side sort of loaded rows only,
+  `TableFooter` row count / load more). `FormDialog` takes an optional `icon`.
+
 ## 8. Environments & deployment
 
 - Dev machine: Windows. Backend runs locally with `.env.local` (never committed). Postgres in production,

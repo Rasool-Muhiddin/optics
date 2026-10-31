@@ -60,96 +60,111 @@ class _LinksPanelState extends State<LinksPanel> {
     final theme = Theme.of(context);
     final isDoctor = widget.side == 'doctor';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.md,
+        AppSpacing.page,
+        AppSpacing.page,
+      ),
       children: [
         if (widget.canManage)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    isDoctor ? AppStrings.myLinkCodeHint : AppStrings.labLinkCodeHint,
-                    style: theme.textTheme.bodyMedium,
+          SectionCard(
+            title: AppStrings.sectionLinks,
+            icon: Icons.qr_code_2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  isDoctor ? AppStrings.myLinkCodeHint : AppStrings.labLinkCodeHint,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.of(context).textMuted,
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (widget.code != null)
-                        InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: isDoctor ? AppStrings.myLinkCode : AppStrings.labLinkCode,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SelectableText(
-                                widget.code!,
-                                key: const Key('own-link-code'),
-                                style: theme.textTheme.titleLarge?.copyWith(letterSpacing: 2),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.copy, size: 18),
-                                onPressed: () =>
-                                    Clipboard.setData(ClipboardData(text: widget.code!)),
-                              ),
-                              if (widget.onRegenerate != null)
-                                TextButton(
-                                  onPressed: widget.onRegenerate,
-                                  child: const Text(AppStrings.regenerateCode),
-                                ),
-                            ],
-                          ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (widget.code != null)
+                      InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: isDoctor ? AppStrings.myLinkCode : AppStrings.labLinkCode,
                         ),
-                      SizedBox(
-                        width: 220,
-                        child: TextField(
-                          key: const Key('link-code-input'),
-                          controller: _code,
-                          textDirection: TextDirection.ltr,
-                          decoration: InputDecoration(
-                            labelText: isDoctor
-                                ? AppStrings.enterLabCode
-                                : AppStrings.enterDoctorCode,
-                          ),
-                          onSubmitted: (_) => _request(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SelectableText(
+                              widget.code!,
+                              key: const Key('own-link-code'),
+                              style: theme.textTheme.titleLarge?.copyWith(letterSpacing: 2),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 18),
+                              onPressed: () => Clipboard.setData(ClipboardData(text: widget.code!)),
+                            ),
+                            if (widget.onRegenerate != null)
+                              TextButton(
+                                onPressed: widget.onRegenerate,
+                                child: const Text(AppStrings.regenerateCode),
+                              ),
+                          ],
                         ),
                       ),
-                      FilledButton.icon(
-                        key: const Key('link-request'),
-                        icon: const Icon(Icons.link),
-                        label: const Text(AppStrings.requestLink),
-                        onPressed: _busy ? null : _request,
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        key: const Key('link-code-input'),
+                        controller: _code,
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(
+                          labelText: isDoctor
+                              ? AppStrings.enterLabCode
+                              : AppStrings.enterDoctorCode,
+                        ),
+                        onSubmitted: (_) => _request(),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    FilledButton.icon(
+                      key: const Key('link-request'),
+                      icon: const Icon(Icons.link),
+                      label: const Text(AppStrings.requestLink),
+                      onPressed: _busy ? null : _request,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        const SizedBox(height: 8),
-        if (widget.links.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: Text(AppStrings.noLinks)),
-          ),
+        const SizedBox(height: AppSpacing.md),
+        if (widget.links.isEmpty) const EmptyState(icon: Icons.link_off, title: AppStrings.noLinks),
         for (final link in widget.links)
           Card(
             key: Key('link-row-${link.id}'),
-            margin: const EdgeInsets.only(bottom: 6),
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: ListTile(
-              leading: Icon(
-                link.status == LinkStatuses.accepted ? Icons.link : Icons.link_off,
-                color: link.status == LinkStatuses.accepted ? Colors.green : theme.hintColor,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xs,
               ),
-              title: Text(link.otherName),
+              leading: IconTile(
+                icon: link.status == LinkStatuses.accepted ? Icons.link : Icons.link_off,
+                tone: StatusTones.link(link.status),
+                size: 38,
+              ),
+              title: Row(
+                children: [
+                  Flexible(child: Text(link.otherName, overflow: TextOverflow.ellipsis)),
+                  const SizedBox(width: AppSpacing.sm),
+                  StatusBadge(
+                    label: AppStrings.label(AppStrings.linkStatuses, link.status),
+                    tone: StatusTones.link(link.status),
+                    dense: true,
+                  ),
+                ],
+              ),
               subtitle: Text(
                 [
-                  AppStrings.label(AppStrings.linkStatuses, link.status),
                   if (link.status == LinkStatuses.pending)
                     link.requestedBy == widget.side
                         ? AppStrings.requestedByUs

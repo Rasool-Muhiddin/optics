@@ -51,9 +51,10 @@ class _DoctorReferralsScreenState extends ConsumerState<DoctorReferralsScreen> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
           child: Wrap(
-            spacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               ChoiceChip(
                 label: const Text(AppStrings.all),
@@ -69,28 +70,55 @@ class _DoctorReferralsScreenState extends ConsumerState<DoctorReferralsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
           child: AsyncView(
             value: ref.watch(doctorReferralsProvider(_status)),
+            skeleton: true,
             onRetry: () => ref.invalidate(doctorReferralsProvider(_status)),
             builder: (refs) => refs.isEmpty
-                ? const Center(child: Text(AppStrings.noReferrals))
+                ? const EmptyState(icon: Icons.send_outlined, title: AppStrings.noReferrals)
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.page,
+                      0,
+                      AppSpacing.page,
+                      AppSpacing.page,
+                    ),
                     children: [
                       for (final r in refs)
-                        Card(
+                        Padding(
                           key: Key('doctor-referral-${r.id}'),
-                          margin: const EdgeInsets.only(bottom: 6),
-                          child: ExpansionTile(
-                            title: Text('${r.patientName} — ${r.labName}'),
-                            subtitle: Text(
-                              '${Formatters.dateTime(r.createdAt)}   •   '
-                              '${AppStrings.label(AppStrings.referralStatuses, r.status)}',
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: TableFrame(
+                            child: ExpansionTile(
+                              leading: InitialsAvatar(name: r.patientName, tone: Tone.success),
+                              title: Text('${r.patientName} — ${r.labName}'),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                                child: Row(
+                                  children: [
+                                    StatusBadge(
+                                      label: AppStrings.label(
+                                        AppStrings.referralStatuses,
+                                        r.status,
+                                      ),
+                                      tone: StatusTones.referral(r.status),
+                                      dense: true,
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Flexible(
+                                      child: Text(
+                                        Formatters.dateTime(r.createdAt),
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              childrenPadding: const EdgeInsets.all(AppSpacing.lg),
+                              children: [ReferralView(referral: r)],
                             ),
-                            childrenPadding: const EdgeInsets.all(16),
-                            children: [ReferralView(referral: r)],
                           ),
                         ),
                     ],
@@ -178,6 +206,7 @@ class _ReferralFormDialogState extends ConsumerState<ReferralFormDialog> {
         .toList();
     return FormDialog(
       title: AppStrings.newReferral,
+      icon: Icons.send_outlined,
       width: 820,
       busy: _busy,
       saveLabel: AppStrings.sendReferral,
@@ -190,72 +219,87 @@ class _ReferralFormDialogState extends ConsumerState<ReferralFormDialog> {
           children: [
             if (labs.isEmpty)
               const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text(AppStrings.noLinkedLabs),
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: NoticeBox(
+                  message: AppStrings.noLinkedLabs,
+                  tone: Tone.warning,
+                  icon: Icons.link_off,
+                ),
               ),
-            FieldGrid(
-              children: [
-                DropdownButtonFormField<int>(
-                  key: const Key('referral-lab'),
-                  isExpanded: true,
-                  initialValue: labs.any((l) => l.labId == _labId) ? _labId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.chooseLab),
-                  items: [
-                    for (final l in labs)
-                      DropdownMenuItem(value: l.labId, child: Text(l.otherName)),
-                  ],
-                  validator: (v) => v == null ? AppStrings.required : null,
-                  onChanged: (v) => setState(() => _labId = v),
-                ),
-                TextFormField(
-                  key: const Key('referral-patient-name'),
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: AppStrings.patientName),
-                  validator: Inputs.requiredText,
-                ),
-                TextFormField(
-                  controller: _age,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(labelText: AppStrings.age),
-                ),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _gender,
-                  decoration: const InputDecoration(labelText: AppStrings.gender),
-                  items: [
-                    const DropdownMenuItem(value: '', child: Text(AppStrings.none)),
-                    for (final g in AppStrings.genders.entries)
-                      DropdownMenuItem(value: g.key, child: Text(g.value)),
-                  ],
-                  onChanged: (v) => setState(() => _gender = v ?? ''),
-                ),
-                TextFormField(
-                  controller: _phone,
-                  decoration: const InputDecoration(labelText: AppStrings.phone),
-                ),
-                TextFormField(
-                  controller: _complaint,
-                  decoration: const InputDecoration(labelText: AppStrings.chiefComplaint),
-                ),
-                TextFormField(
-                  controller: _diagnosis,
-                  decoration: const InputDecoration(labelText: AppStrings.diagnosis),
-                ),
-                TextFormField(
-                  controller: _details,
-                  decoration: const InputDecoration(labelText: AppStrings.diagnosisDetails),
-                ),
-                TextFormField(
-                  controller: _vaOd,
-                  decoration: const InputDecoration(labelText: 'VA OD'),
-                ),
-                TextFormField(
-                  controller: _vaOs,
-                  decoration: const InputDecoration(labelText: 'VA OS'),
-                ),
-              ],
+            FormSection(
+              title: AppStrings.sectionPatientData,
+              icon: Icons.person_outline,
+              child: FieldGrid(
+                children: [
+                  DropdownButtonFormField<int>(
+                    key: const Key('referral-lab'),
+                    isExpanded: true,
+                    initialValue: labs.any((l) => l.labId == _labId) ? _labId : null,
+                    decoration: const InputDecoration(labelText: AppStrings.chooseLab),
+                    items: [
+                      for (final l in labs)
+                        DropdownMenuItem(value: l.labId, child: Text(l.otherName)),
+                    ],
+                    validator: (v) => v == null ? AppStrings.required : null,
+                    onChanged: (v) => setState(() => _labId = v),
+                  ),
+                  TextFormField(
+                    key: const Key('referral-patient-name'),
+                    controller: _name,
+                    decoration: const InputDecoration(labelText: AppStrings.patientName),
+                    validator: Inputs.requiredText,
+                  ),
+                  TextFormField(
+                    controller: _age,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(labelText: AppStrings.age),
+                  ),
+                  DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: _gender,
+                    decoration: const InputDecoration(labelText: AppStrings.gender),
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text(AppStrings.none)),
+                      for (final g in AppStrings.genders.entries)
+                        DropdownMenuItem(value: g.key, child: Text(g.value)),
+                    ],
+                    onChanged: (v) => setState(() => _gender = v ?? ''),
+                  ),
+                  TextFormField(
+                    controller: _phone,
+                    decoration: const InputDecoration(labelText: AppStrings.phone),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
+            FormSection(
+              title: AppStrings.sectionExamData,
+              icon: Icons.visibility_outlined,
+              child: FieldGrid(
+                children: [
+                  TextFormField(
+                    controller: _complaint,
+                    decoration: const InputDecoration(labelText: AppStrings.chiefComplaint),
+                  ),
+                  TextFormField(
+                    controller: _diagnosis,
+                    decoration: const InputDecoration(labelText: AppStrings.diagnosis),
+                  ),
+                  TextFormField(
+                    controller: _details,
+                    decoration: const InputDecoration(labelText: AppStrings.diagnosisDetails),
+                  ),
+                  TextFormField(
+                    controller: _vaOd,
+                    decoration: const InputDecoration(labelText: 'VA OD'),
+                  ),
+                  TextFormField(
+                    controller: _vaOs,
+                    decoration: const InputDecoration(labelText: 'VA OS'),
+                  ),
+                ],
+              ),
+            ),
             SwitchListTile(
               key: const Key('referral-with-rx'),
               contentPadding: EdgeInsets.zero,

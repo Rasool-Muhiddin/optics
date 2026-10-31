@@ -851,4 +851,46 @@ class AppStrings {
   static const String errUpdateChecksum =
       'ملف التحديث تالف أو غير موثوق (فشل التحقق). لم يتم تثبيته.';
   static const String errUpdateUnsupported = 'التحديث التلقائي متاح على ويندوز فقط.';
+
+  // UI redesign (shell, top bar, shared components)
+  static const String quickSearch = 'انتقال سريع إلى قسم…';
+  static const String quickSearchEmpty = 'لا يوجد قسم بهذا الاسم';
+  static const String onlineShort = 'متصل';
+  static const String offlineShort = 'غير متصل';
+  static const String themeLabel = 'المظهر';
+  static const String themeLight = 'فاتح';
+  static const String themeDark = 'داكن';
+  static const String themeSystem = 'حسب النظام';
+  static const String collapseSidebar = 'طي القائمة';
+  static const String expandSidebar = 'توسيع القائمة';
+  static const String navGroupMain = 'العمل اليومي';
+  static const String navGroupStock = 'المخزون والمشتريات';
+  static const String navGroupAdmin = 'الإدارة';
+  static const String emptyTitle = 'لا توجد بيانات بعد';
+  static const String emptyFilteredHint = 'جرّب تغيير البحث أو الفلاتر.';
+  static const String errorTitle = 'حدث خطأ';
+  static const String rowsShown = 'عدد السجلات المعروضة';
+  static const String sortBy = 'ترتيب حسب';
+  static const String overview = 'نظرة عامة';
+  static const String todayLabel = 'اليوم';
+  static const String thisMonth = 'هذا الشهر';
+  static const String openWork = 'الأعمال المفتوحة';
+  static const String collectionRate = 'نسبة التحصيل اليوم';
+  static const String accountInfo = 'معلومات الحساب';
+  static const String weekTotal = 'مجموع الأسبوع';
+  static const String dailyAverage = 'المعدل اليومي';
+  static const String bestDay = 'أعلى يوم';
+  static const String success = 'تم بنجاح';
+  static const String sectionPatientData = 'بيانات المراجع';
+  static const String sectionExamData = 'بيانات الفحص';
+  static const String sectionBasics = 'المعلومات الأساسية';
+  static const String sectionPricing = 'الأسعار والمخزون';
+  static const String sectionDetails = 'التفاصيل';
+  static const String sectionOrderLines = 'مواد الطلب';
+  static const String sectionLinks = 'الربط';
+  static const String sectionAccount = 'الحساب والصلاحيات';
+  static const String sectionLabInfo = 'بيانات المختبر';
+  static const String sectionPrinting = 'الطباعة';
+  static const String sectionSales = 'البيع';
+  static const String lines = 'المواد';
 }

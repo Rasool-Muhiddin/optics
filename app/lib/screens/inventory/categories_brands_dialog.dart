@@ -215,6 +215,7 @@ class _NameDialogState extends State<_NameDialog> {
   Widget build(BuildContext context) {
     return FormDialog(
       title: widget.initialName.isEmpty ? AppStrings.add : AppStrings.edit,
+      icon: Icons.category_outlined,
       width: 380,
       onSave: () {
         if (!_formKey.currentState!.validate()) return;

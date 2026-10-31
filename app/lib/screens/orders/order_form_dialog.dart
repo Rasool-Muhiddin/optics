@@ -261,6 +261,7 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
     final error = _error;
     return FormDialog(
       title: _editing ? '${AppStrings.editOrder} #${widget.order!.number}' : AppStrings.newOrder,
+      icon: Icons.local_shipping_outlined,
       width: 820,
       busy: _busy,
       error: error is _LocalError ? error.message : (error == null ? null : errorMessageFor(error)),

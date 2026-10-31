@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/strings/app_strings.dart';
+import '../../widgets/ui.dart';
 
 /// Shown while the stored session is being checked.
 class SplashScreen extends StatelessWidget {
@@ -8,11 +9,20 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final theme = Theme.of(context);
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [CircularProgressIndicator(), SizedBox(height: 16), Text(AppStrings.loading)],
+          children: [
+            const IconTile(icon: Icons.visibility_outlined, size: 64),
+            const SizedBox(height: AppSpacing.lg),
+            Text(AppStrings.appTitle, style: theme.textTheme.titleLarge),
+            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(width: 160, child: LinearProgressIndicator()),
+            const SizedBox(height: AppSpacing.md),
+            Text(AppStrings.loading, style: theme.textTheme.bodySmall),
+          ],
         ),
       ),
     );

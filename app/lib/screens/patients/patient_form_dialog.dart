@@ -68,6 +68,7 @@ class _PatientFormDialogState extends ConsumerState<PatientFormDialog> {
     final editing = widget.patient != null;
     return FormDialog(
       title: editing ? AppStrings.editPatient : AppStrings.addPatient,
+      icon: Icons.person_outline,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),
       onSave: _save,

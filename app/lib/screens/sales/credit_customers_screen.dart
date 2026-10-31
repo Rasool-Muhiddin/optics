@@ -9,6 +9,7 @@ import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/cache/json_cache_dao.dart';
 import '../../data/repositories/sales_repository.dart';
+import '../../models/sales.dart';
 import '../../widgets/common.dart';
 import 'invoice_actions.dart';
 import 'invoices_screen.dart';
@@ -27,10 +28,32 @@ class _CreditCustomersScreenState extends ConsumerState<CreditCustomersScreen> {
   int? _expanded;
   Timer? _debounce;
 
+  static const _columns = [
+    TableCol(AppStrings.customer, flex: 4),
+    TableCol(AppStrings.invoicesCount, flex: 2, numeric: true),
+    TableCol(AppStrings.oldestInvoice, flex: 2, numeric: true),
+    TableCol(AppStrings.balance, flex: 3, numeric: true),
+    TableCol('', width: 280),
+  ];
+
   @override
   void dispose() {
     _debounce?.cancel();
     super.dispose();
+  }
+
+  Future<void> _pay(CreditCustomer c) async {
+    final input = await askPayment(context, maxAmount: c.balance, hint: AppStrings.paymentsSpread);
+    if (input == null) return;
+    try {
+      await ref
+          .read(salesRepositoryProvider)
+          .payCustomer(c.patientId, amount: input.amount, method: input.method);
+      invalidateSales(ref);
+      if (mounted) showSnack(context, AppStrings.saved);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
   }
 
   @override
@@ -40,11 +63,9 @@ class _CreditCustomersScreenState extends ConsumerState<CreditCustomersScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PageHeader(title: AppStrings.navCredit, cacheTables: [CacheTables.creditCustomers]),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: SizedBox(
+        FilterBar(
+          children: [
+            SizedBox(
               width: 320,
               child: TextField(
                 decoration: const InputDecoration(
@@ -60,96 +81,187 @@ class _CreditCustomersScreenState extends ConsumerState<CreditCustomersScreen> {
                 },
               ),
             ),
-          ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
           child: AsyncView(
             value: value,
+            skeleton: true,
             onRetry: () => ref.invalidate(creditCustomersProvider(_search)),
             builder: (page) {
-              if (page.items.isEmpty) return const Center(child: Text(AppStrings.noData));
+              if (page.items.isEmpty) {
+                return EmptyState(
+                  icon: Icons.account_balance_wallet_outlined,
+                  message: _search.isNotEmpty ? AppStrings.emptyFilteredHint : null,
+                );
+              }
+              // Display-only sum of server balances.
               final total = page.items.fold<double>(
                 0,
                 (sum, c) => sum + (double.tryParse(c.balance) ?? 0),
               );
               return ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  0,
+                  AppSpacing.page,
+                  AppSpacing.page,
+                ),
                 children: [
-                  Text(
-                    // Display-only sum of server balances.
-                    '${AppStrings.totalCredit}: ${Formatters.money(total)}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  for (final c in page.items)
-                    Card(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            key: Key('credit-row-${c.patientId}'),
-                            title: Text(c.name),
-                            subtitle: Text(
-                              '${c.phone}   •   ${AppStrings.invoicesCount}: ${c.invoices}'
-                              '   •   ${AppStrings.oldestInvoice}: ${Formatters.date(c.oldest)}',
-                            ),
-                            trailing: Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              children: [
-                                Text(
-                                  Formatters.money(c.balance),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                                FilledButton.tonal(
-                                  key: Key('credit-pay-${c.patientId}'),
-                                  onPressed: () async {
-                                    final input = await askPayment(
-                                      context,
-                                      maxAmount: c.balance,
-                                      hint: AppStrings.paymentsSpread,
-                                    );
-                                    if (input == null) return;
-                                    try {
-                                      await ref
-                                          .read(salesRepositoryProvider)
-                                          .payCustomer(
-                                            c.patientId,
-                                            amount: input.amount,
-                                            method: input.method,
-                                          );
-                                      invalidateSales(ref);
-                                      if (context.mounted) showSnack(context, AppStrings.saved);
-                                    } catch (e) {
-                                      if (context.mounted) showErrorSnack(context, e);
-                                    }
-                                  },
-                                  child: const Text(AppStrings.receivePayment),
-                                ),
-                                IconButton(
-                                  tooltip: AppStrings.patientsTitle,
-                                  icon: const Icon(Icons.person_outline),
-                                  onPressed: () => context.go(AppRoutes.patientDetail(c.patientId)),
-                                ),
-                              ],
-                            ),
-                            onTap: () => setState(
-                              () => _expanded = _expanded == c.patientId ? null : c.patientId,
-                            ),
-                          ),
-                          if (_expanded == c.patientId) _CustomerInvoices(patientId: c.patientId),
-                        ],
+                  Wrap(
+                    spacing: AppSpacing.lg,
+                    runSpacing: AppSpacing.lg,
+                    children: [
+                      KpiCard(
+                        label: AppStrings.totalCredit,
+                        value: Formatters.money(total),
+                        icon: Icons.account_balance_wallet_outlined,
+                        tone: Tone.danger,
+                        width: 280,
                       ),
+                      KpiCard(
+                        label: AppStrings.customer,
+                        value: '${page.items.length}',
+                        icon: Icons.people_outline,
+                        width: 200,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  TableFrame(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const DataTableHeader(columns: _columns),
+                        for (var i = 0; i < page.items.length; i++)
+                          _CustomerRow(
+                            customer: page.items[i],
+                            index: i,
+                            columns: _columns,
+                            expanded: _expanded == page.items[i].patientId,
+                            onToggle: () => setState(
+                              () => _expanded = _expanded == page.items[i].patientId
+                                  ? null
+                                  : page.items[i].patientId,
+                            ),
+                            onPay: () => _pay(page.items[i]),
+                          ),
+                        TableFooter(count: page.items.length),
+                      ],
                     ),
+                  ),
                 ],
               );
             },
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _CustomerRow extends StatelessWidget {
+  const _CustomerRow({
+    required this.customer,
+    required this.index,
+    required this.columns,
+    required this.expanded,
+    required this.onToggle,
+    required this.onPay,
+  });
+
+  final CreditCustomer customer;
+  final int index;
+  final List<TableCol> columns;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onPay;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = customer;
+    final colors = AppColors.of(context);
+    final dataColumns = columns.sublist(0, columns.length - 1);
+    final cells = <Widget>[
+      Row(
+        children: [
+          Icon(expanded ? Icons.expand_less : Icons.expand_more, size: 18, color: colors.textMuted),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: TwoLineCell(
+              leading: InitialsAvatar(name: c.name, size: 32, tone: Tone.warning),
+              title: c.name,
+              subtitle: c.phone,
+            ),
+          ),
+        ],
+      ),
+      NumText('${c.invoices}'),
+      NumText(Formatters.date(c.oldest)),
+      MoneyText(c.balance, tone: Tone.danger, bold: true),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: expanded
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05)
+              : (index.isOdd ? colors.zebra : Colors.transparent),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  key: Key('credit-row-${c.patientId}'),
+                  onTap: onToggle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < dataColumns.length; i++)
+                          Expanded(
+                            flex: dataColumns[i].flex,
+                            child: Align(alignment: dataColumns[i].alignment, child: cells[i]),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: columns.last.width,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.tonalIcon(
+                          key: Key('credit-pay-${c.patientId}'),
+                          icon: const Icon(Icons.payments_outlined, size: 18),
+                          onPressed: onPay,
+                          label: const Text(AppStrings.receivePayment),
+                        ),
+                        IconButton(
+                          tooltip: AppStrings.patientsTitle,
+                          icon: const Icon(Icons.person_outline),
+                          onPressed: () => context.go(AppRoutes.patientDetail(c.patientId)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (expanded) _CustomerInvoices(patientId: c.patientId),
+        Divider(height: 1, color: colors.border.withValues(alpha: 0.7)),
       ],
     );
   }
@@ -163,12 +275,26 @@ class _CustomerInvoices extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final InvoiceQuery q = (search: '', status: null, onlyBalance: true, patientId: patientId);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    return Container(
+      color: AppColors.of(context).surfaceMuted,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.sm,
+        AppSpacing.xl,
+        AppSpacing.md,
+      ),
       child: AsyncView(
         value: ref.watch(invoiceListProvider(q)),
-        builder: (page) =>
-            Column(children: [for (final inv in page.items) InvoiceTile(invoice: inv)]),
+        builder: (page) => TableFrame(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const DataTableHeader(columns: invoiceColumns),
+              for (var i = 0; i < page.items.length; i++)
+                InvoiceTile(invoice: page.items[i], index: i),
+            ],
+          ),
+        ),
       ),
     );
   }
