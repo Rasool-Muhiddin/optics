@@ -396,9 +396,10 @@ Moved verbatim from CLAUDE.md. Append new "Decisions recorded …" sections here
   `/SILENT /SP- /NOCANCEL /CLOSEAPPLICATIONS /NORESTART` (UAC prompt, admin install) → `exit(0)`; the installer's
   `[Run]` entry (`skipifnotsilent runasoriginaluser`) starts the new version unelevated. Windows only
   (`update_unsupported` elsewhere). Mandatory is shown, not enforced by the server (no login block).
-- **Installer** `installer/optics.iss` (Inno Setup 6): fixed `AppId`, per-machine `{autopf}\Tera\Optics Lab`, Arabic +
+- **Installer** `installer/optics.iss` (Inno Setup 6/7): fixed `AppId`, per-machine install folder, Arabic +
   English languages (`Arabic.isl` from Inno 6.3+) with custom messages, app icon, optional desktop shortcut, close
-  the running app, user data in `%APPDATA%\com.terasoftware\Optics Lab` kept on update/uninstall.
+  the running app, user data in the app data folder kept on update/uninstall. (Names, AppId and folders were set
+  for good in the TERA optics rebrand; see that section below.)
   `installer/build_release.ps1 -Version x.y.z -BuildNumber n`: tests, `flutter build windows --release` with
   `--build-name`, `--build-number`, `--dart-define=API_BASE_URL=…` and `APP_VERSION` (must equal build-name), then
   `iscc`, prints the SHA-256. Instructions in `RELEASE.md`.
@@ -497,3 +498,29 @@ Moved verbatim from CLAUDE.md. Append new "Decisions recorded …" sections here
 - **Shared-server safety**: apt runs with `NEEDRESTART_SUSPEND=1` (Ubuntu 24.04 would otherwise auto-restart other
   apps' services); preflight stops if ports 80/443 belong to anything but the system nginx, or 5432 to a PostgreSQL
   not installed by apt. DEPLOY.md asks for a server snapshot first.
+
+### Decisions recorded for the TERA optics rebrand (before the first release)
+
+- **Name**: the product is **`TERA optics`** (Latin, same in every language: window title, shortcuts, installer,
+  Add/Remove Programs); company **`Tera`**. In the app `AppStrings.appTitle = 'TERA optics'` with the Arabic tagline
+  `AppStrings.appTagline` (`نظام إدارة مختبر العوينات`) under it on the splash and brand panel.
+- **PERMANENT identifiers** (fixed with 1.0.0; never change them, the full table is in `RELEASE.md` → "Permanent
+  identifiers"): Inno Setup `AppId` `{130E7965-BB54-4E6B-A33F-D16C1E4E15EE}` (new GUID; the earlier one never
+  shipped), exe `tera_optics.exe` (CMake `BINARY_NAME`), install folder `{autopf}\Tera\TERA optics`, shortcut name
+  `TERA optics`, installer `tera-optics-setup-<version>.exe`, data folder `%APPDATA%\Tera\TERA optics` (=
+  `Runner.rc` `CompanyName\ProductName` via `path_provider`), data files `optics_auth.json` / `optics_secrets.bin` /
+  `optics_cache.db` / `optics_ui.json`, secure-storage keys `device_key` / `token`, DPAPI entropy
+  `tera-optics-desktop-v1`, Keychain/libsecret service `optics-desktop`. The Dart package name stays `optics_app`
+  (internal only).
+- **Images**: sources in `app/assets/images/` (`optic-tera.png` = app icon, `logo.png` / `Tera Premium.png` = platform
+  logo transparent / on white). Only downscaled copies in `assets/images/brand/` are bundled: `tera_logo.png`,
+  `tera_logo_on_white.png`, `tera_mark.png` (T mark cropped from the logo). `app_icon.ico` (16–256, rounded
+  corners) is generated from `optic-tera.png`.
+- **Brand widgets** (`widgets/brand.dart`, exported by `ui.dart`): `BrandLogo` (light theme: transparent logo; dark
+  theme: the white-background logo as a rounded card, because the logo's dark-teal text is 2.25:1 on dark
+  surfaces) on splash and the auth card (activation, login, doctor login); `BrandMark` (T mark only) on the dark
+  brand panel and the sidebar header of both shells (smaller when collapsed). Printouts do not show the logo yet.
+- **Brand colour** `#1ABC9C` (`AppPalette.brand`): dark-theme primary as-is; light-theme primary is the darker
+  `#117A65` of the same hue (white text 5.3:1; `#1ABC9C` would be 2.4:1). Containers re-tinted green.
+- **Build**: `build_release.ps1` empties the Release folder before building, so an old exe or stale file can never be
+  packed into the installer.

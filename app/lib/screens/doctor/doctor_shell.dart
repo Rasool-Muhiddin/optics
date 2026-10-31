@@ -49,8 +49,6 @@ class DoctorShell extends ConsumerWidget {
           title: session.doctor.fullName,
           titleKey: const Key('doctor-sidebar-name'),
           subtitle: AppStrings.doctorMode,
-          icon: Icons.medical_services_outlined,
-          accent: AppColors.light.success,
         ),
         destinations: _items,
         isSelected: (d) => d.path == location,

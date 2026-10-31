@@ -1,6 +1,6 @@
-# optics_app — Flutter desktop client
+# optics_app — TERA optics desktop client (Flutter)
 
-Arabic-first (RTL) desktop client for the Optics Lab Management System. Windows is the
+Arabic-first (RTL) desktop client of TERA optics, the optical-lab management system by Tera. Windows is the
 primary target; Linux/macOS must still compile. See `../CLAUDE.md` for architecture.
 
 Requires Flutter with Dart ≥ 3.12.

@@ -6,7 +6,7 @@
     .\installer\build_release.ps1 -Version 1.0.1 -BuildNumber 2 -ApiBaseUrl https://optics-api.tera-software1.com/api/v1
 
   Needs: Flutter 3.44.8 on PATH, Visual Studio 2022 "Desktop development with C++",
-  Inno Setup 6.3+ or 7 (ISCC.exe, found automatically). Output: installer\Output\optics-setup-<Version>.exe + its SHA-256.
+  Inno Setup 6.3+ or 7 (ISCC.exe, found automatically). Output: installer\Output\tera-optics-setup-<Version>.exe + its SHA-256.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Version,
@@ -39,6 +39,9 @@ Write-Host "Inno Setup: $Iscc"
 Push-Location (Join-Path $root "app")
 try {
   flutter --version
+  # The installer packs this whole folder: start empty so no stale files (e.g. an old exe) ship.
+  $release = "build\windows\x64\runner\Release"
+  if (Test-Path $release) { Remove-Item -Recurse -Force $release }
   flutter pub get
   flutter test
   # APP_VERSION must equal --build-name: the app sends it to the update check.
@@ -53,7 +56,7 @@ try {
 & $Iscc "/DAppVersion=$Version" "/DBuildNumber=$BuildNumber" (Join-Path $PSScriptRoot "optics.iss")
 if ($LASTEXITCODE -ne 0) { throw "iscc failed" }
 
-$setup = Join-Path $PSScriptRoot "Output\optics-setup-$Version.exe"
+$setup = Join-Path $PSScriptRoot "Output\tera-optics-setup-$Version.exe"
 $hash = (Get-FileHash -Algorithm SHA256 $setup).Hash.ToLower()
 Write-Host ""
 Write-Host "Installer: $setup"

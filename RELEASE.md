@@ -2,6 +2,28 @@
 
 On the Windows build PC (the owner's PC):
 
+## Permanent identifiers: never change these
+
+Fixed with the first release (1.0.0). Changing any of them later breaks in-app updates, installs a
+second copy next to the old one, or makes the app lose its activation, login and offline cache.
+
+| Identifier | Value | Where it is set |
+|---|---|---|
+| Inno Setup **AppId** | `{130E7965-BB54-4E6B-A33F-D16C1E4E15EE}` (in the `.iss`: `{{130E…}`) | `installer\optics.iss` |
+| Product name | `TERA optics` | `optics.iss` (`AppName`), `windows\runner\Runner.rc` (`ProductName`), `main.cpp` (window title) |
+| Company name | `Tera` | `Runner.rc` (`CompanyName`), `optics.iss` (`AppPublisher`) |
+| Executable | `tera_optics.exe` | `app\windows\CMakeLists.txt` (`BINARY_NAME`), `optics.iss` (`AppExe`) |
+| Install folder | `C:\Program Files\Tera\TERA optics` | `optics.iss` (`DefaultDirName`) |
+| Start menu / desktop shortcut | `TERA optics` (both setup languages) | `optics.iss` (`ShortcutName`) |
+| Installer file | `tera-optics-setup-<version>.exe` | `optics.iss` (`OutputBaseFilename`), `build_release.ps1` |
+| **Data folder** | `%APPDATA%\Tera\TERA optics\` (= `CompanyName\ProductName`, made by `path_provider`) | `Runner.rc` |
+| Data files | `optics_auth.json`, `optics_secrets.bin`, `optics_cache.db`, `optics_ui.json` | `app_config.dart`, `secret_store.dart`, `ui_prefs.dart` |
+| Secure-storage keys | `device_key`, `token` | `auth_storage.dart` (`secretKeys`) |
+| DPAPI entropy | `tera-optics-desktop-v1` | `secret_store.dart` (`DpapiSecretStore`) |
+| Keychain / libsecret service (macOS/Linux) | `optics-desktop` | `secret_store.dart` |
+
+The version (`--build-name`) and build number change with every release; nothing else in this table does.
+
 **Requirements**: Flutter **3.44.8**, Visual Studio 2022 or newer with "Desktop development with C++"
 (the owner's PC: Visual Studio Community 2026), Inno Setup 6.3+ or 7 (the owner's PC: 7.0.2; both include
 `Languages\Arabic.isl`; for an older Inno Setup download `Arabic.isl` from https://jrsoftware.org/files/istrans/
@@ -19,7 +41,7 @@ Select-String -Path app\build\windows\x64\runner\Release\data\app.so -Pattern 'h
 Unknown publisher" when the installer is downloaded with a browser (More info → Run anyway). In-app updates
 are downloaded by the app itself and normally don't get that SmartScreen prompt; the administrator (UAC)
 prompt still shows "Unknown publisher". To sign later, add Inno Setup's `SignTool=` to `installer\optics.iss`
-(it signs the installer and the uninstaller) and sign `optics_app.exe` before packaging.
+(it signs the installer and the uninstaller) and sign `tera_optics.exe` before packaging.
 
 ## One command
 
@@ -40,7 +62,8 @@ flutter build windows --release `
 ```
 
 and compiles `installer\optics.iss` with Inno Setup →
-`installer\Output\optics-setup-1.0.0.exe`, printing its SHA-256.
+`installer\Output\tera-optics-setup-1.0.0.exe`, printing its SHA-256. The script first empties the
+Release folder, so no stale files are packed.
 
 Rules:
 - `APP_VERSION` must equal `--build-name` (the app reports it and compares it with the server).
@@ -55,7 +78,7 @@ Rules:
 ## Publish it (in-app updates)
 
 1. Admin → **App updates → Desktop app versions → Add**: platform Windows, version `1.0.0`,
-   build `1`, upload `optics-setup-1.0.0.exe` (the SHA-256 and size are computed on upload),
+   build `1`, upload `tera-optics-setup-1.0.0.exe` (the SHA-256 and size are computed on upload),
    Arabic release notes, *mandatory* only for breaking releases (or set *min supported version*).
 2. Every installed app checks `GET /api/v1/desktop/latest-version/` at start-up and shows
    "يتوفر إصدار جديد". "تحديث الآن" downloads the installer, verifies the SHA-256, runs it with
@@ -66,6 +89,6 @@ Rules:
 
 ## First installation at a lab
 
-Run `optics-setup-<version>.exe` (Arabic or English setup), keep "desktop shortcut", start the app,
+Run `tera-optics-setup-<version>.exe` (Arabic or English setup), keep "desktop shortcut", start the app,
 enter the lab's activation code, log in. Activation, the encrypted token/device key (DPAPI) and the
-offline cache live in `%APPDATA%\com.terasoftware\Optics Lab\` and survive updates and uninstall.
+offline cache live in `%APPDATA%\Tera\TERA optics\` and survive updates and uninstall.

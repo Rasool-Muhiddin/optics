@@ -89,13 +89,14 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.terasoftware" "\0"
-            VALUE "FileDescription", "Optics Lab" "\0"
+            // PERMANENT: CompanyName\ProductName is the data folder (%APPDATA%\Tera\TERA optics).
+            VALUE "CompanyName", "Tera" "\0"
+            VALUE "FileDescription", "TERA optics" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "optics_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.terasoftware. All rights reserved." "\0"
-            VALUE "OriginalFilename", "optics_app.exe" "\0"
-            VALUE "ProductName", "Optics Lab" "\0"
+            VALUE "InternalName", "tera_optics" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Tera. All rights reserved." "\0"
+            VALUE "OriginalFilename", "tera_optics.exe" "\0"
+            VALUE "ProductName", "TERA optics" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -93,7 +93,7 @@ class UpdateService {
   /// Downloads the installer (progress 0..1) and checks its SHA-256. Returns the file.
   Future<File> download(UpdateInfo info, {void Function(double progress)? onProgress}) async {
     final dir = await _tempDir();
-    final file = File(p.join(dir.path, 'optics-setup-${info.version}.exe'));
+    final file = File(p.join(dir.path, 'tera-optics-setup-${info.version}.exe'));
     final http.StreamedResponse response;
     try {
       response = await httpClient.send(

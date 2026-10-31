@@ -31,7 +31,7 @@ class AuthCard extends StatelessWidget {
                 children: [
                   const Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: IconTile(icon: Icons.visibility_outlined, size: 48),
+                    child: BrandLogo(size: 88),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Text(title, style: theme.textTheme.headlineSmall),
@@ -111,19 +111,16 @@ class _BrandPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: AppRadius.lgAll,
-            ),
-            child: const Icon(Icons.visibility_outlined, color: Colors.white, size: 28),
-          ),
+          const BrandMark(size: 72),
           const Spacer(),
           Text(
             AppStrings.appTitle,
             style: theme.textTheme.headlineMedium?.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppStrings.appTagline,
+            style: theme.textTheme.titleSmall?.copyWith(color: colors.sidebarForeground),
           ),
           const SizedBox(height: AppSpacing.xl),
           point(Icons.people_outline, AppStrings.navPatients),

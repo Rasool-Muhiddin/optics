@@ -70,6 +70,8 @@ avoids building and maintaining every domain twice (lesson learned from pharmacy
   inside `transaction.atomic()`); no negative stock; `StockMovement` is an immutable ledger.
 - **Costs**: cost fields are hidden (not rendered, not accepted) unless `lab_user.sees_costs` (`CostFieldsMixin`);
   never allow ordering by cost fields.
+- **Desktop identifiers** (AppId, `tera_optics.exe`, `%APPDATA%\Tera\TERA optics`, data file names, secure-storage keys)
+  are permanent since 1.0.0: never change them (table in `RELEASE.md`).
 - **Prescriptions** are stored and printed exactly as entered (plus-cyl stays plus-cyl); the normalized minus-cyl
   copy is internal only.
 - **Flutter UI**: every string in `lib/core/strings/app_strings.dart`; colours from the theme / `AppColors.of(context)`

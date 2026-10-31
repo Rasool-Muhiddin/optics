@@ -2,7 +2,9 @@
 class AppStrings {
   const AppStrings._();
 
-  static const String appTitle = 'نظام إدارة مختبر العوينات';
+  /// Product name: Latin on purpose, identical in every language (window, shortcuts, installer).
+  static const String appTitle = 'TERA optics';
+  static const String appTagline = 'نظام إدارة مختبر العوينات';
   static const String companyName = 'تيرا';
   static const String home = 'الرئيسية';
   static const String welcome = 'مرحباً بك';

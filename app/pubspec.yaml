@@ -64,6 +64,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # Downscaled brand images (the large originals in assets/images/ are sources, not bundled).
+  assets:
+    - assets/images/brand/
+
   fonts:
     - family: NotoNaskhArabic
       fonts:

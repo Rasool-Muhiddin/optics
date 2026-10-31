@@ -283,43 +283,26 @@ class _CollapseButton extends ConsumerWidget {
   }
 }
 
-/// Sidebar brand block: logo mark + title + subtitle.
+/// Sidebar brand block: the Tera "T" mark + title + subtitle (mark only when collapsed).
 class SidebarBrand extends StatelessWidget {
   const SidebarBrand({
     super.key,
     required this.collapsed,
     required this.title,
     required this.subtitle,
-    this.icon = Icons.visibility_outlined,
     this.titleKey,
-    this.accent,
   });
 
   final bool collapsed;
   final String title;
   final String subtitle;
-  final IconData icon;
   final Key? titleKey;
-  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
-    final color = accent ?? theme.colorScheme.primary;
-    final mark = Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color, Color.lerp(color, Colors.black, 0.35)!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppRadius.mdAll,
-      ),
-      child: Icon(icon, color: Colors.white, size: 22),
-    );
+    final mark = BrandMark(size: collapsed ? 36 : 40);
     return Container(
       height: 72,
       padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 18),

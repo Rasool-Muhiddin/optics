@@ -26,9 +26,9 @@ class AppTheme {
     );
     final scheme = base.copyWith(
       primary: isDark ? AppPalette.primaryDark : AppPalette.primary,
-      onPrimary: isDark ? const Color(0xFF04202B) : Colors.white,
-      primaryContainer: isDark ? const Color(0xFF113A4A) : const Color(0xFFE0F1F6),
-      onPrimaryContainer: isDark ? const Color(0xFFBFE9F5) : const Color(0xFF07384A),
+      onPrimary: isDark ? const Color(0xFF03241D) : Colors.white,
+      primaryContainer: isDark ? const Color(0xFF0E3A31) : const Color(0xFFDDF3EC),
+      onPrimaryContainer: isDark ? const Color(0xFFB6F0DE) : const Color(0xFF0B3D32),
       secondaryContainer: isDark ? const Color(0xFF1E2C3A) : const Color(0xFFE9EEF4),
       onSecondaryContainer: isDark ? AppPalette.darkText : AppPalette.lightText,
       tertiaryContainer: colors.warningContainer,

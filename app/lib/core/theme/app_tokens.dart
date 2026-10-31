@@ -46,9 +46,12 @@ enum Tone { neutral, primary, success, warning, danger, info }
 class AppPalette {
   const AppPalette._();
 
-  // Primary: calm deep teal.
-  static const Color primary = Color(0xFF0E6E8A);
-  static const Color primaryDark = Color(0xFF3CB5D3);
+  // Tera brand green #1ABC9C. It is used as-is in the dark theme (7.9:1 on the dark
+  // background). The light theme uses a darker shade of the same hue: white text on #1ABC9C is
+  // only 2.4:1, on #117A65 it is 5.3:1.
+  static const Color brand = Color(0xFF1ABC9C);
+  static const Color primary = Color(0xFF117A65);
+  static const Color primaryDark = brand;
 
   // Light neutrals (slate).
   static const Color lightBackground = Color(0xFFF4F6F9);

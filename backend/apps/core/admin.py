@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-admin.site.site_header = "Optics Lab — Tera"
-admin.site.site_title = "Optics Lab Admin"
+admin.site.site_header = "TERA optics — Tera"
+admin.site.site_title = "TERA optics admin"
 admin.site.index_title = "Administration"

@@ -6,6 +6,7 @@ import '../core/theme/app_tokens.dart';
 
 export '../core/theme/app_tokens.dart'
     show Tone, AppSpacing, AppRadius, AppColors, AppText, AppDurations;
+export 'brand.dart';
 
 // ---------------------------------------------------------------------------------------------
 // Surfaces
