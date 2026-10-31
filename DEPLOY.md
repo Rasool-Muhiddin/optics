@@ -23,6 +23,22 @@ passes, never restarted, and no existing package is upgraded.
 
 ---
 
+## Before you start: take a server snapshot
+
+The server also runs the pharmacy site and the Axon app. **Take a snapshot first** (Hetzner Cloud
+Console → the server → *Snapshots* → *Take snapshot*; a few minutes, no downtime). If anything goes
+wrong you can restore the whole server to this point. Delete the snapshot after a few days once
+everything works (snapshots are billed).
+
+What the setup shares with the other apps:
+- **nginx**: adds one site file and **reloads** nginx (graceful; open connections are not dropped),
+  only after `nginx -t` passes.
+- **PostgreSQL**: creates a new `optics` role and database. No restart, no config change.
+- **apt**: installs only missing packages, never upgrades installed ones, and doesn't let
+  `needrestart` restart other services.
+- It stops before changing anything if ports 80/443 belong to something other than the system
+  nginx (for example Docker), or if port 5432 belongs to a PostgreSQL that wasn't installed with apt.
+
 ## Step 0: decide three things
 
 1. **Domain**: the API address, e.g. `optics-api.tera-software1.com`.
@@ -66,12 +82,12 @@ Log in to the server with SSH as a user that can run `sudo`, then copy the repos
 for example your home folder:
 
 ```bash
-git clone https://github.com/Rasool-Muhiddin/optics.git ~/optics   # asks for your GitHub login/token
+git clone https://github.com/Rasool-Muhiddin/optics.git ~/optics
 cd ~/optics
 ```
 
-This copy is only used to start the setup. The server's own copy goes to `/srv/optics/app` and
-is pulled with a read-only *deploy key* (next step).
+This copy is only used to start the setup. The server's own copy goes to `/srv/optics/app`. The
+repository is public, so the server clones and pulls it over HTTPS with **no key or password**.
 
 ## Step 4: run the setup
 
@@ -90,15 +106,15 @@ sudo DOMAIN=... DB_MODE=external DATABASE_URL='postgres://user:password@db-host:
      bash deploy/setup-server.sh
 ```
 
-Other settings: `REPO_URL` (default `git@github.com:Rasool-Muhiddin/optics.git`) and `BRANCH`
+Other settings: `REPO_URL` (default `https://github.com/Rasool-Muhiddin/optics.git`) and `BRANCH`
 (default `main`). Your choices are saved in `/srv/optics/deploy.conf`, so the next time you only
 type `sudo bash deploy/setup-server.sh`.
 
 What happens, and when it pauses:
 
-1. **Deploy key.** The first run prints an SSH public key and stops. On GitHub open the repository →
-   Settings → Deploy keys → *Add deploy key*, paste it, leave *Allow write access* **off**, save.
-   Run the same command again.
+1. It clones the repository over HTTPS. (Only if the repository is ever made **private** and you
+   pass `REPO_URL=git@github.com:Rasool-Muhiddin/optics.git` does it print an SSH *deploy key* and
+   stop: add it in GitHub → Settings → Deploy keys, write access **off**, then run the command again.)
 2. It installs what is missing, creates the database, and writes `/srv/optics/.env.production` with
    a new `SECRET_KEY`, database password and private admin address.
 3. It asks you to create the **Tera admin account** (username, e-mail, password).

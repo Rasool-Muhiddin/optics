@@ -32,7 +32,7 @@ main() {
   if [ "$pull" -eq 1 ]; then
     step "Pulling $BRANCH"
     before="$(sudo -u optics git -C "$APP_DIR" rev-parse --short HEAD)"
-    sudo -u optics git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
+    sudo -u optics env GIT_TERMINAL_PROMPT=0 git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
     sudo -u optics git -C "$APP_DIR" checkout --quiet "$BRANCH"
     sudo -u optics git -C "$APP_DIR" merge --ff-only --quiet "origin/$BRANCH" \
       || die "local changes or diverged history in $APP_DIR; fix by hand (git status)"

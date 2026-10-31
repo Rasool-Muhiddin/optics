@@ -489,3 +489,9 @@ Moved verbatim from CLAUDE.md. Append new "Decisions recorded …" sections here
   DB; `--live` asks for confirmation, saves a pre-restore dump, restores in one transaction; `--media` syncs files.
 - **Release guard**: `installer/build_release.ps1` refuses an `ApiBaseUrl` that is not `https://…/api/v1` or
   points to localhost.
+- **Public repo → HTTPS clone**: `REPO_URL` defaults to `https://github.com/Rasool-Muhiddin/optics.git`; the setup
+  checks anonymous read (`ls-remote`, prompts disabled) and needs no deploy key. An SSH URL is first tried as its HTTPS
+  twin; the deploy-key pause only happens for a private repository.
+- **Shared-server safety**: apt runs with `NEEDRESTART_SUSPEND=1` (Ubuntu 24.04 would otherwise auto-restart other
+  apps' services); preflight stops if ports 80/443 belong to anything but the system nginx, or 5432 to a PostgreSQL
+  not installed by apt. DEPLOY.md asks for a server snapshot first.

@@ -9,7 +9,8 @@
 # Settings (environment variables; the first run saves them to /srv/optics/deploy.conf and later
 # runs reuse them, so a re-run is just `sudo bash deploy/setup-server.sh`):
 #   DOMAIN             API host name                      (default optics-api.tera-software1.com)
-#   REPO_URL           git URL the server pulls from      (default git@github.com:Rasool-Muhiddin/optics.git)
+#   REPO_URL           git URL the server pulls from      (default https://github.com/Rasool-Muhiddin/optics.git;
+#                      public repos need no key, an SSH URL to a private repo uses a deploy key)
 #   BRANCH             branch to deploy                   (default main)
 #   TLS_MODE           cloudflare  = Cloudflare Origin certificate in /etc/ssl/cloudflare/ (default)
 #                      letsencrypt = free certificate from Let's Encrypt via certbot
@@ -53,7 +54,7 @@ load_settings() {
   # shellcheck disable=SC1090
   [ -f "$DEPLOY_CONF" ] && . "$DEPLOY_CONF"
   DOMAIN="${e_domain:-${DOMAIN:-optics-api.tera-software1.com}}"
-  REPO_URL="${e_repo:-${REPO_URL:-git@github.com:Rasool-Muhiddin/optics.git}}"
+  REPO_URL="${e_repo:-${REPO_URL:-https://github.com/Rasool-Muhiddin/optics.git}}"
   BRANCH="${e_branch:-${BRANCH:-main}}"
   TLS_MODE="${e_tls:-${TLS_MODE:-cloudflare}}"
   LETSENCRYPT_EMAIL="${e_email:-${LETSENCRYPT_EMAIL:-}}"
@@ -94,6 +95,22 @@ preflight() {
   if [ "$DB_MODE" = external ] && [ ! -f "$ENV_FILE" ] && [ -z "${DATABASE_URL:-}" ]; then
     die "DB_MODE=external needs DATABASE_URL=postgres://user:password@host:5432/dbname"
   fi
+  # Other apps on this server (pharmacy, Axon) must keep their ports. This script shares 80/443
+  # only through the system nginx and 5432 only through the system PostgreSQL; stop before
+  # changing anything if something else owns those ports (e.g. Docker, Caddy, Apache).
+  local foreign
+  foreign="$(port_owners 80 443 | grep -vx nginx || true)"
+  [ -z "$foreign" ] || die "ports 80/443 are used by '$(echo $foreign)', not the system nginx: this script would conflict with it"
+  if [ "$DB_MODE" = local ] && ! installed postgresql; then
+    [ -z "$(port_owners 5432)" ] || die "port 5432 is used by '$(echo $(port_owners 5432))' but the postgresql package is not installed: use DB_MODE=external with that server's DATABASE_URL"
+  fi
+}
+
+# Names of the processes listening on the given TCP ports (one per line, unique).
+port_owners() {
+  local p filter=""
+  for p in "$@"; do filter="${filter:+$filter or }sport = :$p"; done
+  ss -ltnpH "( $filter )" 2>/dev/null | grep -oE 'users:\(\("[^"]+' | sed 's/.*"//' | sort -u
 }
 
 # --- system packages ----------------------------------------------------------------
@@ -109,7 +126,10 @@ install_packages() {
   if [ "${#missing[@]}" -gt 0 ]; then
     echo "    installing: ${missing[*]}"
     apt-get update -q
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-upgrade "${missing[@]}"
+    # NEEDRESTART_*: Ubuntu 24.04's needrestart would otherwise restart running services
+    # (pharmacy, Axon, PostgreSQL) whose libraries were touched by this install.
+    DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 NEEDRESTART_MODE=l \
+      apt-get install -y -q --no-upgrade "${missing[@]}"
   fi
   systemctl enable --now nginx >/dev/null
   [ "$DB_MODE" = local ] && systemctl enable --now postgresql >/dev/null
@@ -134,12 +154,31 @@ create_user_and_folders() {
   ok "done"
 }
 
+# True if the repository can be read over HTTPS without any login (never prompts).
+public_repo() {
+  sudo -u optics env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false \
+    git -c credential.helper= ls-remote "$1" HEAD >/dev/null 2>&1
+}
+
 get_code() {
   step "Code in $APP_DIR"
   if [ -d "$APP_DIR/.git" ]; then
     ok "already cloned (use optics-update to deploy new commits)"; return
   fi
+  # A public repository is cloned and pulled over HTTPS with no key. For an SSH URL, try its
+  # HTTPS twin first; only a private repository needs the deploy key below.
+  local https_url="$REPO_URL"
   if [[ "$REPO_URL" == git@* || "$REPO_URL" == ssh://* ]]; then
+    https_url="$(echo "$REPO_URL" | sed -E 's#^(ssh://)?git@([^:/]+)[:/]#https://\2/#')"
+  fi
+  if [[ "$https_url" == https://* ]] && public_repo "$https_url"; then
+    if [ "$https_url" != "$REPO_URL" ]; then
+      ok "repository is public: using $https_url (no deploy key needed)"
+      REPO_URL="$https_url"; save_settings
+    fi
+  elif [[ "$REPO_URL" == https://* ]]; then
+    die "cannot read $REPO_URL anonymously. Make the repository public, or use REPO_URL=git@github.com:<owner>/<repo>.git (deploy key)"
+  else
     local key="$OPTICS_HOME/.ssh/id_ed25519" host
     host="$(echo "$REPO_URL" | sed -E 's#^(ssh://)?git@([^:/]+).*#\2#')"
     [ -f "$key" ] || sudo -u optics ssh-keygen -q -t ed25519 -N '' -C "optics@$(hostname)" -f "$key"
