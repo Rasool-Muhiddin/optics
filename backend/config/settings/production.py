@@ -46,6 +46,33 @@ TRUSTED_PROXIES = env.list("TRUSTED_PROXIES", default=["127.0.0.1/32", "::1/128"
 if env.bool("TRUST_CLOUDFLARE", default=True):
     TRUSTED_PROXIES = TRUSTED_PROXIES + CLOUDFLARE_IP_RANGES
 
+# Shared by all gunicorn workers, so the activate/login throttles count per client IP across
+# workers (the default per-process memory cache would multiply the allowed rate by the worker
+# count). The folder is created by deploy/setup-server.sh.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": env("CACHE_DIR", default="/srv/optics/cache"),
+        "OPTIONS": {"MAX_ENTRIES": 10000},
+    }
+}
+
+# Optional error alerts. Medical data must not leave the server: no request bodies, no local
+# variables, no user details are sent; only the stack trace and request URL/method.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+        release=APP_VERSION,  # noqa: F405
+        send_default_pii=False,
+        max_request_body_size="never",
+        include_local_variables=False,
+        traces_sample_rate=0.0,
+    )
+
 # stdout/stderr → journald (`journalctl -u optics-api`).
 LOGGING = {
     "version": 1,

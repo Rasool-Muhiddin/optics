@@ -1,6 +1,21 @@
-Django>=5.2,<5.3
-djangorestframework>=3.16,<4
-django-filter>=25.1
-django-environ>=0.12
-psycopg[binary]>=3.2
-gunicorn>=23.0
+# Production dependencies, pinned to the exact versions the test suite runs against.
+# To upgrade: change a version here, `pip install -r requirements-dev.txt`, run `pytest`,
+# then deploy (deploy/update.sh installs exactly these).
+Django==5.2.18
+djangorestframework==3.18.3
+django-filter==26.2
+django-environ==0.14.0
+psycopg[binary]==3.3.6
+gunicorn==26.2.0
+# Error alerts; only active when SENTRY_DSN is set (config/settings/production.py).
+sentry-sdk==2.73.0
+
+# Transitive dependencies (pinned so every server install is identical).
+asgiref==3.12.1
+sqlparse==0.6.0
+packaging==26.3
+certifi==2026.10.23
+urllib3==2.8.0
+tzdata==2026.5
+# psycopg needs it on Python < 3.13 (Ubuntu 24.04 ships Python 3.12).
+typing-extensions==4.15.0; python_version < "3.13"

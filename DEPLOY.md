@@ -1,201 +1,226 @@
-# Deploying the Optics API (Ubuntu 24.04, behind Cloudflare)
+# Deploying the Optics API
 
-Target: `https://optics-api.tera-software1.com`, on the **same Hetzner server as the pharmacy
-backend, without touching it**. Everything below is separate from the pharmacy:
+This guide puts the Django API online at an address such as `https://optics-api.tera-software1.com`,
+on an **Ubuntu 22.04 or 24.04** server. Two scripts do the work:
+
+| Script | When | What it does |
+|---|---|---|
+| `deploy/setup-server.sh` | first time (and safe to run again) | packages, user, code, Python, PostgreSQL, secrets, migrations, static files, gunicorn, nginx, HTTPS, backups |
+| `deploy/update.sh` (`sudo optics-update`) | every later release | pull, packages, backup if needed, migrate, static files, restart, health check |
+
+It can share a server with the pharmacy backend **without touching it**: own Linux user, folder,
+database, gunicorn service, nginx site and backups. nginx is only ever *reloaded* after `nginx -t`
+passes, never restarted, and no existing package is upgraded.
 
 | | Optics | Pharmacy (untouched) |
 |---|---|---|
 | Linux user | `optics` | its own |
 | Folder | `/srv/optics` | its own |
-| Database / role | `optics` / `optics` (same PostgreSQL server, new DB) | its own DB |
-| gunicorn | `optics-api.service`, socket `/run/optics/gunicorn.sock` | its own unit/port |
+| Database / role | `optics` / `optics` (same PostgreSQL, new database) | its own |
+| gunicorn | `optics-api.service`, socket `/run/optics/gunicorn.sock` | its own |
 | nginx | `/etc/nginx/sites-available/optics-api` | its own site file |
 | Backups | `optics-backup.timer` → R2 bucket `optics-backups` | its own |
 
-Never run `systemctl restart nginx` blindly: always `nginx -t` first, then `reload` (a reload keeps
-the pharmacy site serving). Never edit the pharmacy's files, database or units.
+---
 
-Files used below are in `deploy/` of this repository.
+## Step 0: decide three things
+
+1. **Domain**: the API address, e.g. `optics-api.tera-software1.com`.
+2. **HTTPS certificate** (`TLS_MODE`):
+   - `cloudflare` (default): the domain is in Cloudflare with the orange cloud (proxied). You make
+     a free *Origin certificate* in Cloudflare and paste it on the server (step 2).
+   - `letsencrypt`: no Cloudflare proxy (grey cloud or another DNS provider). The script gets a free
+     certificate with certbot and renews it automatically. Needs an e-mail address.
+3. **Database** (`DB_MODE`):
+   - `local` (default): PostgreSQL on the same server. The script installs it if missing and
+     creates the `optics` database with a random password. **Recommended.**
+   - `external`: a PostgreSQL server elsewhere; you pass its `DATABASE_URL`.
+   SQLite is for development only; do not use it in production.
+
+## Step 1: DNS
+
+In your DNS (Cloudflare → DNS), add an **A record**: name `optics-api`, value = the server's IPv4
+(and an `AAAA` record if the server has IPv6).
+- `cloudflare` mode: **Proxied** (orange cloud). In SSL/TLS make sure the mode for this host is
+  **Full (strict)**. If the zone is shared with the pharmacy and is not already Full (strict),
+  don't change the zone mode; add a *Configuration Rule* (Rules → Configuration Rules) for this
+  hostname → SSL: Full (strict).
+- `letsencrypt` mode: **DNS only** (grey cloud), and ports 80 and 443 open to the internet.
+
+## Step 2: Cloudflare Origin certificate (only for `cloudflare` mode)
+
+Cloudflare → SSL/TLS → Origin Server → **Create certificate** → hostname
+`optics-api.tera-software1.com`, RSA, 15 years. Keep the page open, then on the server:
+
+```bash
+sudo mkdir -p /etc/ssl/cloudflare
+sudo nano /etc/ssl/cloudflare/optics-api.pem   # paste the "Origin Certificate", save
+sudo nano /etc/ssl/cloudflare/optics-api.key   # paste the "Private key", save
+```
+
+(If you forget this step, the setup script stops and tells you to do it, then you run it again.)
+
+## Step 3: get the scripts onto the server
+
+Log in to the server with SSH as a user that can run `sudo`, then copy the repository anywhere,
+for example your home folder:
+
+```bash
+git clone https://github.com/Rasool-Muhiddin/optics.git ~/optics   # asks for your GitHub login/token
+cd ~/optics
+```
+
+This copy is only used to start the setup. The server's own copy goes to `/srv/optics/app` and
+is pulled with a read-only *deploy key* (next step).
+
+## Step 4: run the setup
+
+Pick the line that matches your choices from step 0:
+
+```bash
+# Cloudflare proxy + local PostgreSQL (the usual case)
+sudo DOMAIN=optics-api.tera-software1.com TLS_MODE=cloudflare bash deploy/setup-server.sh
+
+# No Cloudflare proxy: Let's Encrypt certificate
+sudo DOMAIN=optics-api.example.com TLS_MODE=letsencrypt LETSENCRYPT_EMAIL=you@example.com \
+     bash deploy/setup-server.sh
+
+# Database on another server
+sudo DOMAIN=... DB_MODE=external DATABASE_URL='postgres://user:password@db-host:5432/optics' \
+     bash deploy/setup-server.sh
+```
+
+Other settings: `REPO_URL` (default `git@github.com:Rasool-Muhiddin/optics.git`) and `BRANCH`
+(default `main`). Your choices are saved in `/srv/optics/deploy.conf`, so the next time you only
+type `sudo bash deploy/setup-server.sh`.
+
+What happens, and when it pauses:
+
+1. **Deploy key.** The first run prints an SSH public key and stops. On GitHub open the repository →
+   Settings → Deploy keys → *Add deploy key*, paste it, leave *Allow write access* **off**, save.
+   Run the same command again.
+2. It installs what is missing, creates the database, and writes `/srv/optics/.env.production` with
+   a new `SECRET_KEY`, database password and private admin address.
+3. It asks you to create the **Tera admin account** (username, e-mail, password).
+4. It starts the API, sets up nginx and HTTPS, and checks `/api/v1/health/`.
+5. At the end it prints the API address and the **admin address**. Write the admin address down
+   (it is also in `/srv/optics/.env.production` as `ADMIN_URL`).
+
+If any step fails the script stops with a message. Fix the problem and run the same command
+again: finished steps are skipped and existing secrets are never replaced.
+
+## Step 5: fill in the values only you have
+
+```bash
+sudo nano /srv/optics/.env.production
+```
+
+| Value | Where to get it | Required? |
+|---|---|---|
+| `R2_ACCOUNT_ID` | Cloudflare → R2 → *Account ID* (right-hand side) | for backups |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Cloudflare → R2 → *Manage API tokens* → create a token with **Object Read & Write** on bucket `optics-backups` | for backups |
+| `R2_BUCKET` | create a **private** bucket named `optics-backups` in R2 (or change the name here) | for backups |
+| `SENTRY_DSN` | sentry.io → new *Django* project → DSN. You get an e-mail on every server error. Only stack traces are sent, never patient data | optional |
+
+Everything else was filled in by the script. Don't put comments after a value on the same line,
+and don't add quotes. Then run the setup again; it applies the change and turns on daily backups:
+
+```bash
+cd ~/optics && sudo bash deploy/setup-server.sh
+```
+
+In R2, add a lifecycle rule on the bucket: delete objects under `db/` after 60 days.
+
+## Step 6: check everything
+
+```bash
+curl -s https://optics-api.tera-software1.com/api/v1/health/       # → "status":"ok"
+sudo systemctl start optics-backup.service                           # one backup now
+journalctl -u optics-backup -n 5 --no-pager                          # → "backup ok: ..."
+sudo optics-restore                                                  # test restore (live DB untouched)
+```
+
+- [ ] Health returns `"status":"ok"`.
+- [ ] `https://<domain>/admin/` returns **404** (the admin lives only at the private `ADMIN_URL`).
+- [ ] The admin page at `ADMIN_URL` loads **with styles**.
+- [ ] The backup appears in R2 and `sudo optics-restore` ends with "Test restore OK".
+- [ ] A lab logo uploaded from the desktop app opens under `/media/lab_logos/…`.
+- [ ] `journalctl -u optics-api -n 20` shows real client IPs, not `127.0.0.1` (throttling works).
+- [ ] The pharmacy site still works (open it in a browser).
+- [ ] Add a free uptime monitor (e.g. UptimeRobot) on `https://<domain>/api/v1/health/`, so you
+      get an e-mail if the server goes down.
+
+## Step 7: first data (in the admin)
+
+1. **Plans**: the plans you sell (`max_users`, `max_devices`, `doctor_linking`, `report_export`).
+2. **Labs**: each lab with its license. The lab page shows the *activation code* to give the lab
+   for its first PC.
+3. **Doctors** (optional): create the user, then the doctor profile; give the doctor its
+   username, password and link code.
+4. **Desktop app versions**: upload the installer (see `RELEASE.md`).
 
 ---
 
-## 0. Before you start (check, don't change)
+## Updating the server (every new release)
 
 ```bash
-lsb_release -a                     # Ubuntu 24.04
-sudo systemctl list-units --type=service | grep -i -E 'gunicorn|pharm|nginx|postgres'
-sudo ls /etc/nginx/sites-enabled/  # note the pharmacy site name
-sudo -u postgres psql -c '\l'      # existing databases (the pharmacy one stays as is)
-psql --version                     # PostgreSQL major version (16 on 24.04)
+sudo optics-update
 ```
 
-## 1. Cloudflare
-
-1. **DNS** → add `A` record `optics-api` → the server IPv4 (and `AAAA` if the server has IPv6),
-   **Proxied** (orange cloud).
-2. **SSL/TLS mode** is per zone and shared with the pharmacy subdomain. If the zone is already on
-   **Full (strict)**, keep it. If not, do **not** change the zone mode: add a *Configuration Rule*
-   (Rules → Configuration Rules) for hostname `optics-api.tera-software1.com` → SSL: Full (strict).
-3. **Origin certificate**: SSL/TLS → Origin Server → Create certificate for
-   `optics-api.tera-software1.com` (RSA, 15 years). Save both parts on the server:
-   ```bash
-   sudo mkdir -p /etc/ssl/cloudflare
-   sudo nano /etc/ssl/cloudflare/optics-api.pem   # certificate
-   sudo nano /etc/ssl/cloudflare/optics-api.key   # private key
-   sudo chmod 600 /etc/ssl/cloudflare/optics-api.key
-   ```
-
-## 2. User, folders, code
+It pulls the branch, installs the pinned packages, **takes a backup first if there are database
+migrations**, migrates, collects static files, restarts the API and checks health. It prints the
+previous commit so you can roll back:
 
 ```bash
-sudo adduser --system --group --home /srv/optics --shell /bin/bash optics
-sudo usermod -aG www-data optics
-sudo mkdir -p /srv/optics/{static,media,backups}
-sudo chown -R optics:www-data /srv/optics
-sudo chmod 750 /srv/optics
-sudo chmod 2775 /srv/optics/media          # nginx (www-data) reads, gunicorn writes
-
-# Read-only deploy key: GitHub repo → Settings → Deploy keys.
-sudo -u optics ssh-keygen -t ed25519 -f /srv/optics/.ssh/id_ed25519 -N ''
-sudo cat /srv/optics/.ssh/id_ed25519.pub   # add as deploy key (read-only)
-sudo -u optics git clone git@github.com:Rasool-Muhiddin/optics.git /srv/optics/app
+cd /srv/optics/app && sudo -u optics git checkout <previous-commit>
+sudo optics-update --no-pull
 ```
 
-## 3. System packages (shared, additive only)
+(Roll back the database only if a migration has to be undone; see restore below. The next normal
+`sudo optics-update` goes back to the branch.)
 
-```bash
-sudo apt update
-sudo apt install -y python3-venv python3-dev build-essential libpq-dev postgresql-client
-# nginx and PostgreSQL server are already installed for the pharmacy; nothing to install there.
-```
-The `postgresql-client` major version must match the server (e.g. 16) for `pg_dump`.
+Before a release, refresh the Cloudflare IP list in `backend/config/settings/proxies.py` from
+https://www.cloudflare.com/ips/ (used to find the real client IP for throttling).
 
-## 4. Python environment
+## Backups and restoring
 
-```bash
-sudo -u optics python3 -m venv /srv/optics/venv
-sudo -u optics /srv/optics/venv/bin/pip install --upgrade pip
-sudo -u optics /srv/optics/venv/bin/pip install -r /srv/optics/app/backend/requirements.txt
-sudo -u optics /srv/optics/venv/bin/pip install awscli      # for backups to R2
-```
+- **What**: the whole database (`pg_dump`, every night at 03:15) and the uploaded files (logos,
+  installers) → R2 bucket. The last 7 dumps also stay in `/srv/optics/backups`.
+- **See backups**: `sudo optics-restore --list`
+- **Test a backup** (safe, any time): `sudo optics-restore`. It restores the newest backup into a
+  scratch database, prints row counts and deletes it. Do this once a month.
+- **Real restore** (data loss: everything after the backup is gone):
+  ```bash
+  sudo optics-restore --list                                  # pick a file
+  sudo optics-restore --file optics-20261031T031500Z.dump --live
+  ```
+  It asks you to type `RESTORE`, saves the current database to
+  `/srv/optics/backups/pre-restore-….dump`, stops the API, restores everything in one transaction
+  (all or nothing) and starts the API again.
+- **Uploaded files** (e.g. after moving to a new server): `sudo optics-restore --media`.
+- **Moving to a new server**: run the setup there (steps 1–5, same R2 values), then
+  `sudo optics-restore --file latest --live` and `sudo optics-restore --media`.
 
-## 5. Database (new DB + role on the existing PostgreSQL)
+## Day-to-day commands
 
-```bash
-sudo -u postgres psql <<'SQL'
-CREATE ROLE optics LOGIN PASSWORD 'CHANGE_ME_LONG_RANDOM';
-CREATE DATABASE optics OWNER optics ENCODING 'UTF8' TEMPLATE template0;
-REVOKE ALL ON DATABASE optics FROM PUBLIC;
-SQL
-```
+| Task | Command |
+|---|---|
+| API logs (live) | `journalctl -u optics-api -f` |
+| nginx logs | `/var/log/nginx/optics-api.access.log`, `optics-api.error.log` |
+| Restart the API | `sudo systemctl restart optics-api` |
+| Django command | `optics-manage <command>` (e.g. `optics-manage createsuperuser`) |
+| Backup now | `sudo systemctl start optics-backup.service` |
+| Next backup time | `systemctl list-timers optics-backup.timer` |
+| Change a setting | `sudo nano /srv/optics/.env.production` then `sudo systemctl restart optics-api` |
 
-## 6. Environment file
+## Where things live on the server
 
-```bash
-sudo -u optics cp /srv/optics/app/deploy/.env.production.example /srv/optics/.env.production
-sudo -u optics nano /srv/optics/.env.production   # SECRET_KEY, DATABASE_URL password, ADMIN_URL, R2_*
-sudo chmod 600 /srv/optics/.env.production
-python3 -c "import secrets; print(secrets.token_urlsafe(64))"   # → SECRET_KEY
-```
-
-## 7. Django: migrate, static files, admin user
-
-```bash
-cd /srv/optics/app/backend
-sudo -u optics bash -c 'set -a; . /srv/optics/.env.production; set +a;
-  export DJANGO_SETTINGS_MODULE=config.settings.production;
-  /srv/optics/venv/bin/python manage.py check --deploy &&
-  /srv/optics/venv/bin/python manage.py migrate &&
-  /srv/optics/venv/bin/python manage.py collectstatic --noinput &&
-  /srv/optics/venv/bin/python manage.py createsuperuser'
-```
-Create a shell helper for later commands:
-```bash
-sudo tee /usr/local/bin/optics-manage >/dev/null <<'SH'
-#!/usr/bin/env bash
-cd /srv/optics/app/backend
-exec sudo -u optics bash -c 'set -a; . /srv/optics/.env.production; set +a;
-  DJANGO_SETTINGS_MODULE=config.settings.production exec /srv/optics/venv/bin/python manage.py "$@"' _ "$@"
-SH
-sudo chmod +x /usr/local/bin/optics-manage
-optics-manage showmigrations | tail -3
-```
-
-## 8. gunicorn service
-
-```bash
-sudo cp /srv/optics/app/deploy/systemd/optics-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now optics-api
-sudo systemctl status optics-api --no-pager
-ls -l /run/optics/gunicorn.sock
-```
-
-## 9. nginx site
-
-```bash
-sudo cp /srv/optics/app/deploy/nginx/optics-api.conf /etc/nginx/sites-available/optics-api
-sudo ln -s /etc/nginx/sites-available/optics-api /etc/nginx/sites-enabled/optics-api
-sudo nginx -t && sudo systemctl reload nginx
-curl -s https://optics-api.tera-software1.com/api/v1/health/
-# → {"status": "ok", "database": "ok", ...}
-```
-Check the pharmacy still answers (its health URL) right after the reload.
-
-## 10. Backups to Cloudflare R2
-
-1. Cloudflare → R2 → create bucket `optics-backups` (private). Add a lifecycle rule: delete objects
-   under `db/` after 60 days.
-2. R2 → Manage API tokens → token with *Object Read & Write* on that bucket → put the key id/secret
-   and the account id into `/srv/optics/.env.production` (`R2_*`, `AWS_*`).
-3. Install and test:
-   ```bash
-   sudo cp /srv/optics/app/deploy/systemd/optics-backup.{service,timer} /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl start optics-backup.service && journalctl -u optics-backup -n 20 --no-pager
-   sudo systemctl enable --now optics-backup.timer
-   systemctl list-timers | grep optics
-   ```
-4. **Test a restore** once (into a scratch database, never the live one):
-   ```bash
-   sudo -u postgres createdb optics_restore_test -O optics
-   aws s3 cp s3://optics-backups/db/<file>.dump /tmp/ --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com
-   pg_restore --no-owner -d optics_restore_test /tmp/<file>.dump
-   sudo -u postgres dropdb optics_restore_test
-   ```
-
-## 11. First data
-
-In the admin (`https://optics-api.tera-software1.com/<ADMIN_URL>`):
-1. **Plans**: create the plans you sell (`max_users`, `max_devices`, `doctor_linking`, `report_export`).
-2. **Labs**: create each lab with its license. The *activation code* is on the lab page: give it to
-   the lab for the first PC.
-3. **Doctors** (optional): create the user, then the doctor profile; give the doctor its username,
-   password and link code.
-4. **Desktop app versions**: upload the installer (see `RELEASE.md`).
-
-## 12. Updating the server later
-
-```bash
-cd /srv/optics/app && sudo -u optics git pull --ff-only
-sudo -u optics /srv/optics/venv/bin/pip install -r backend/requirements.txt
-optics-manage migrate
-optics-manage collectstatic --noinput
-optics-manage check --deploy
-sudo systemctl restart optics-api
-curl -s https://optics-api.tera-software1.com/api/v1/health/
-```
-Take a backup first (`sudo systemctl start optics-backup.service`) when the release has migrations.
-Rollback: `git checkout <previous tag>`, reinstall requirements, restart; restore the pre-update dump
-only if a migration must be undone.
-
-## 13. Checklist
-
-- [ ] `curl https://optics-api.tera-software1.com/api/v1/health/` → `status: ok`
-- [ ] `https://optics-api.tera-software1.com/admin/` → 404 (admin lives at `ADMIN_URL` only)
-- [ ] Admin loads with styles (static files served by nginx)
-- [ ] A lab logo uploaded from the desktop settings screen opens under `/media/lab_logos/…`
-- [ ] Throttling sees real IPs: `journalctl -u optics-api` shows client IPs, not `127.0.0.1`
-- [ ] Backup timer listed and one backup present in R2; restore tested
-- [ ] Pharmacy site still works
-- [ ] Refresh `backend/config/settings/proxies.py` from https://www.cloudflare.com/ips/ before each deploy
+| Path | What |
+|---|---|
+| `/srv/optics/app` | the code (git checkout; don't edit by hand) |
+| `/srv/optics/.env.production` | secrets and settings (chmod 600, never copy it anywhere public) |
+| `/srv/optics/deploy.conf` | the setup choices (domain, TLS mode, …), no secrets |
+| `/srv/optics/venv`, `/srv/optics/tools-venv` | Python packages for the app / for backups (awscli) |
+| `/srv/optics/static`, `/srv/optics/media` | admin static files / uploaded logos and installers (served by nginx) |
+| `/srv/optics/backups` | local copies of the last backups |
+| `deploy/gunicorn.conf.py` | workers (`GUNICORN_WORKERS` in the env file, default 3) and timeouts |

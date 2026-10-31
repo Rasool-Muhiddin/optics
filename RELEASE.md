@@ -31,7 +31,11 @@ Rules:
 - `APP_VERSION` must equal `--build-name` (the app reports it and compares it with the server).
 - Every release needs a **higher** version (`1.0.0` → `1.0.1`…). Never change the `AppId` in
   `optics.iss` (updates find the installed copy by it).
-- Without `API_BASE_URL` the app talks to `http://127.0.0.1:8000/api/v1` (development).
+- Without `API_BASE_URL` the app talks to `http://127.0.0.1:8000/api/v1` (development). The build script
+  refuses any `-ApiBaseUrl` that is not `https://<domain>/api/v1` or that points to this PC, so a release
+  can never ship with the development address.
+- If the server's domain is not `optics-api.tera-software1.com`, pass it every time:
+  `-ApiBaseUrl https://<your-api-domain>/api/v1`.
 
 ## Publish it (in-app updates)
 

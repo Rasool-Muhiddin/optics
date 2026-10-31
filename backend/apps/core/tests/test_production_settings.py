@@ -23,6 +23,7 @@ class ProductionSettingsTests(SimpleTestCase):
             "DATABASE_URL": f"sqlite:///{tmp}/prod.sqlite3",
             "STATIC_ROOT": f"{tmp}/static",
             "MEDIA_ROOT": f"{tmp}/media",
+            "CACHE_DIR": f"{tmp}/cache",
             "ADMIN_URL": "tera-admin/",
         }
         return subprocess.run(
