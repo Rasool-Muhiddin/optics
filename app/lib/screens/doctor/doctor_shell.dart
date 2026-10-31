@@ -6,9 +6,7 @@ import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../services/auth_controller.dart';
 import '../../widgets/common.dart';
-import '../../widgets/connection_status_banner.dart';
-import '../../widgets/update_banner.dart';
-import '../../widgets/sync_status_tile.dart';
+import '../../widgets/shell_parts.dart';
 
 /// Doctor mode layout: its own sidebar (referrals, labs) — no lab sections at all.
 class DoctorShell extends ConsumerWidget {
@@ -18,95 +16,67 @@ class DoctorShell extends ConsumerWidget {
   final Widget child;
 
   static const _items = [
-    (path: AppRoutes.doctorHome, label: AppStrings.navDoctorReferrals, icon: Icons.send_outlined),
-    (path: AppRoutes.doctorLabs, label: AppStrings.navDoctorLabs, icon: Icons.store_outlined),
+    ShellDestination(
+      path: AppRoutes.doctorHome,
+      label: AppStrings.navDoctorReferrals,
+      icon: Icons.send_outlined,
+    ),
+    ShellDestination(
+      path: AppRoutes.doctorLabs,
+      label: AppStrings.navDoctorLabs,
+      icon: Icons.store_outlined,
+    ),
   ];
+
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+    if (await confirmDialog(context, AppStrings.logoutConfirm, confirmLabel: AppStrings.logout)) {
+      await ref.read(authControllerProvider.notifier).logout();
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(doctorSessionProvider);
     if (session == null) return const SizedBox.shrink();
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Scaffold(
-      body: Row(
-        children: [
-          SizedBox(
-            width: 240,
-            child: Material(
-              color: scheme.surface,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    color: scheme.tertiary,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          session.doctor.fullName,
-                          key: const Key('doctor-sidebar-name'),
-                          style: theme.textTheme.titleMedium?.copyWith(color: scheme.onTertiary),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          AppStrings.doctorMode,
-                          style: theme.textTheme.bodySmall?.copyWith(color: scheme.onTertiary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      children: [
-                        for (final item in _items)
-                          ListTile(
-                            key: Key('nav-${item.path}'),
-                            leading: Icon(item.icon),
-                            title: Text(item.label),
-                            dense: true,
-                            selected: location == item.path,
-                            selectedTileColor: scheme.tertiaryContainer,
-                            onTap: () => context.go(item.path),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  const SyncStatusTile(),
-                  ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.medical_services_outlined)),
-                    title: Text(session.user.displayName, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(session.doctor.clinicName),
-                    trailing: IconButton(
-                      key: const Key('logout-button'),
-                      tooltip: AppStrings.logout,
-                      icon: const Icon(Icons.logout),
-                      onPressed: () async {
-                        if (await confirmDialog(context, AppStrings.logoutConfirm)) {
-                          await ref.read(authControllerProvider.notifier).logout();
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final current = _items.where((i) => i.path == location).firstOrNull ?? _items.first;
+    final colors = AppColors.of(context);
+    return ShellScaffold(
+      sidebarBuilder: (collapsed) => ShellSidebar(
+        collapsed: collapsed,
+        accent: colors.success,
+        header: SidebarBrand(
+          collapsed: collapsed,
+          title: session.doctor.fullName,
+          titleKey: const Key('doctor-sidebar-name'),
+          subtitle: AppStrings.doctorMode,
+          icon: Icons.medical_services_outlined,
+          accent: AppColors.light.success,
+        ),
+        destinations: _items,
+        isSelected: (d) => d.path == location,
+        onSelect: (d) => context.go(d.path),
+      ),
+      topBar: ShellTopBar(
+        title: current.label,
+        icon: current.icon,
+        trailing: [
+          const SizedBox(width: AppSpacing.xs),
+          UserMenuButton(
+            name: session.user.displayName,
+            role: AppStrings.doctorMode,
+            details: [if (session.doctor.clinicName.isNotEmpty) session.doctor.clinicName],
+            tone: Tone.success,
+            onLogout: () => _logout(context, ref),
           ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
-                const ConnectionStatusBanner(),
-                const UpdateBanner(),
-                Expanded(child: child),
-              ],
-            ),
+          IconButton(
+            key: const Key('logout-button'),
+            tooltip: AppStrings.logout,
+            icon: const Icon(Icons.logout, size: 20),
+            onPressed: () => _logout(context, ref),
           ),
         ],
       ),
+      child: child,
     );
   }
 }

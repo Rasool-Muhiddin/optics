@@ -4,6 +4,9 @@ import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../models/session.dart';
 
+/// Sidebar groups (headings), in display order.
+enum NavGroup { main, stock, admin }
+
 /// One sidebar entry. [ownerOnly] / [feature] only hide it — the server enforces access.
 class NavItem {
   const NavItem({
@@ -13,6 +16,7 @@ class NavItem {
     this.ownerOnly = false,
     this.reportsOnly = false,
     this.feature,
+    this.group = NavGroup.main,
   });
 
   final String path;
@@ -23,6 +27,9 @@ class NavItem {
   /// Owner or staff with the cost permission (reports).
   final bool reportsOnly;
   final String? feature;
+
+  /// Sidebar group heading this item sits under (UI only).
+  final NavGroup group;
 
   bool visibleTo(Session session) =>
       (!ownerOnly || session.isOwner) &&
@@ -50,8 +57,14 @@ const List<NavItem> navItems = [
     path: AppRoutes.inventory,
     label: AppStrings.navInventory,
     icon: Icons.inventory_2_outlined,
+    group: NavGroup.stock,
   ),
-  NavItem(path: AppRoutes.orders, label: AppStrings.navOrders, icon: Icons.local_shipping_outlined),
+  NavItem(
+    path: AppRoutes.orders,
+    label: AppStrings.navOrders,
+    icon: Icons.local_shipping_outlined,
+    group: NavGroup.stock,
+  ),
   NavItem(
     path: AppRoutes.referrals,
     label: AppStrings.navReferrals,
@@ -63,18 +76,21 @@ const List<NavItem> navItems = [
     label: AppStrings.navReports,
     icon: Icons.bar_chart,
     reportsOnly: true,
+    group: NavGroup.admin,
   ),
   NavItem(
     path: AppRoutes.users,
     label: AppStrings.navUsers,
     icon: Icons.manage_accounts_outlined,
     ownerOnly: true,
+    group: NavGroup.admin,
   ),
   NavItem(
     path: AppRoutes.settings,
     label: AppStrings.navSettings,
     icon: Icons.settings_outlined,
     ownerOnly: true,
+    group: NavGroup.admin,
   ),
 ];
 

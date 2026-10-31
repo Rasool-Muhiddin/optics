@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/formatters/formatters.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/cache/json_cache_dao.dart';
@@ -94,70 +93,83 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 260,
-                child: TextField(
-                  key: const Key('inventory-search'),
-                  controller: _search,
-                  decoration: const InputDecoration(
-                    hintText: AppStrings.search,
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: _onSearch,
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 260,
+              child: TextField(
+                key: const Key('inventory-search'),
+                controller: _search,
+                decoration: const InputDecoration(
+                  hintText: AppStrings.search,
+                  prefixIcon: Icon(Icons.search),
                 ),
+                onChanged: _onSearch,
               ),
-              _Dropdown<ProductKind>(
-                label: AppStrings.productKind,
-                value: _query.kind,
-                items: {for (final k in ProductKind.values) k: AppStrings.productKinds[k.value]!},
-                onChanged: (v) => _setQuery(_query.copyWith(kind: () => v)),
-              ),
-              _Dropdown<int>(
-                label: AppStrings.category,
-                value: _query.categoryId,
-                items: {for (final c in categories) c.id: c.name},
-                onChanged: (v) => _setQuery(_query.copyWith(categoryId: () => v)),
-              ),
-              _Dropdown<int>(
-                label: AppStrings.brand,
-                value: _query.brandId,
-                items: {for (final b in brands) b.id: b.name},
-                onChanged: (v) => _setQuery(_query.copyWith(brandId: () => v)),
-              ),
-              FilterChip(
-                key: const Key('filter-low-stock'),
-                label: const Text(AppStrings.lowStockOnly),
-                selected: _query.lowStock,
-                onSelected: (v) => _setQuery(_query.copyWith(lowStock: v)),
-              ),
-              FilterChip(
-                label: const Text(AppStrings.showInactive),
-                selected: _query.includeInactive,
-                onSelected: (v) => _setQuery(_query.copyWith(includeInactive: v)),
-              ),
-            ],
-          ),
+            ),
+            _Dropdown<ProductKind>(
+              label: AppStrings.productKind,
+              value: _query.kind,
+              items: {for (final k in ProductKind.values) k: AppStrings.productKinds[k.value]!},
+              onChanged: (v) => _setQuery(_query.copyWith(kind: () => v)),
+            ),
+            _Dropdown<int>(
+              label: AppStrings.category,
+              value: _query.categoryId,
+              items: {for (final c in categories) c.id: c.name},
+              onChanged: (v) => _setQuery(_query.copyWith(categoryId: () => v)),
+            ),
+            _Dropdown<int>(
+              label: AppStrings.brand,
+              value: _query.brandId,
+              items: {for (final b in brands) b.id: b.name},
+              onChanged: (v) => _setQuery(_query.copyWith(brandId: () => v)),
+            ),
+            FilterChip(
+              key: const Key('filter-low-stock'),
+              label: const Text(AppStrings.lowStockOnly),
+              selected: _query.lowStock,
+              onSelected: (v) => _setQuery(_query.copyWith(lowStock: v)),
+            ),
+            FilterChip(
+              label: const Text(AppStrings.showInactive),
+              selected: _query.includeInactive,
+              onSelected: (v) => _setQuery(_query.copyWith(includeInactive: v)),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            children: [
-              for (var page = 1; page <= _pages; page++)
-                _ProductPage(
-                  query: _query.copyWith(page: page),
-                  showHeader: page == 1,
-                  seesCosts: seesCosts,
-                  onLoadMore: page == _pages ? () => setState(() => _pages++) : null,
-                ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
+            child: TableFrame(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header stays put while the pages of rows scroll (sticky header).
+                  DataTableHeader(columns: ProductTable.columnsFor(seesCosts: seesCosts)),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (var page = 1; page <= _pages; page++)
+                          _ProductPage(
+                            query: _query.copyWith(page: page),
+                            showHeader: page == 1,
+                            seesCosts: seesCosts,
+                            onLoadMore: page == _pages ? () => setState(() => _pages++) : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
@@ -174,6 +186,8 @@ class _ProductPage extends ConsumerWidget {
   });
 
   final ProductQuery query;
+
+  /// First page (shows the empty state when there are no products).
   final bool showHeader;
   final bool seesCosts;
   final VoidCallback? onLoadMore;
@@ -183,25 +197,26 @@ class _ProductPage extends ConsumerWidget {
     final value = ref.watch(productListProvider(query));
     return AsyncView(
       value: value,
+      skeleton: showHeader,
       onRetry: () => ref.invalidate(productListProvider(query)),
       builder: (page) {
         if (page.items.isEmpty && showHeader) {
-          return const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(child: Text(AppStrings.noData)),
+          return const EmptyState(
+            icon: Icons.inventory_2_outlined,
+            message: AppStrings.emptyFilteredHint,
           );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ProductTable(products: page.items, showHeader: showHeader, seesCosts: seesCosts),
+            ProductTable(
+              products: page.items,
+              showHeader: false,
+              seesCosts: seesCosts,
+              startIndex: (query.page - 1) * 100,
+            ),
             if (page.hasMore && onLoadMore != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Center(
-                  child: TextButton(onPressed: onLoadMore, child: const Text(AppStrings.loadMore)),
-                ),
-              ),
+              TableFooter(count: page.items.length, onLoadMore: onLoadMore),
           ],
         );
       },
@@ -216,84 +231,83 @@ class ProductTable extends StatelessWidget {
     required this.products,
     this.showHeader = true,
     required this.seesCosts,
+    this.startIndex = 0,
   });
 
   final List<Product> products;
   final bool showHeader;
   final bool seesCosts;
 
+  /// Row index offset (zebra striping continues across pages).
+  final int startIndex;
+
+  static List<TableCol> columnsFor({required bool seesCosts}) => [
+    const TableCol(AppStrings.productName, flex: 4),
+    const TableCol(AppStrings.productKind, flex: 2),
+    const TableCol(AppStrings.brand, flex: 2),
+    const TableCol(AppStrings.barcode, flex: 2, center: true),
+    const TableCol(AppStrings.salePrice, flex: 2, numeric: true),
+    if (seesCosts) const TableCol(AppStrings.averageCost, flex: 2, numeric: true),
+    const TableCol(AppStrings.quantity, flex: 2, numeric: true),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final columns = <(String, int)>[
-      (AppStrings.productName, 4),
-      (AppStrings.productKind, 2),
-      (AppStrings.brand, 2),
-      (AppStrings.barcode, 2),
-      (AppStrings.salePrice, 2),
-      if (seesCosts) (AppStrings.averageCost, 2),
-      (AppStrings.quantity, 1),
-    ];
-    Widget row(List<Widget> cells, {Color? color, VoidCallback? onTap, Key? key}) => InkWell(
-      key: key,
-      onTap: onTap,
-      child: Container(
-        color: color,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            for (var i = 0; i < cells.length; i++) Expanded(flex: columns[i].$2, child: cells[i]),
-          ],
-        ),
-      ),
-    );
-
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          if (showHeader)
-            row([
-              for (final c in columns)
-                Text(
-                  c.$1,
-                  style: theme.textTheme.labelLarge,
-                  textAlign: c.$1 == AppStrings.barcode ? TextAlign.center : null,
-                ),
-            ], color: theme.colorScheme.surfaceContainerHighest),
-          for (final p in products) ...[
-            const Divider(height: 1),
-            row(
-              key: Key('product-row-${p.id}'),
-              onTap: () => context.go(AppRoutes.productDetail(p.id)),
-              color: p.isActive ? null : theme.colorScheme.surfaceContainerLow,
-              [
-                Text(p.name, overflow: TextOverflow.ellipsis),
-                Text(AppStrings.productKinds[p.kind.value] ?? p.kind.value),
-                Text(p.brandName, overflow: TextOverflow.ellipsis),
-                Text(
-                  p.barcode.isNotEmpty ? p.barcode : p.sku,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(Formatters.money(p.salePrice)),
-                if (seesCosts) Text(Formatters.money(p.averageCost)),
-                p.trackStock
-                    ? Text(
-                        '${p.quantity}',
-                        style: TextStyle(
-                          color: p.isLowStock || p.quantity <= 0 ? theme.colorScheme.error : null,
-                          fontWeight: p.isLowStock ? FontWeight.bold : null,
+    final colors = AppColors.of(context);
+    final columns = columnsFor(seesCosts: seesCosts);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showHeader) DataTableHeader(columns: columns),
+        for (var i = 0; i < products.length; i++)
+          Builder(
+            builder: (context) {
+              final p = products[i];
+              final low = p.trackStock && (p.isLowStock || p.quantity <= 0);
+              return DataRowView(
+                key: Key('product-row-${p.id}'),
+                columns: columns,
+                index: startIndex + i,
+                muted: !p.isActive,
+                accent: low ? colors.danger : null,
+                onTap: () => context.go(AppRoutes.productDetail(p.id)),
+                cells: [
+                  Text(
+                    p.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  StatusBadge(
+                    label: AppStrings.productKinds[p.kind.value] ?? p.kind.value,
+                    dense: true,
+                  ),
+                  Text(p.brandName, overflow: TextOverflow.ellipsis),
+                  Text(
+                    p.barcode.isNotEmpty ? p.barcode : p.sku,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontFeatures: AppText.tabular),
+                  ),
+                  MoneyText(p.salePrice),
+                  if (seesCosts) MoneyText(p.averageCost, tone: Tone.neutral),
+                  p.trackStock
+                      ? NumText(
+                          '${p.quantity}',
+                          bold: p.isLowStock,
+                          color: low ? colors.danger : null,
+                        )
+                      : Text(
+                          AppStrings.noStockTracking,
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      )
-                    : Text(AppStrings.noStockTracking, style: theme.textTheme.bodySmall),
-              ],
-            ),
-          ],
-        ],
-      ),
+                ],
+              );
+            },
+          ),
+      ],
     );
   }
 }

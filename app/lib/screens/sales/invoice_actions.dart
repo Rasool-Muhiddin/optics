@@ -90,6 +90,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   Widget build(BuildContext context) {
     return FormDialog(
       title: AppStrings.receivePayment,
+      icon: Icons.payments_outlined,
       width: 380,
       onSave: () {
         if (_formKey.currentState!.validate()) {

@@ -71,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               textDirection: TextDirection.ltr,
               decoration: const InputDecoration(
                 labelText: AppStrings.username,
-                prefixIcon: Icon(Icons.person),
+                prefixIcon: Icon(Icons.person_outline),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? AppStrings.usernameRequired : null,
@@ -85,9 +85,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               textDirection: TextDirection.ltr,
               decoration: InputDecoration(
                 labelText: AppStrings.password,
-                prefixIcon: const Icon(Icons.lock),
+                prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                  icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
@@ -100,7 +100,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               key: const Key('login-button'),
               onPressed: _busy ? null : _submit,
               child: _busy
-                  ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator())
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text(AppStrings.login),
             ),
             const SizedBox(height: 8),

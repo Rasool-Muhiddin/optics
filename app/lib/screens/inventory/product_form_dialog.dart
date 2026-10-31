@@ -282,6 +282,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
 
     return FormDialog(
       title: _editing ? AppStrings.editProduct : AppStrings.addProduct,
+      icon: Icons.inventory_2_outlined,
       width: 680,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),
@@ -291,166 +292,171 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Barcode first, focused for the scanner.
-            Focus(
-              onFocusChange: (focused) {
-                if (!focused) _checkBarcode();
-              },
-              child: TextFormField(
-                key: const Key('product-barcode'),
-                controller: _c['barcode'],
-                autofocus: !_editing,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: AppStrings.barcode,
-                  prefixIcon: const Icon(Icons.qr_code_scanner),
-                  helperText: _kind.usesVariants
-                      ? AppStrings.variantBarcodeHint
-                      : AppStrings.barcodeHint,
-                  helperMaxLines: 2,
-                  errorText: fieldErrorFor(_error, 'barcode'),
-                ),
-                onFieldSubmitted: (_) => _checkBarcode(),
-              ),
-            ),
-            if (duplicate != null)
-              Container(
-                key: const Key('product-duplicate'),
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: theme.colorScheme.onErrorContainer),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${AppStrings.duplicateBarcode} «${duplicate.name}»',
-                        style: TextStyle(color: theme.colorScheme.onErrorContainer),
+            // 1. Barcode first, focused for the scanner; then the kind.
+            FormSection(
+              title: AppStrings.sectionIdentify,
+              icon: Icons.qr_code_scanner,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Focus(
+                    onFocusChange: (focused) {
+                      if (!focused) _checkBarcode();
+                    },
+                    child: TextFormField(
+                      key: const Key('product-barcode'),
+                      controller: _c['barcode'],
+                      autofocus: !_editing,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(
+                        labelText: AppStrings.barcode,
+                        prefixIcon: const Icon(Icons.qr_code_scanner),
+                        helperText: _kind.usesVariants
+                            ? AppStrings.variantBarcodeHint
+                            : AppStrings.barcodeHint,
+                        helperMaxLines: 2,
+                        errorText: fieldErrorFor(_error, 'barcode'),
                       ),
+                      onFieldSubmitted: (_) => _checkBarcode(),
                     ),
-                    TextButton(
-                      key: const Key('product-open-duplicate'),
-                      onPressed: () => _openDuplicate(duplicate),
-                      child: const Text(AppStrings.openProduct),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 16),
-            // 2. Kind as icon buttons (fixed once saved).
-            Text(AppStrings.productKind, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final k in ProductKind.values)
-                  ChoiceChip(
-                    key: Key('product-kind-${k.value}'),
-                    avatar: Icon(productKindIcons[k], size: 18),
-                    label: Text(AppStrings.productKinds[k.value]!),
-                    selected: _kind == k,
-                    showCheckmark: false,
-                    onSelected: _editing ? null : (_) => setState(() => _kind = k),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // 3. Name, brand, group.
-            FieldGrid(
-              children: [
-                text('name', AppStrings.productName, validator: Inputs.requiredText),
-                DropdownButtonFormField<int?>(
-                  isExpanded: true,
-                  initialValue: brands.any((b) => b.id == _brandId) ? _brandId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.brand),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
-                    for (final b in brands.where((b) => b.isActive || b.id == _brandId))
-                      DropdownMenuItem<int?>(value: b.id, child: Text(b.name)),
-                  ],
-                  onChanged: (v) => setState(() => _brandId = v),
-                ),
-                DropdownButtonFormField<int?>(
-                  isExpanded: true,
-                  key: const Key('product-category'),
-                  initialValue: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.categoryOptional),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
-                    for (final c in categories.where((c) => c.isActive || c.id == _categoryId))
-                      DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
-                  ],
-                  onChanged: (v) => setState(() => _categoryId = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 4. Prices and the low-stock alert.
-            FieldGrid(
-              children: [
-                TextFormField(
-                  key: const Key('product-sale_price'),
-                  controller: _c['sale_price'],
-                  inputFormatters: Inputs.money,
-                  decoration: const InputDecoration(labelText: AppStrings.salePrice),
-                  validator: Inputs.moneyValidator,
-                ),
-                if (seesCosts)
-                  TextFormField(
-                    key: const Key('product-purchase_price'),
-                    controller: _c['purchase_price'],
-                    inputFormatters: Inputs.money,
-                    decoration: const InputDecoration(labelText: AppStrings.purchasePrice),
-                    validator: (v) => Inputs.moneyValidator(v, required: false),
-                  ),
-                if (!_kind.isNonStock && _trackStock)
-                  TextFormField(
-                    key: const Key('product-reorder_level'),
-                    controller: _c['reorder_level'],
-                    inputFormatters: Inputs.integer,
-                    decoration: const InputDecoration(labelText: AppStrings.reorderLevel),
-                  ),
-              ],
-            ),
-            // 5. The kind's own details.
-            if (specs.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                AppStrings.attributesTitles[_kind.value] ?? AppStrings.attributes,
-                key: const Key('product-attributes-title'),
-                style: theme.textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              FieldGrid(
-                children: [for (final s in specs.where((s) => !s.multi)) _attributeField(s)],
-              ),
-              for (final s in specs.where((s) => s.multi)) ...[
-                const SizedBox(height: 12),
-                Text(AppStrings.label(AppStrings.attributeLabels, s.key)),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final option in s.choices!)
-                      FilterChip(
-                        label: Text(AppStrings.label(AppStrings.choiceLabels, option)),
-                        selected: _multi[s.key]!.contains(option),
-                        onSelected: (on) => setState(
-                          () => on ? _multi[s.key]!.add(option) : _multi[s.key]!.remove(option),
+                  if (duplicate != null)
+                    Padding(
+                      key: const Key('product-duplicate'),
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: NoticeBox(
+                        message: '${AppStrings.duplicateBarcode} «${duplicate.name}»',
+                        tone: Tone.danger,
+                        icon: Icons.warning_amber_outlined,
+                        action: TextButton(
+                          key: const Key('product-open-duplicate'),
+                          onPressed: () => _openDuplicate(duplicate),
+                          child: const Text(AppStrings.openProduct),
                         ),
                       ),
+                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  // 2. Kind as icon buttons (fixed once saved).
+                  Text(AppStrings.productKind, style: theme.textTheme.labelLarge),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final k in ProductKind.values)
+                        ChoiceChip(
+                          key: Key('product-kind-${k.value}'),
+                          avatar: Icon(productKindIcons[k], size: 18),
+                          label: Text(AppStrings.productKinds[k.value]!),
+                          selected: _kind == k,
+                          showCheckmark: false,
+                          onSelected: _editing ? null : (_) => setState(() => _kind = k),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // 3. Name, brand, group.
+            FormSection(
+              title: AppStrings.sectionBasics,
+              icon: Icons.info_outline,
+              child: FieldGrid(
+                children: [
+                  text('name', AppStrings.productName, validator: Inputs.requiredText),
+                  DropdownButtonFormField<int?>(
+                    isExpanded: true,
+                    initialValue: brands.any((b) => b.id == _brandId) ? _brandId : null,
+                    decoration: const InputDecoration(labelText: AppStrings.brand),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
+                      for (final b in brands.where((b) => b.isActive || b.id == _brandId))
+                        DropdownMenuItem<int?>(value: b.id, child: Text(b.name)),
+                    ],
+                    onChanged: (v) => setState(() => _brandId = v),
+                  ),
+                  DropdownButtonFormField<int?>(
+                    isExpanded: true,
+                    key: const Key('product-category'),
+                    initialValue: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
+                    decoration: const InputDecoration(labelText: AppStrings.categoryOptional),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
+                      for (final c in categories.where((c) => c.isActive || c.id == _categoryId))
+                        DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
+                    ],
+                    onChanged: (v) => setState(() => _categoryId = v),
+                  ),
+                ],
+              ),
+            ),
+            // 4. Prices and the low-stock alert.
+            FormSection(
+              title: AppStrings.sectionPricing,
+              icon: Icons.payments_outlined,
+              child: FieldGrid(
+                children: [
+                  TextFormField(
+                    key: const Key('product-sale_price'),
+                    controller: _c['sale_price'],
+                    inputFormatters: Inputs.money,
+                    decoration: const InputDecoration(labelText: AppStrings.salePrice),
+                    validator: Inputs.moneyValidator,
+                  ),
+                  if (seesCosts)
+                    TextFormField(
+                      key: const Key('product-purchase_price'),
+                      controller: _c['purchase_price'],
+                      inputFormatters: Inputs.money,
+                      decoration: const InputDecoration(labelText: AppStrings.purchasePrice),
+                      validator: (v) => Inputs.moneyValidator(v, required: false),
+                    ),
+                  if (!_kind.isNonStock && _trackStock)
+                    TextFormField(
+                      key: const Key('product-reorder_level'),
+                      controller: _c['reorder_level'],
+                      inputFormatters: Inputs.integer,
+                      decoration: const InputDecoration(labelText: AppStrings.reorderLevel),
+                    ),
+                ],
+              ),
+            ),
+            // 5. The kind's own details.
+            if (specs.isNotEmpty)
+              FormSection(
+                title: AppStrings.attributesTitles[_kind.value] ?? AppStrings.attributes,
+                titleKey: const Key('product-attributes-title'),
+                icon: productKindIcons[_kind],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FieldGrid(
+                      children: [for (final s in specs.where((s) => !s.multi)) _attributeField(s)],
+                    ),
+                    for (final s in specs.where((s) => s.multi)) ...[
+                      const SizedBox(height: 12),
+                      Text(AppStrings.label(AppStrings.attributeLabels, s.key)),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final option in s.choices!)
+                            FilterChip(
+                              label: Text(AppStrings.label(AppStrings.choiceLabels, option)),
+                              selected: _multi[s.key]!.contains(option),
+                              onSelected: (on) => setState(
+                                () =>
+                                    on ? _multi[s.key]!.add(option) : _multi[s.key]!.remove(option),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-              ],
-            ],
+              ),
             // 6. Collapsed extra options.
-            const SizedBox(height: 12),
             const Divider(height: 1),
             ListTile(
               key: const Key('product-more'),

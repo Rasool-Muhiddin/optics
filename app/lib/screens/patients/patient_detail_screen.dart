@@ -124,45 +124,59 @@ class PatientDetailScreen extends ConsumerWidget {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Wrap(
-                    spacing: 16,
-                    children: [
-                      InfoTile(label: AppStrings.phone, value: patient.phone),
-                      InfoTile(
-                        label: AppStrings.age,
-                        value: patient.age == null ? '' : '${patient.age}',
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
+              child: SectionCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InitialsAvatar(name: patient.fullName, size: 56),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Wrap(
+                        spacing: AppSpacing.xl,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                            child: StatusBadge(
+                              label: AppStrings.patientStatuses[patient.status] ?? patient.status,
+                              tone: StatusTones.patient(patient.status),
+                            ),
+                          ),
+                          InfoTile(label: AppStrings.phone, value: patient.phone),
+                          InfoTile(
+                            label: AppStrings.age,
+                            value: patient.age == null ? '' : '${patient.age}',
+                          ),
+                          // Gender/address are no longer asked in the form; shown for older files and referrals.
+                          if (patient.gender.isNotEmpty)
+                            InfoTile(
+                              label: AppStrings.gender,
+                              value: AppStrings.genders[patient.gender] ?? '',
+                            ),
+                          if (patient.address.isNotEmpty)
+                            InfoTile(label: AppStrings.address, value: patient.address),
+                          if (patient.notes.isNotEmpty)
+                            InfoTile(label: AppStrings.notes, value: patient.notes, width: 420),
+                        ],
                       ),
-                      // Gender/address are no longer asked in the form; shown for older files and referrals.
-                      if (patient.gender.isNotEmpty)
-                        InfoTile(
-                          label: AppStrings.gender,
-                          value: AppStrings.genders[patient.gender] ?? '',
-                        ),
-                      InfoTile(
-                        label: AppStrings.status,
-                        value: AppStrings.patientStatuses[patient.status] ?? patient.status,
-                      ),
-                      if (patient.address.isNotEmpty)
-                        InfoTile(label: AppStrings.address, value: patient.address),
-                      if (patient.notes.isNotEmpty)
-                        InfoTile(label: AppStrings.notes, value: patient.notes, width: 420),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            const TabBar(
-              tabs: [
-                Tab(text: AppStrings.exams),
-                Tab(text: AppStrings.prescriptions),
-                Tab(text: AppStrings.jobsOfPatient),
-              ],
+            const SizedBox(height: AppSpacing.md),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.page),
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  _IconTab(icon: Icons.visibility_outlined, text: AppStrings.exams),
+                  _IconTab(icon: Icons.description_outlined, text: AppStrings.prescriptions),
+                  _IconTab(icon: Icons.work_outline, text: AppStrings.jobsOfPatient),
+                ],
+              ),
             ),
             Expanded(
               child: TabBarView(
@@ -208,30 +222,53 @@ class _ExamsTab extends ConsumerWidget {
       value: ref.watch(patientExamsProvider(patient.id)),
       onRetry: () => ref.invalidate(patientExamsProvider(patient.id)),
       builder: (exams) {
-        if (exams.isEmpty) return const Center(child: Text(AppStrings.noExams));
+        if (exams.isEmpty) {
+          return const EmptyState(icon: Icons.visibility_outlined, title: AppStrings.noExams);
+        }
         return ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.page),
           children: [
             for (final exam in exams)
               Card(
                 key: Key('exam-${exam.id}'),
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                color: exam.isVoid ? AppColors.of(context).surfaceMuted : null,
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         children: [
-                          Text(
-                            Formatters.date(exam.examDate),
-                            style: Theme.of(context).textTheme.titleMedium,
+                          const IconTile(icon: Icons.event_note_outlined, size: 34),
+                          const SizedBox(width: AppSpacing.md),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                NumText(Formatters.date(exam.examDate), bold: true),
+                                if (exam.examinedByName.isNotEmpty)
+                                  Text(
+                                    '${AppStrings.examinedBy}: ${exam.examinedByName}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          if (exam.examinedByName.isNotEmpty)
-                            Text('${AppStrings.examinedBy}: ${exam.examinedByName}'),
                           if (exam.isVoid) ...[
-                            const SizedBox(width: 12),
-                            Chip(label: Text('${AppStrings.voided}: ${exam.voidReason}')),
+                            const SizedBox(width: AppSpacing.md),
+                            Flexible(
+                              child: StatusBadge(
+                                label: '${AppStrings.voided}: ${exam.voidReason}',
+                                tone: Tone.danger,
+                                icon: Icons.block,
+                              ),
+                            ),
                           ],
                           const Spacer(),
                           IconButton(
@@ -298,13 +335,10 @@ class _ExamsTab extends ConsumerWidget {
                           textDirection: TextDirection.ltr,
                           textAlign: TextAlign.right,
                         ),
-                      if (exam.prescription != null)
-                        Text(
-                          exam.prescription!.summary,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                      if (exam.prescription != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        RxSummaryBox(text: exam.prescription!.summary),
+                      ],
                     ],
                   ),
                 ),
@@ -327,18 +361,38 @@ class _PrescriptionsTab extends ConsumerWidget {
       value: ref.watch(patientPrescriptionsProvider(patient.id)),
       onRetry: () => ref.invalidate(patientPrescriptionsProvider(patient.id)),
       builder: (list) {
-        if (list.isEmpty) return const Center(child: Text(AppStrings.noPrescriptions));
+        if (list.isEmpty) {
+          return const EmptyState(
+            icon: Icons.description_outlined,
+            title: AppStrings.noPrescriptions,
+          );
+        }
         return ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.page),
           children: [
             for (final rx in list)
               Card(
                 key: Key('rx-${rx.id}'),
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                color: rx.isVoid ? AppColors.of(context).surfaceMuted : null,
                 child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.xs,
+                  ),
+                  leading: IconTile(
+                    icon: Icons.description_outlined,
+                    tone: rx.isVoid ? Tone.neutral : Tone.primary,
+                    size: 38,
+                  ),
                   title: Text(
                     rx.summary,
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontFeatures: AppText.tabular,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   subtitle: Text(
                     [
@@ -414,11 +468,62 @@ class _JobsTab extends ConsumerWidget {
       value: ref.watch(patientJobsProvider(patient.id)),
       onRetry: () => ref.invalidate(patientJobsProvider(patient.id)),
       builder: (jobs) => jobs.isEmpty
-          ? const Center(child: Text(AppStrings.noJobs))
+          ? const EmptyState(icon: Icons.work_outline, title: AppStrings.noJobs)
           : ListView(
-              padding: const EdgeInsets.all(24),
-              children: [for (final job in jobs) JobCard(job: job)],
+              padding: const EdgeInsets.all(AppSpacing.page),
+              children: [
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: [
+                    for (final job in jobs) SizedBox(width: 320, child: JobCard(job: job)),
+                  ],
+                ),
+              ],
             ),
     );
   }
+}
+
+/// Tab label with a leading icon (icon and text on one line).
+class _IconTab extends StatelessWidget {
+  const _IconTab({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: AppSpacing.sm),
+        Text(text),
+      ],
+    ),
+  );
+}
+
+/// Rx summary line (LTR, tabular digits) in a tinted box.
+class RxSummaryBox extends StatelessWidget {
+  const RxSummaryBox({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+      borderRadius: AppRadius.mdAll,
+    ),
+    child: Text(
+      text,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.right,
+      style: const TextStyle(fontWeight: FontWeight.w600, fontFeatures: AppText.tabular),
+    ),
+  );
 }

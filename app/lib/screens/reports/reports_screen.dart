@@ -117,10 +117,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
           child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               for (final r in AppStrings.reportNames.entries)
                 ChoiceChip(
@@ -132,51 +132,51 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (dated) ...[
-                ActionChip(
-                  avatar: const Icon(Icons.event, size: 18),
-                  label: Text('${AppStrings.dateFrom}: ${_q.from}'),
-                  onPressed: () => _pickDate(true),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.event, size: 18),
-                  label: Text('${AppStrings.dateTo}: ${_q.to}'),
-                  onPressed: () => _pickDate(false),
-                ),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'day', label: Text(AppStrings.groupByDay)),
-                    ButtonSegment(value: 'month', label: Text(AppStrings.groupByMonth)),
-                  ],
-                  selected: {_q.group},
-                  onSelectionChanged: (v) => _set(group: v.first),
-                ),
-              ],
-              if (_q.name == 'stock' || _q.name == 'suppliers')
-                FilterChip(
-                  key: const Key('report-all'),
-                  label: const Text(AppStrings.showAll),
-                  selected: _q.all,
-                  onSelected: (v) => _set(all: v),
-                ),
+        const SizedBox(height: AppSpacing.md),
+        FilterBar(
+          children: [
+            if (dated) ...[
+              ActionChip(
+                avatar: const Icon(Icons.event, size: 18),
+                label: Text('${AppStrings.dateFrom}: ${_q.from}'),
+                onPressed: () => _pickDate(true),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.event, size: 18),
+                label: Text('${AppStrings.dateTo}: ${_q.to}'),
+                onPressed: () => _pickDate(false),
+              ),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'day', label: Text(AppStrings.groupByDay)),
+                  ButtonSegment(value: 'month', label: Text(AppStrings.groupByMonth)),
+                ],
+                selected: {_q.group},
+                onSelectionChanged: (v) => _set(group: v.first),
+              ),
             ],
-          ),
+            if (_q.name == 'stock' || _q.name == 'suppliers')
+              FilterChip(
+                key: const Key('report-all'),
+                label: const Text(AppStrings.showAll),
+                selected: _q.all,
+                onSelected: (v) => _set(all: v),
+              ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
           child: AsyncView(
             value: ref.watch(reportProvider(_q)),
+            skeleton: true,
             onRetry: () => ref.invalidate(reportProvider(_q)),
             builder: (report) => ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                0,
+                AppSpacing.page,
+                AppSpacing.page,
+              ),
               children: [
                 ReportTableCard(columns: report.columns, rows: report.rows),
                 if (report.totals.isNotEmpty) _Totals(totals: report.totals),
@@ -204,9 +204,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       'profit' => [
         section(AppStrings.byKind, 'by_kind', ['kind', 'revenue', 'cost', 'profit', 'margin']),
         if ((r.raw['estimated_cost_lines'] as num? ?? 0) > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('${AppStrings.estimatedCostLines}: ${r.raw['estimated_cost_lines']}'),
+          NoticeBox(
+            message: '${AppStrings.estimatedCostLines}: ${r.raw['estimated_cost_lines']}',
+            tone: Tone.warning,
           ),
       ],
       'credit' => [
@@ -262,35 +262,69 @@ class ReportTableCard extends StatelessWidget {
     };
   }
 
+  /// Money and plain numbers are aligned to the end of the cell.
+  bool _numeric(String key) =>
+      _moneyKeys.contains(key) ||
+      rows.isNotEmpty && rows.every((r) => r[key] == null || r[key] is num);
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (title != null) Text(title!, style: theme.textTheme.titleMedium),
-            if (rows.isEmpty)
-              const Padding(padding: EdgeInsets.all(16), child: Text(AppStrings.noData))
-            else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: [
-                    for (final c in columns)
-                      DataColumn(label: Text(AppStrings.reportColumns[c] ?? c)),
-                  ],
-                  rows: [
-                    for (final row in rows)
-                      DataRow(cells: [for (final c in columns) DataCell(Text(cell(c, row[c])))]),
-                  ],
-                ),
+    final cols = [
+      for (final c in columns)
+        TableCol(AppStrings.reportColumns[c] ?? c, flex: 2, numeric: _numeric(c)),
+    ];
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: SectionCard(
+        title: title,
+        icon: title == null ? null : Icons.table_chart_outlined,
+        padding: EdgeInsets.zero,
+        child: rows.isEmpty
+            ? const EmptyState(icon: Icons.table_chart_outlined, compact: true)
+            : LayoutBuilder(
+                builder: (context, c) {
+                  // Wide reports scroll sideways instead of squeezing the columns.
+                  final width = c.maxWidth < columns.length * 140.0
+                      ? columns.length * 140.0
+                      : c.maxWidth;
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: width,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DataTableHeader(columns: cols),
+                          for (var i = 0; i < rows.length; i++)
+                            DataRowView(
+                              columns: cols,
+                              index: i,
+                              cells: [
+                                for (final k in columns)
+                                  Text(
+                                    cell(k, rows[i][k]),
+                                    overflow: TextOverflow.ellipsis,
+                                    textDirection: _numeric(k) ? TextDirection.ltr : null,
+                                    style: TextStyle(
+                                      fontFeatures: AppText.tabular,
+                                      fontWeight: k == 'profit' || k == 'total'
+                                          ? FontWeight.w600
+                                          : null,
+                                      color:
+                                          k == 'profit' && (num.tryParse('${rows[i][k]}') ?? 0) < 0
+                                          ? colors.danger
+                                          : null,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-          ],
-        ),
       ),
     );
   }
@@ -303,22 +337,36 @@ class _Totals extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    Tone tone(String key) => switch (key) {
+      'profit' => Tone.success,
+      'balance' => Tone.danger,
+      'cost' || 'discount' => Tone.warning,
+      _ => Tone.primary,
+    };
+    IconData icon(String key) => switch (key) {
+      'profit' => Icons.trending_up,
+      'balance' => Icons.account_balance_wallet_outlined,
+      'discount' => Icons.percent,
+      'cost' => Icons.price_change_outlined,
+      _ when _moneyKeys.contains(key) => Icons.payments_outlined,
+      _ => Icons.tag,
+    };
+    return Padding(
       key: const Key('report-totals'),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 16,
-          children: [
-            for (final e in totals.entries)
-              InfoTile(
-                label: AppStrings.reportColumns[e.key] ?? e.key,
-                value: ReportTableCard.cell(e.key, e.value),
-                width: 170,
-              ),
-          ],
-        ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Wrap(
+        spacing: AppSpacing.md,
+        runSpacing: AppSpacing.md,
+        children: [
+          for (final e in totals.entries)
+            KpiCard(
+              width: 220,
+              label: AppStrings.reportColumns[e.key] ?? e.key,
+              value: ReportTableCard.cell(e.key, e.value),
+              icon: icon(e.key),
+              tone: tone(e.key),
+            ),
+        ],
       ),
     );
   }

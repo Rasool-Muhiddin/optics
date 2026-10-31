@@ -116,11 +116,16 @@ class ReferralDetailScreen extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ReferralView(referral: r, showDoctor: true),
-              ),
+            child: SectionCard(
+              title: AppStrings.referral,
+              icon: Icons.medical_services_outlined,
+              actions: [
+                StatusBadge(
+                  label: AppStrings.label(AppStrings.referralStatuses, r.status),
+                  tone: StatusTones.referral(r.status),
+                ),
+              ],
+              child: ReferralView(referral: r, showDoctor: true),
             ),
           ),
         ],

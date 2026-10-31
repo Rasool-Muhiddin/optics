@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/strings/app_strings.dart';
 import 'core/theme/app_theme.dart';
+import 'services/ui_prefs.dart';
 
 class OpticsApp extends ConsumerWidget {
   const OpticsApp({super.key});
@@ -15,6 +16,8 @@ class OpticsApp extends ConsumerWidget {
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(routerProvider),
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],

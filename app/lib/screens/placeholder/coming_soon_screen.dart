@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/strings/app_strings.dart';
+import '../../widgets/ui.dart';
 
 /// Stand-in for sidebar sections built in later roadmap phases.
 class ComingSoonScreen extends StatelessWidget {
@@ -10,16 +11,10 @@ class ComingSoonScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title, style: textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(AppStrings.comingSoon, style: textTheme.bodyLarge),
-        ],
-      ),
+    return EmptyState(
+      icon: Icons.construction_outlined,
+      title: title,
+      message: AppStrings.comingSoon,
     );
   }
 }

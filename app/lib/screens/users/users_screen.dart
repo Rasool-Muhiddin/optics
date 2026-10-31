@@ -64,13 +64,18 @@ class UsersScreen extends ConsumerWidget {
             ],
           ),
           if (usage != null) _UsageBar(usage: usage),
-          const TabBar(
-            tabs: [
-              Tab(key: Key('tab-users'), text: AppStrings.usersTab),
-              Tab(key: Key('tab-devices'), text: AppStrings.devicesTab),
-            ],
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.page),
+            child: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                Tab(key: Key('tab-users'), text: AppStrings.usersTab),
+                Tab(key: Key('tab-devices'), text: AppStrings.devicesTab),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
           const Expanded(child: TabBarView(children: [_UsersTab(), _DevicesTab()])),
         ],
       ),
@@ -85,32 +90,44 @@ class _UsageBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final error = Theme.of(context).colorScheme.errorContainer;
     String limit(int n) => n == 0 ? AppStrings.unlimited : '$n';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, AppSpacing.md),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
-            spacing: 8,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
             children: [
-              Chip(
+              _UsageStat(
                 key: const Key('usage-users'),
-                backgroundColor: usage.usersFull ? error : null,
-                label: Text('${AppStrings.usersUsage}: ${usage.users} / ${limit(usage.maxUsers)}'),
+                icon: Icons.people_outline,
+                label: '${AppStrings.usersUsage}: ${usage.users} / ${limit(usage.maxUsers)}',
+                used: usage.users,
+                max: usage.maxUsers,
+                full: usage.usersFull,
               ),
-              Chip(
+              _UsageStat(
                 key: const Key('usage-devices'),
-                backgroundColor: usage.devicesFull ? error : null,
-                label: Text(
-                  '${AppStrings.devicesUsage}: ${usage.devices} / ${limit(usage.maxDevices)}',
-                ),
+                icon: Icons.computer_outlined,
+                label: '${AppStrings.devicesUsage}: ${usage.devices} / ${limit(usage.maxDevices)}',
+                used: usage.devices,
+                max: usage.maxDevices,
+                full: usage.devicesFull,
               ),
             ],
           ),
-          if (usage.usersFull) const Text(AppStrings.limitReachedUsers),
-          if (usage.devicesFull) const Text(AppStrings.limitReachedDevices),
+          if (usage.usersFull)
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.sm),
+              child: NoticeBox(message: AppStrings.limitReachedUsers, tone: Tone.danger),
+            ),
+          if (usage.devicesFull)
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.sm),
+              child: NoticeBox(message: AppStrings.limitReachedDevices, tone: Tone.danger),
+            ),
         ],
       ),
     );
@@ -127,17 +144,23 @@ class _UsersTab extends ConsumerWidget {
       value: ref.watch(labUsersProvider),
       onRetry: () => ref.invalidate(labUsersProvider),
       builder: (users) => users.isEmpty
-          ? const Center(child: Text(AppStrings.noUsers))
+          ? const EmptyState(icon: Icons.people_outline, title: AppStrings.noUsers)
           : ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                0,
+                AppSpacing.page,
+                AppSpacing.page,
+              ),
               children: [
                 for (final u in users)
                   Card(
-                    margin: const EdgeInsets.only(bottom: 6),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: ListTile(
                       key: Key('user-row-${u.id}'),
-                      leading: CircleAvatar(
-                        child: Icon(u.isOwner ? Icons.verified_user : Icons.person_outline),
+                      leading: InitialsAvatar(
+                        name: u.displayName,
+                        tone: u.isActive ? (u.isOwner ? Tone.success : Tone.primary) : Tone.neutral,
                       ),
                       title: Text(
                         u.displayName,
@@ -158,8 +181,14 @@ class _UsersTab extends ConsumerWidget {
                         ].join('   •   '),
                       ),
                       trailing: Wrap(
-                        spacing: 4,
+                        spacing: AppSpacing.sm,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
+                          StatusBadge(
+                            label: u.isOwner ? AppStrings.roleOwner : AppStrings.roleStaff,
+                            tone: u.isOwner ? Tone.success : Tone.info,
+                            dense: true,
+                          ),
                           IconButton(
                             key: Key('edit-user-${u.id}'),
                             tooltip: AppStrings.edit,
@@ -204,18 +233,24 @@ class _DevicesTab extends ConsumerWidget {
       value: ref.watch(labDevicesProvider),
       onRetry: () => ref.invalidate(labDevicesProvider),
       builder: (devices) => devices.isEmpty
-          ? const Center(child: Text(AppStrings.noDevices))
+          ? const EmptyState(icon: Icons.computer_outlined, title: AppStrings.noDevices)
           : ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                0,
+                AppSpacing.page,
+                AppSpacing.page,
+              ),
               children: [
                 for (final d in devices)
                   Card(
-                    margin: const EdgeInsets.only(bottom: 6),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: ListTile(
                       key: Key('device-row-${d.id}'),
-                      leading: Icon(
-                        Icons.computer,
-                        color: d.isActive ? Colors.green : Theme.of(context).hintColor,
+                      leading: IconTile(
+                        icon: Icons.computer_outlined,
+                        tone: d.isActive ? Tone.success : Tone.neutral,
+                        size: 38,
                       ),
                       title: Text(
                         '${d.name.isEmpty ? d.deviceId : d.name}'
@@ -296,6 +331,7 @@ class _NameDialogState extends State<_NameDialog> {
   @override
   Widget build(BuildContext context) => FormDialog(
     title: AppStrings.deviceName,
+    icon: Icons.computer_outlined,
     width: 360,
     onSave: () => Navigator.of(context).pop(_name.text.trim()),
     child: TextField(
@@ -376,6 +412,7 @@ class _UserFormDialogState extends ConsumerState<UserFormDialog> {
     final isOwnerRole = _role == 'owner';
     return FormDialog(
       title: _editing ? AppStrings.editUser : AppStrings.addUser,
+      icon: Icons.manage_accounts_outlined,
       width: 520,
       busy: _busy,
       error: _error == null ? null : errorMessageFor(_error!),
@@ -469,6 +506,64 @@ class _UserFormDialogState extends ConsumerState<UserFormDialog> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Plan usage (users / devices) with a progress bar; red when the plan limit is reached.
+class _UsageStat extends StatelessWidget {
+  const _UsageStat({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.used,
+    required this.max,
+    required this.full,
+  });
+
+  final IconData icon;
+  final String label;
+  final int used;
+
+  /// 0 = unlimited.
+  final int max;
+  final bool full;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: full ? colors.danger : colors.border),
+      ),
+      child: Row(
+        children: [
+          IconTile(icon: icon, tone: full ? Tone.danger : Tone.primary, size: 36),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(label, style: theme.textTheme.labelLarge),
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: LinearProgressIndicator(
+                    value: max == 0 ? 0 : (used / max).clamp(0, 1).toDouble(),
+                    minHeight: 6,
+                    color: full ? colors.danger : theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -81,17 +81,27 @@ class ProductDetailScreen extends ConsumerWidget {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
               child: _InfoCard(product: product, seesCosts: seesCosts),
             ),
             if (product.usesVariants)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.lg,
+                  AppSpacing.page,
+                  0,
+                ),
                 child: _GridCard(product: product, canManage: canManage),
               ),
             if (product.trackStock)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.lg,
+                  AppSpacing.page,
+                  0,
+                ),
                 child: _MovementsCard(productId: productId, seesCosts: seesCosts),
               ),
           ],
@@ -110,12 +120,22 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = product;
-    return Card(
-      margin: EdgeInsets.zero,
+    return SectionCard(
+      title: AppStrings.sectionBasics,
+      icon: Icons.info_outline,
+      actions: [
+        StatusBadge(label: AppStrings.productKinds[p.kind.value]!, tone: Tone.primary),
+        if (p.trackStock && (p.isLowStock || p.quantity <= 0))
+          const StatusBadge(
+            label: AppStrings.lowStock,
+            tone: Tone.danger,
+            icon: Icons.warning_amber_outlined,
+          ),
+      ],
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Wrap(
-          spacing: 16,
+          spacing: AppSpacing.lg,
           children: [
             InfoTile(label: AppStrings.productKind, value: AppStrings.productKinds[p.kind.value]!),
             InfoTile(label: AppStrings.brand, value: p.brandName),
@@ -258,10 +278,11 @@ class _GridCardState extends ConsumerState<_GridCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final gridValue = ref.watch(lensGridProvider(widget.product.id));
-    return Card(
-      margin: EdgeInsets.zero,
+    return SectionCard(
+      title: AppStrings.lensGrid,
+      icon: Icons.grid_on,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: AsyncView(
           value: gridValue,
           onRetry: () => ref.invalidate(lensGridProvider(widget.product.id)),
@@ -274,7 +295,7 @@ class _GridCardState extends ConsumerState<_GridCard> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(AppStrings.lensGrid, style: theme.textTheme.titleMedium)),
+                    const Spacer(),
                     if (adds.length > 1)
                       DropdownButton<double>(
                         value: add,
@@ -347,7 +368,11 @@ class _GridCardState extends ConsumerState<_GridCard> {
                 ],
                 const SizedBox(height: 12),
                 if (variants.isEmpty)
-                  const Padding(padding: EdgeInsets.all(16), child: Text(AppStrings.noVariants))
+                  const EmptyState(
+                    icon: Icons.grid_off,
+                    title: AppStrings.noVariants,
+                    compact: true,
+                  )
                 else
                   LensPowerGrid(
                     variants: variants,
@@ -372,26 +397,28 @@ class _MovementsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
+    final colors = AppColors.of(context);
+    return SectionCard(
+      title: AppStrings.stockMovements,
+      icon: Icons.swap_vert,
+      padding: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(AppStrings.stockMovements, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
             AsyncView(
               value: ref.watch(productMovementsProvider(productId)),
               onRetry: () => ref.invalidate(productMovementsProvider(productId)),
               builder: (movements) {
-                if (movements.isEmpty) return const Text(AppStrings.noData);
+                if (movements.isEmpty) {
+                  return const EmptyState(icon: Icons.swap_vert, compact: true);
+                }
                 return Table(
                   columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(2)},
                   children: [
                     TableRow(
-                      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest),
+                      decoration: BoxDecoration(color: colors.surfaceMuted),
                       children: [
                         _cell(AppStrings.date, bold: true),
                         _cell(AppStrings.movementType, bold: true),
@@ -402,8 +429,12 @@ class _MovementsCard extends ConsumerWidget {
                         _cell(AppStrings.byUser, bold: true),
                       ],
                     ),
-                    for (final m in movements)
+                    for (final (i, m) in movements.indexed)
                       TableRow(
+                        decoration: BoxDecoration(
+                          color: i.isOdd ? colors.zebra : null,
+                          border: Border(top: BorderSide(color: colors.border)),
+                        ),
                         children: [
                           _cell(Formatters.dateTime(m.createdAt)),
                           _cell(
@@ -411,7 +442,11 @@ class _MovementsCard extends ConsumerWidget {
                                 (m.note.isEmpty ? '' : ' — ${m.note}'),
                           ),
                           _cell(m.variantLabel, ltr: true),
-                          _cell(m.qty > 0 ? '+${m.qty}' : '${m.qty}', ltr: true),
+                          _cell(
+                            m.qty > 0 ? '+${m.qty}' : '${m.qty}',
+                            ltr: true,
+                            color: m.qty > 0 ? colors.success : colors.danger,
+                          ),
                           _cell('${m.qtyAfter}'),
                           if (seesCosts) _cell(Formatters.money(m.unitCost)),
                           _cell(m.createdByName),
@@ -427,13 +462,17 @@ class _MovementsCard extends ConsumerWidget {
     );
   }
 
-  static Widget _cell(String text, {bool bold = false, bool ltr = false}) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+  static Widget _cell(String text, {bool bold = false, bool ltr = false, Color? color}) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
     child: Text(
       text,
       textDirection: ltr ? TextDirection.ltr : null,
       textAlign: TextAlign.start,
-      style: bold ? const TextStyle(fontWeight: FontWeight.bold) : null,
+      style: TextStyle(
+        fontWeight: bold ? FontWeight.w600 : null,
+        fontFeatures: AppText.tabular,
+        color: color,
+      ),
     ),
   );
 }

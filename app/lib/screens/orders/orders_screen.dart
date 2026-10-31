@@ -99,102 +99,126 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           ],
         ),
         _SummaryBar(onAge: (days) => _set(minAge: days, openOnly: true)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 260,
-                child: TextField(
-                  key: const Key('orders-search'),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '${AppStrings.orderNumber} / ${AppStrings.supplier}',
-                  ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(const Duration(milliseconds: 300), () => _set(search: text));
-                  },
+        FilterBar(
+          children: [
+            SizedBox(
+              width: 260,
+              child: TextField(
+                key: const Key('orders-search'),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: '${AppStrings.orderNumber} / ${AppStrings.supplier}',
                 ),
+                onChanged: (text) {
+                  _debounce?.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () => _set(search: text));
+                },
               ),
-              SizedBox(
-                width: 170,
-                child: DropdownButtonFormField<String?>(
-                  key: const Key('orders-status'),
-                  isExpanded: true,
-                  initialValue: _q.status,
-                  decoration: const InputDecoration(labelText: AppStrings.status),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
-                    for (final s in AppStrings.orderStatuses.entries)
-                      DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
-                  ],
-                  onChanged: (v) => _set(status: v, openOnly: v == null ? _q.openOnly : false),
-                ),
+            ),
+            SizedBox(
+              width: 170,
+              child: DropdownButtonFormField<String?>(
+                key: const Key('orders-status'),
+                isExpanded: true,
+                initialValue: _q.status,
+                decoration: const InputDecoration(labelText: AppStrings.status),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
+                  for (final s in AppStrings.orderStatuses.entries)
+                    DropdownMenuItem<String?>(value: s.key, child: Text(s.value)),
+                ],
+                onChanged: (v) => _set(status: v, openOnly: v == null ? _q.openOnly : false),
               ),
-              SizedBox(
-                width: 190,
-                child: DropdownButtonFormField<String?>(
-                  isExpanded: true,
-                  initialValue: _q.type,
-                  decoration: const InputDecoration(labelText: AppStrings.orderType),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
-                    for (final t in AppStrings.orderTypes.entries)
-                      DropdownMenuItem<String?>(value: t.key, child: Text(t.value)),
-                  ],
-                  onChanged: (v) => _set(type: v),
-                ),
+            ),
+            SizedBox(
+              width: 190,
+              child: DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: _q.type,
+                decoration: const InputDecoration(labelText: AppStrings.orderType),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text(AppStrings.all)),
+                  for (final t in AppStrings.orderTypes.entries)
+                    DropdownMenuItem<String?>(value: t.key, child: Text(t.value)),
+                ],
+                onChanged: (v) => _set(type: v),
               ),
-              SizedBox(
-                width: 200,
-                child: DropdownButtonFormField<int?>(
-                  isExpanded: true,
-                  initialValue: suppliers.any((s) => s.id == _q.supplierId) ? _q.supplierId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.supplier),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.all)),
-                    for (final s in suppliers)
-                      DropdownMenuItem<int?>(value: s.id, child: Text(s.name)),
-                  ],
-                  onChanged: (v) => _set(supplierId: v),
-                ),
+            ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<int?>(
+                isExpanded: true,
+                initialValue: suppliers.any((s) => s.id == _q.supplierId) ? _q.supplierId : null,
+                decoration: const InputDecoration(labelText: AppStrings.supplier),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.all)),
+                  for (final s in suppliers)
+                    DropdownMenuItem<int?>(value: s.id, child: Text(s.name)),
+                ],
+                onChanged: (v) => _set(supplierId: v),
               ),
-              FilterChip(
-                key: const Key('orders-open-only'),
-                label: const Text(AppStrings.openOnly),
-                selected: _q.openOnly,
-                onSelected: (v) => _set(openOnly: v, status: v ? null : _q.status),
+            ),
+            FilterChip(
+              key: const Key('orders-open-only'),
+              label: const Text(AppStrings.openOnly),
+              selected: _q.openOnly,
+              onSelected: (v) => _set(openOnly: v, status: v ? null : _q.status),
+            ),
+            FilterChip(
+              key: const Key('orders-late-only'),
+              label: const Text(AppStrings.lateOnly),
+              selected: _q.lateOnly,
+              onSelected: (v) => _set(lateOnly: v),
+            ),
+            if (_q.minAge != null)
+              InputChip(
+                key: const Key('orders-min-age'),
+                label: Text('${AppStrings.minAge}: ${_q.minAge}'),
+                onDeleted: () => _set(minAge: null),
               ),
-              FilterChip(
-                key: const Key('orders-late-only'),
-                label: const Text(AppStrings.lateOnly),
-                selected: _q.lateOnly,
-                onSelected: (v) => _set(lateOnly: v),
-              ),
-              if (_q.minAge != null)
-                InputChip(
-                  key: const Key('orders-min-age'),
-                  label: Text('${AppStrings.minAge}: ${_q.minAge}'),
-                  onDeleted: () => _set(minAge: null),
-                ),
-            ],
-          ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.lg),
         Expanded(
-          child: AsyncView(
-            value: ref.watch(supplierOrdersProvider(_q)),
-            onRetry: () => ref.invalidate(supplierOrdersProvider(_q)),
-            builder: (orders) => orders.isEmpty
-                ? const Center(child: Text(AppStrings.noOrders))
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    children: [for (final o in orders) OrderTile(order: o)],
-                  ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.page,
+            ),
+            child: AsyncView(
+              value: ref.watch(supplierOrdersProvider(_q)),
+              skeleton: true,
+              onRetry: () => ref.invalidate(supplierOrdersProvider(_q)),
+              builder: (orders) {
+                if (orders.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.local_shipping_outlined,
+                    title: AppStrings.noOrders,
+                  );
+                }
+                final now = DateTime.now();
+                final showTotal = orders.any((o) => o.total != null);
+                final columns = OrderTile.columnsFor(showTotal: showTotal);
+                return AppDataTable<SupplierOrder>(
+                  columns: columns,
+                  items: orders,
+                  rowKey: (o) => Key('order-row-${o.id}'),
+                  onTap: (o) => context.go(AppRoutes.orderDetail(o.id)),
+                  muted: (o) => o.status == 'cancelled',
+                  accent: (o) => o.lateOn(now) ? AppColors.of(context).danger : null,
+                  sortKeys: {
+                    0: (o) => o.number,
+                    1: (o) => o.supplierName,
+                    2: (o) => o.orderDate?.millisecondsSinceEpoch ?? 0,
+                    if (showTotal) 4: (o) => double.tryParse(o.total ?? '') ?? 0,
+                  },
+                  footer: TableFooter(count: orders.length),
+                  cells: (o) => OrderTile.cellsFor(context, o, now: now, showTotal: showTotal),
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -213,99 +237,181 @@ class _SummaryBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(ordersSummaryProvider).value;
-    if (summary == null) return const SizedBox(height: 8);
+    if (summary == null) return const SizedBox(height: AppSpacing.sm);
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
     String bucket(({int from, int? to, int count}) b) =>
         b.to == null ? '+${b.from - 1}' : '${b.from}–${b.to}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, AppSpacing.lg),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: AppSpacing.md,
+        runSpacing: AppSpacing.md,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Chip(label: Text('${AppStrings.pendingOrders}: ${summary.open}')),
-          Chip(
-            key: const Key('orders-late-count'),
-            backgroundColor: summary.late > 0 ? theme.colorScheme.errorContainer : null,
-            label: Text('${AppStrings.late}: ${summary.late}'),
+          _Stat(
+            label: AppStrings.pendingOrders,
+            value: '${summary.open}',
+            icon: Icons.pending_actions_outlined,
+            tone: Tone.info,
           ),
-          Text('${AppStrings.ageing}:', style: theme.textTheme.labelLarge),
-          for (final b in summary.ageing)
-            ActionChip(
-              key: Key('ageing-${b.from}'),
-              label: Text('${bucket(b)} ${AppStrings.daysOld}: ${b.count}'),
-              onPressed: () => onAge(b.from),
-            ),
+          _Stat(
+            key: const Key('orders-late-count'),
+            label: AppStrings.late,
+            value: '${summary.late}',
+            icon: Icons.schedule,
+            tone: summary.late > 0 ? Tone.danger : Tone.neutral,
+          ),
           if (summary.owed != null)
-            Chip(label: Text('${AppStrings.totalOwed}: ${Formatters.money(summary.owed)}')),
+            _Stat(
+              label: AppStrings.totalOwed,
+              value: Formatters.money(summary.owed),
+              icon: Icons.account_balance_outlined,
+              tone: Tone.warning,
+            ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: AppRadius.lgAll,
+              border: Border.all(color: colors.border),
+            ),
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('${AppStrings.ageing}:', style: theme.textTheme.labelLarge),
+                for (final b in summary.ageing)
+                  ActionChip(
+                    key: Key('ageing-${b.from}'),
+                    label: Text('${bucket(b)} ${AppStrings.daysOld}: ${b.count}'),
+                    onPressed: () => onAge(b.from),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class OrderTile extends StatelessWidget {
-  const OrderTile({super.key, required this.order});
+/// Compact metric (icon + "label: value") for summary strips.
+class _Stat extends StatelessWidget {
+  const _Stat({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.tone = Tone.primary,
+  });
 
-  final SupplierOrder order;
+  final String label;
+  final String value;
+  final IconData icon;
+  final Tone tone;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final o = order;
-    final now = DateTime.now();
-    final late = o.lateOn(now);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: late ? BorderSide(color: theme.colorScheme.error, width: 2) : BorderSide.none,
+    final colors = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.sm,
       ),
-      child: ListTile(
-        key: Key('order-row-${o.id}'),
-        leading: CircleAvatar(child: Text('${o.number}', style: const TextStyle(fontSize: 12))),
-        title: Row(
-          children: [
-            Expanded(child: Text(o.supplierName, overflow: TextOverflow.ellipsis)),
-            if (late)
-              Container(
-                key: Key('order-late-${o.id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                color: theme.colorScheme.errorContainer,
-                child: Text(AppStrings.late, style: theme.textTheme.labelSmall),
-              ),
-          ],
-        ),
-        subtitle: Text(
-          [
-            AppStrings.label(AppStrings.orderTypes, o.type),
-            if (o.jobNumber != null) '${AppStrings.job} #${o.jobNumber} ${o.jobPatientName}',
-            '${AppStrings.orderDate}: ${Formatters.date(o.orderDate)}',
-            if (o.isOpen) '${o.ageOn(now)} ${AppStrings.daysOld}',
-            if (o.expectedDate != null)
-              '${AppStrings.expectedDate}: ${Formatters.date(o.expectedDate)}',
-          ].join('   •   '),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              AppStrings.label(AppStrings.orderStatuses, o.status),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              o.total == null
-                  ? AppStrings.label(AppStrings.orderPaymentStatuses, o.paymentStatus)
-                  : '${Formatters.money(o.total)} • '
-                        '${AppStrings.label(AppStrings.orderPaymentStatuses, o.paymentStatus)}',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-        onTap: () => context.go(AppRoutes.orderDetail(o.id)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: tone == Tone.danger ? colors.danger : colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconTile(icon: icon, tone: tone, size: 34),
+          const SizedBox(width: AppSpacing.md),
+          Text('$label: $value', style: theme.textTheme.titleSmall),
+        ],
       ),
     );
+  }
+}
+
+/// Supplier-order table row content (columns + cells).
+class OrderTile {
+  const OrderTile._();
+
+  static List<TableCol> columnsFor({required bool showTotal}) => [
+    const TableCol(AppStrings.orderNumber, flex: 1),
+    const TableCol(AppStrings.supplier, flex: 4),
+    const TableCol(AppStrings.orderDate, flex: 2),
+    const TableCol(AppStrings.expectedDate, flex: 2),
+    if (showTotal) const TableCol(AppStrings.total, flex: 2, numeric: true),
+    const TableCol(AppStrings.paymentStatus, flex: 2, center: true),
+    const TableCol(AppStrings.status, flex: 2, center: true),
+  ];
+
+  static List<Widget> cellsFor(
+    BuildContext context,
+    SupplierOrder o, {
+    required DateTime now,
+    required bool showTotal,
+  }) {
+    final late = o.lateOn(now);
+    final colors = AppColors.of(context);
+    return [
+      NumText('#${o.number}', bold: true),
+      TwoLineCell(
+        title: o.supplierName,
+        subtitle: [
+          AppStrings.label(AppStrings.orderTypes, o.type),
+          if (o.jobNumber != null) '${AppStrings.job} #${o.jobNumber} ${o.jobPatientName}',
+        ].join('   •   '),
+      ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          NumText(Formatters.date(o.orderDate)),
+          if (o.isOpen)
+            Text(
+              '${o.ageOn(now)} ${AppStrings.daysOld}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
+      ),
+      o.expectedDate == null
+          ? const Text(AppStrings.none)
+          : NumText(Formatters.date(o.expectedDate), color: late ? colors.danger : null),
+      if (showTotal) o.total == null ? const Text(AppStrings.none) : MoneyText(o.total),
+      StatusBadge(
+        label: AppStrings.label(AppStrings.orderPaymentStatuses, o.paymentStatus),
+        tone: StatusTones.payment(o.paymentStatus),
+        dense: true,
+      ),
+      Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        alignment: WrapAlignment.center,
+        children: [
+          StatusBadge(
+            label: AppStrings.label(AppStrings.orderStatuses, o.status),
+            tone: StatusTones.order(o.status),
+            dense: true,
+          ),
+          if (late)
+            StatusBadge(
+              key: Key('order-late-${o.id}'),
+              label: AppStrings.late,
+              tone: Tone.danger,
+              icon: Icons.schedule,
+              dense: true,
+            ),
+        ],
+      ),
+    ];
   }
 }
