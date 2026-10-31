@@ -230,220 +230,229 @@ class _JobFormDialogState extends ConsumerState<JobFormDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          FieldGrid(
-            children: [
-              _editing || widget.patient != null || _draft?.patient != null
-                  ? InputDecorator(
-                      decoration: const InputDecoration(labelText: AppStrings.patientName),
-                      child: Text(_patientName),
-                    )
-                  : picked(AppStrings.patientName, _patientName, () async {
-                      final p = await pickPatient(context);
-                      if (p != null) {
-                        setState(() {
-                          _patientId = p.id;
-                          _patientName = p.fullName;
-                          _prescriptionId = null;
-                          _rxDefaulted = false;
-                          // The sale's invoice stays (a walk-in invoice has no patient yet).
-                          if (_draft == null) _invoiceId = null;
-                        });
-                      }
-                    }, key: const Key('job-pick-patient')),
-              InkWell(
-                onTap: () async {
-                  final now = DateTime.now();
-                  final d = await showDatePicker(
-                    context: context,
-                    initialDate: _promised ?? now,
-                    firstDate: now.subtract(const Duration(days: 365)),
-                    lastDate: now.add(const Duration(days: 365)),
-                  );
-                  if (d != null) setState(() => _promised = d);
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(labelText: AppStrings.promisedDate),
-                  child: Text(Formatters.date(_promised)),
+          FormSection(
+            title: AppStrings.sectionJobLinks,
+            icon: Icons.person_outline,
+            child: FieldGrid(
+              children: [
+                _editing || widget.patient != null || _draft?.patient != null
+                    ? InputDecorator(
+                        decoration: const InputDecoration(labelText: AppStrings.patientName),
+                        child: Text(_patientName),
+                      )
+                    : picked(AppStrings.patientName, _patientName, () async {
+                        final p = await pickPatient(context);
+                        if (p != null) {
+                          setState(() {
+                            _patientId = p.id;
+                            _patientName = p.fullName;
+                            _prescriptionId = null;
+                            _rxDefaulted = false;
+                            // The sale's invoice stays (a walk-in invoice has no patient yet).
+                            if (_draft == null) _invoiceId = null;
+                          });
+                        }
+                      }, key: const Key('job-pick-patient')),
+                InkWell(
+                  onTap: () async {
+                    final now = DateTime.now();
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _promised ?? now,
+                      firstDate: now.subtract(const Duration(days: 365)),
+                      lastDate: now.add(const Duration(days: 365)),
+                    );
+                    if (d != null) setState(() => _promised = d);
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: AppStrings.promisedDate),
+                    child: Text(Formatters.date(_promised)),
+                  ),
                 ),
-              ),
-              DropdownButtonFormField<int?>(
-                key: const Key('job-prescription'),
-                isExpanded: true,
-                initialValue: prescriptions.any((r) => r.id == _prescriptionId)
-                    ? _prescriptionId
-                    : null,
-                decoration: const InputDecoration(labelText: AppStrings.linkedPrescription),
-                items: [
-                  const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
-                  for (final rx in prescriptions)
-                    DropdownMenuItem<int?>(
-                      value: rx.id,
-                      child: Text(
-                        '${Formatters.date(rx.rxDate)}  ${rx.summary}',
-                        textDirection: TextDirection.ltr,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _prescriptionId = v),
-              ),
-              if (_draft != null)
-                InputDecorator(
-                  key: const Key('job-invoice-fixed'),
-                  decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
-                  child: Text(_draft.invoiceLabel),
-                )
-              else
                 DropdownButtonFormField<int?>(
-                  key: const Key('job-invoice'),
+                  key: const Key('job-prescription'),
                   isExpanded: true,
-                  initialValue: invoices.any((i) => i.id == _invoiceId) ? _invoiceId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
+                  initialValue: prescriptions.any((r) => r.id == _prescriptionId)
+                      ? _prescriptionId
+                      : null,
+                  decoration: const InputDecoration(labelText: AppStrings.linkedPrescription),
                   items: [
                     const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
-                    for (final inv in invoices)
+                    for (final rx in prescriptions)
                       DropdownMenuItem<int?>(
-                        value: inv.id,
-                        child: Text('#${inv.number} — ${Formatters.money(inv.total)}'),
+                        value: rx.id,
+                        child: Text(
+                          '${Formatters.date(rx.rxDate)}  ${rx.summary}',
+                          textDirection: TextDirection.ltr,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                   ],
-                  onChanged: (v) => setState(() => _invoiceId = v),
+                  onChanged: (v) => setState(() => _prescriptionId = v),
                 ),
-            ],
+                if (_draft != null)
+                  InputDecorator(
+                    key: const Key('job-invoice-fixed'),
+                    decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
+                    child: Text(_draft.invoiceLabel),
+                  )
+                else
+                  DropdownButtonFormField<int?>(
+                    key: const Key('job-invoice'),
+                    isExpanded: true,
+                    initialValue: invoices.any((i) => i.id == _invoiceId) ? _invoiceId : null,
+                    decoration: const InputDecoration(labelText: AppStrings.linkedInvoice),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text(AppStrings.none)),
+                      for (final inv in invoices)
+                        DropdownMenuItem<int?>(
+                          value: inv.id,
+                          child: Text('#${inv.number} — ${Formatters.money(inv.total)}'),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _invoiceId = v),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(AppStrings.frameSource, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 6),
-          SegmentedButton<String>(
-            key: const Key('job-frame-source'),
-            segments: [
-              for (final s in AppStrings.frameSources.entries)
-                ButtonSegment(value: s.key, label: Text(s.value)),
-            ],
-            selected: {_frameSource},
-            onSelectionChanged: (v) => setState(() => _frameSource = v.first),
-          ),
-          if (_frameSource == 'lab' && _invoiceId == null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppStrings.frameNoInvoiceWarning,
-                      key: const Key('job-frame-no-invoice'),
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+          FormSection(
+            title: AppStrings.frameSource,
+            icon: Icons.crop_square_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedButton<String>(
+                  key: const Key('job-frame-source'),
+                  segments: [
+                    for (final s in AppStrings.frameSources.entries)
+                      ButtonSegment(value: s.key, label: Text(s.value)),
+                  ],
+                  selected: {_frameSource},
+                  onSelectionChanged: (v) => setState(() => _frameSource = v.first),
+                ),
+                if (_frameSource == 'lab' && _invoiceId == null)
+                  const Padding(
+                    key: Key('job-frame-no-invoice'),
+                    padding: EdgeInsets.only(top: AppSpacing.sm),
+                    child: NoticeBox(
+                      message: AppStrings.frameNoInvoiceWarning,
+                      tone: Tone.danger,
+                      icon: Icons.warning_amber_outlined,
                     ),
                   ),
-                ],
-              ),
+                const SizedBox(height: AppSpacing.md),
+                FieldGrid(
+                  children: [
+                    if (_frameSource == 'lab')
+                      picked(
+                        AppStrings.frame,
+                        _frameName,
+                        () async {
+                          final p = await pickProduct(
+                            context,
+                            kinds: 'frame',
+                            title: AppStrings.chooseFrame,
+                          );
+                          if (p != null) {
+                            setState(() {
+                              _frameId = p.id;
+                              _frameName = p.name;
+                            });
+                          }
+                        },
+                        onClear: () => setState(() {
+                          _frameId = null;
+                          _frameName = '';
+                        }),
+                        key: const Key('job-pick-frame'),
+                      ),
+                    TextField(
+                      key: const Key('job-frame-notes'),
+                      controller: _frameNotes,
+                      decoration: const InputDecoration(labelText: AppStrings.frameNotes),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          const SizedBox(height: 8),
-          FieldGrid(
-            children: [
-              if (_frameSource == 'lab')
+          ),
+          FormSection(
+            title: AppStrings.lens,
+            icon: Icons.lens_outlined,
+            child: FieldGrid(
+              children: [
                 picked(
-                  AppStrings.frame,
-                  _frameName,
+                  AppStrings.lens,
+                  _lensName,
                   () async {
                     final p = await pickProduct(
                       context,
-                      kinds: 'frame',
-                      title: AppStrings.chooseFrame,
+                      kinds: 'stock_lens,rx_lens,contact_lens',
+                      title: AppStrings.chooseLens,
                     );
                     if (p != null) {
                       setState(() {
-                        _frameId = p.id;
-                        _frameName = p.name;
+                        _lensProduct = p;
+                        _lensId = p.id;
+                        _lensName = p.name;
+                        _lensOdId = _lensOsId = null;
+                        _lensOdLabel = _lensOsLabel = '';
                       });
                     }
                   },
                   onClear: () => setState(() {
-                    _frameId = null;
-                    _frameName = '';
+                    _lensProduct = null;
+                    _lensId = _lensOdId = _lensOsId = null;
+                    _lensName = _lensOdLabel = _lensOsLabel = '';
                   }),
-                  key: const Key('job-pick-frame'),
+                  key: const Key('job-pick-lens'),
                 ),
-              TextField(
-                key: const Key('job-frame-notes'),
-                controller: _frameNotes,
-                decoration: const InputDecoration(labelText: AppStrings.frameNotes),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          FieldGrid(
-            children: [
-              picked(
-                AppStrings.lens,
-                _lensName,
-                () async {
-                  final p = await pickProduct(
-                    context,
-                    kinds: 'stock_lens,rx_lens,contact_lens',
-                    title: AppStrings.chooseLens,
-                  );
-                  if (p != null) {
-                    setState(() {
-                      _lensProduct = p;
-                      _lensId = p.id;
-                      _lensName = p.name;
-                      _lensOdId = _lensOsId = null;
-                      _lensOdLabel = _lensOsLabel = '';
-                    });
-                  }
-                },
-                onClear: () => setState(() {
-                  _lensProduct = null;
-                  _lensId = _lensOdId = _lensOsId = null;
-                  _lensName = _lensOdLabel = _lensOsLabel = '';
-                }),
-                key: const Key('job-pick-lens'),
-              ),
-              TextField(
-                controller: _lensNotes,
-                decoration: const InputDecoration(labelText: AppStrings.lensNotes),
-              ),
-              if (_lensId != null && lensUsesVariants) ...[
-                if (_prescriptionId != null)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      key: const Key('job-match-rx'),
-                      icon: const Icon(Icons.auto_fix_high, size: 18),
-                      label: const Text(AppStrings.matchRxPowers),
-                      onPressed: _matchRx,
+                TextField(
+                  controller: _lensNotes,
+                  decoration: const InputDecoration(labelText: AppStrings.lensNotes),
+                ),
+                if (_lensId != null && lensUsesVariants) ...[
+                  if (_prescriptionId != null)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        key: const Key('job-match-rx'),
+                        icon: const Icon(Icons.auto_fix_high, size: 18),
+                        label: const Text(AppStrings.matchRxPowers),
+                        onPressed: _matchRx,
+                      ),
                     ),
-                  ),
-                picked(AppStrings.lensOd, _lensOdLabel, () async {
-                  final v = await _pickPower();
-                  if (v != null) {
-                    setState(() {
-                      _lensOdId = v.id;
-                      _lensOdLabel = _variantLabel(v);
-                    });
-                  }
-                }, key: const Key('job-pick-od')),
-                picked(AppStrings.lensOs, _lensOsLabel, () async {
-                  final v = await _pickPower();
-                  if (v != null) {
-                    setState(() {
-                      _lensOsId = v.id;
-                      _lensOsLabel = _variantLabel(v);
-                    });
-                  }
-                }, key: const Key('job-pick-os')),
+                  picked(AppStrings.lensOd, _lensOdLabel, () async {
+                    final v = await _pickPower();
+                    if (v != null) {
+                      setState(() {
+                        _lensOdId = v.id;
+                        _lensOdLabel = _variantLabel(v);
+                      });
+                    }
+                  }, key: const Key('job-pick-od')),
+                  picked(AppStrings.lensOs, _lensOsLabel, () async {
+                    final v = await _pickPower();
+                    if (v != null) {
+                      setState(() {
+                        _lensOsId = v.id;
+                        _lensOsLabel = _variantLabel(v);
+                      });
+                    }
+                  }, key: const Key('job-pick-os')),
+                ],
               ],
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('job-notes'),
-            controller: _notes,
-            maxLines: 2,
-            decoration: const InputDecoration(labelText: AppStrings.notes),
+          FormSection(
+            title: AppStrings.sectionDetails,
+            icon: Icons.notes_outlined,
+            child: TextField(
+              key: const Key('job-notes'),
+              controller: _notes,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: AppStrings.notes),
+            ),
           ),
         ],
       ),

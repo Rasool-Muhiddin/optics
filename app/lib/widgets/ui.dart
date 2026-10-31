@@ -1036,12 +1036,20 @@ class FormSection extends StatelessWidget {
     this.description,
     required this.child,
     this.icon,
+    this.actions = const [],
+    this.titleKey,
   });
 
   final String title;
   final String? description;
   final IconData? icon;
   final Widget child;
+
+  /// Buttons at the end of the heading line (e.g. "add line").
+  final List<Widget> actions;
+
+  /// Key of the title [Text] (for tests that look the heading up).
+  final Key? titleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -1057,9 +1065,13 @@ class FormSection extends StatelessWidget {
                 Icon(icon, size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: AppSpacing.sm),
               ],
-              Text(title, style: theme.textTheme.titleSmall),
+              Text(title, key: titleKey, style: theme.textTheme.titleSmall),
               const SizedBox(width: AppSpacing.md),
               const Expanded(child: Divider()),
+              if (actions.isNotEmpty) ...[
+                const SizedBox(width: AppSpacing.sm),
+                ...actions,
+              ],
             ],
           ),
           if (description != null)

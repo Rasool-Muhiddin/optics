@@ -893,4 +893,7 @@ class AppStrings {
   static const String sectionPrinting = 'الطباعة';
   static const String sectionSales = 'البيع';
   static const String lines = 'المواد';
+  static const String sectionIdentify = 'الباركود والنوع';
+  static const String sectionJobLinks = 'المراجع والوصفة والفاتورة';
+  static const String sectionSupplierDates = 'المورد والتواريخ';
 }

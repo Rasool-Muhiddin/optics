@@ -271,105 +271,127 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<String>(
-              key: const Key('order-type'),
-              segments: [
-                for (final t in AppStrings.orderTypes.entries)
-                  ButtonSegment(value: t.key, label: Text(t.value)),
-              ],
-              selected: {_type},
-              onSelectionChanged: widget.job != null || _editing ? null : (v) => _setType(v.first),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 12),
-              child: Text(
-                AppStrings.orderTypeHints[_type] ?? '',
-                key: const Key('order-type-hint'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-            if (_type == OrderTypes.rxForJob)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: AppStrings.job,
-                    helperText: AppStrings.jobForOrderHint,
+            FormSection(
+              title: AppStrings.orderType,
+              icon: Icons.category_outlined,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<String>(
+                    key: const Key('order-type'),
+                    segments: [
+                      for (final t in AppStrings.orderTypes.entries)
+                        ButtonSegment(value: t.key, label: Text(t.value)),
+                    ],
+                    selected: {_type},
+                    onSelectionChanged: widget.job != null || _editing
+                        ? null
+                        : (v) => _setType(v.first),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _jobLabel.isEmpty ? AppStrings.none : _jobLabel,
-                          key: const Key('order-job-label'),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, bottom: 12),
+                    child: Text(
+                      AppStrings.orderTypeHints[_type] ?? '',
+                      key: const Key('order-type-hint'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  if (_type == OrderTypes.rxForJob)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.job,
+                          helperText: AppStrings.jobForOrderHint,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _jobLabel.isEmpty ? AppStrings.none : _jobLabel,
+                                key: const Key('order-job-label'),
+                              ),
+                            ),
+                            if (widget.job == null && !_editing)
+                              TextButton.icon(
+                                key: const Key('order-pick-job'),
+                                icon: const Icon(Icons.search, size: 18),
+                                onPressed: _pickJob,
+                                label: const Text(AppStrings.chooseJobButton),
+                              ),
+                          ],
                         ),
                       ),
-                      if (widget.job == null && !_editing)
-                        TextButton.icon(
-                          key: const Key('order-pick-job'),
-                          icon: const Icon(Icons.search, size: 18),
-                          onPressed: _pickJob,
-                          label: const Text(AppStrings.chooseJobButton),
+                    ),
+                ],
+              ),
+            ),
+            FormSection(
+              title: AppStrings.sectionSupplierDates,
+              icon: Icons.store_outlined,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FieldGrid(
+                    children: [
+                      DropdownButtonFormField<int>(
+                        key: const Key('order-supplier'),
+                        isExpanded: true,
+                        initialValue: suppliers.any((s) => s.id == _supplierId)
+                            ? _supplierId
+                            : null,
+                        decoration: const InputDecoration(labelText: AppStrings.supplier),
+                        items: [
+                          for (final s in suppliers.where((s) => s.isActive || s.id == _supplierId))
+                            DropdownMenuItem(value: s.id, child: Text(s.name)),
+                        ],
+                        validator: (v) => v == null ? AppStrings.required : null,
+                        onChanged: (v) => setState(() => _supplierId = v),
+                      ),
+                      TextFormField(
+                        controller: _ref,
+                        decoration: const InputDecoration(labelText: AppStrings.supplierRef),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final d = await _date(_orderDate);
+                          if (d != null) setState(() => _orderDate = d);
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: AppStrings.orderDate),
+                          child: Text(Formatters.date(_orderDate)),
                         ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final d = await _date(_expected);
+                          if (d != null) setState(() => _expected = d);
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: AppStrings.expectedDate),
+                          child: Text(
+                            _expected == null ? AppStrings.none : Formatters.date(_expected),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                  if (!_editing)
+                    CheckboxListTile(
+                      key: const Key('order-sent'),
+                      contentPadding: EdgeInsets.zero,
+                      value: _sent,
+                      title: const Text(AppStrings.orderSentNow),
+                      subtitle: const Text(AppStrings.orderDraftHint),
+                      onChanged: (v) => setState(() => _sent = v ?? true),
+                    ),
+                ],
               ),
-            FieldGrid(
-              children: [
-                DropdownButtonFormField<int>(
-                  key: const Key('order-supplier'),
-                  isExpanded: true,
-                  initialValue: suppliers.any((s) => s.id == _supplierId) ? _supplierId : null,
-                  decoration: const InputDecoration(labelText: AppStrings.supplier),
-                  items: [
-                    for (final s in suppliers.where((s) => s.isActive || s.id == _supplierId))
-                      DropdownMenuItem(value: s.id, child: Text(s.name)),
-                  ],
-                  validator: (v) => v == null ? AppStrings.required : null,
-                  onChanged: (v) => setState(() => _supplierId = v),
-                ),
-                TextFormField(
-                  controller: _ref,
-                  decoration: const InputDecoration(labelText: AppStrings.supplierRef),
-                ),
-                InkWell(
-                  onTap: () async {
-                    final d = await _date(_orderDate);
-                    if (d != null) setState(() => _orderDate = d);
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(labelText: AppStrings.orderDate),
-                    child: Text(Formatters.date(_orderDate)),
-                  ),
-                ),
-                InkWell(
-                  onTap: () async {
-                    final d = await _date(_expected);
-                    if (d != null) setState(() => _expected = d);
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(labelText: AppStrings.expectedDate),
-                    child: Text(_expected == null ? AppStrings.none : Formatters.date(_expected)),
-                  ),
-                ),
-              ],
             ),
-            if (!_editing)
-              CheckboxListTile(
-                key: const Key('order-sent'),
-                contentPadding: EdgeInsets.zero,
-                value: _sent,
-                title: const Text(AppStrings.orderSentNow),
-                subtitle: const Text(AppStrings.orderDraftHint),
-                onChanged: (v) => setState(() => _sent = v ?? true),
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(AppStrings.orderLines, style: Theme.of(context).textTheme.titleSmall),
-                ),
+            FormSection(
+              title: AppStrings.orderLines,
+              icon: Icons.list_alt_outlined,
+              actions: [
                 if (_type != OrderTypes.other)
                   TextButton.icon(
                     key: const Key('order-add-product'),
@@ -385,86 +407,94 @@ class _OrderFormDialogState extends ConsumerState<OrderFormDialog> {
                     onPressed: () => setState(() => _lines.add(_LineDraft())),
                   ),
               ],
-            ),
-            for (final (i, line) in _lines.indexed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: TextFormField(
-                        key: Key('order-line-desc-$i'),
-                        controller: line.description,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          labelText: line.label.isEmpty ? AppStrings.description : line.label,
-                        ),
-                        validator: (v) => line.productId == null && (v ?? '').trim().isEmpty
-                            ? AppStrings.required
-                            : null,
-                      ),
-                    ),
-                    if (_type == OrderTypes.rxForJob) ...[
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 120,
-                        child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          initialValue: line.eye,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            labelText: AppStrings.eye,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, line) in _lines.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: TextFormField(
+                              key: Key('order-line-desc-$i'),
+                              controller: line.description,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                labelText: line.label.isEmpty ? AppStrings.description : line.label,
+                              ),
+                              validator: (v) => line.productId == null && (v ?? '').trim().isEmpty
+                                  ? AppStrings.required
+                                  : null,
+                            ),
                           ),
-                          items: [
-                            for (final e in AppStrings.eyes.entries)
-                              DropdownMenuItem(value: e.key, child: Text(e.value)),
+                          if (_type == OrderTypes.rxForJob) ...[
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 120,
+                              child: DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue: line.eye,
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  labelText: AppStrings.eye,
+                                ),
+                                items: [
+                                  for (final e in AppStrings.eyes.entries)
+                                    DropdownMenuItem(value: e.key, child: Text(e.value)),
+                                ],
+                                onChanged: (v) => setState(() => line.eye = v ?? ''),
+                              ),
+                            ),
                           ],
-                          onChanged: (v) => setState(() => line.eye = v ?? ''),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 80,
-                      child: TextFormField(
-                        key: Key('order-line-qty-$i'),
-                        controller: line.qty,
-                        inputFormatters: Inputs.integer,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          labelText: AppStrings.quantity,
-                        ),
-                        validator: (v) => Inputs.intValidator(v, allowZero: false),
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 80,
+                            child: TextFormField(
+                              key: Key('order-line-qty-$i'),
+                              controller: line.qty,
+                              inputFormatters: Inputs.integer,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                labelText: AppStrings.quantity,
+                              ),
+                              validator: (v) => Inputs.intValidator(v, allowZero: false),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 120,
+                            child: TextFormField(
+                              key: Key('order-line-cost-$i'),
+                              controller: line.cost,
+                              inputFormatters: Inputs.money,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                labelText: AppStrings.unitCost,
+                              ),
+                              validator: (v) => Inputs.moneyValidator(v, required: false),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => setState(() => _lines.removeAt(i).dispose()),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 120,
-                      child: TextFormField(
-                        key: Key('order-line-cost-$i'),
-                        controller: line.cost,
-                        inputFormatters: Inputs.money,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          labelText: AppStrings.unitCost,
-                        ),
-                        validator: (v) => Inputs.moneyValidator(v, required: false),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => setState(() => _lines.removeAt(i).dispose()),
-                    ),
-                  ],
-                ),
+                ],
               ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _notes,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: AppStrings.notes),
+            ),
+            FormSection(
+              title: AppStrings.sectionDetails,
+              icon: Icons.notes_outlined,
+              child: TextFormField(
+                controller: _notes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: AppStrings.notes),
+              ),
             ),
           ],
         ),
